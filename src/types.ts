@@ -20,7 +20,7 @@ export type Muscle =
 
 export type Equipment =
   | 'dumbbell' | 'kettlebell' | 'cable' | 'machine' | 'smith-machine' | 'bench'
-  | 'pull-up-bar' | 'back-extension-bench' | 'plate' | 'band' | 'mat' | 'none';
+  | 'pull-up-bar' | 'back-extension-bench' | 'plate' | 'band' | 'ab-wheel' | 'mat' | 'none';
 
 export type LoadType = 'smith' | 'dumbbell' | 'kettlebell' | 'machine' | 'cable' | 'bodyweight' | 'assisted' | 'band' | 'plate';
 export type WeightConvention = 'total' | 'per-hand' | 'added' | 'assist' | 'band' | 'none';

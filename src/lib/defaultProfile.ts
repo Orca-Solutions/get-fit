@@ -20,7 +20,7 @@ export function defaultProfile(t = new Date().toISOString()): Profile {
     ],
     equipmentByLocation: {
       gym: ['dumbbell', 'kettlebell', 'cable', 'machine', 'smith-machine', 'bench', 'pull-up-bar', 'back-extension-bench', 'plate', 'mat', 'none'],
-      home: ['band', 'kettlebell', 'mat', 'none'],
+      home: ['band', 'kettlebell', 'ab-wheel', 'mat', 'none'],
     },
     bands: [
       { id: 'band-light', name: 'Light', order: 1 },

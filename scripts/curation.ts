@@ -1390,6 +1390,16 @@ export const curation: CuratedEntry[] = [
     cues: ['Elbows under shoulders', 'Squeeze glutes, tuck the ribs', 'Straight line, no sagging hips'],
   }),
   x({
+    id: 'ab-wheel-rollout', name: 'Ab Wheel Rollout (Kneeling)', aliases: ['Ab roller', 'Ab wheel', 'Kneeling rollout'], family: 'ab-wheel', sourceId: 'Ab_Roller',
+    movementPattern: 'anti-extension', primaryMuscles: ['abs'], secondaryMuscles: ['lats', 'obliques', 'hip-flexors'],
+    mechanic: 'compound', laterality: 'bilateral', stance: 'kneeling', stability: 'free', equipment: ['ab-wheel', 'mat'],
+    loadType: 'bodyweight', weightConvention: 'none',
+    repRange: { min: 5, max: 15 }, fatigueCost: 1, difficultyRank: 3, level: 'beginner',
+    regressions: ['plank'],
+    slots: ['core:anti-extension'], coreDynamic: 'anti-extension', tags: ['home'],
+    cues: ['Roll out only as far as your low back stays flat', 'Tuck the pelvis, squeeze glutes', 'Pull back with the abs, not the hips'],
+  }),
+  x({
     id: 'long-lever-plank', name: 'Long-Lever Plank', aliases: ['Extended plank', 'RKC-style plank'], family: 'plank',
     instructions: [
       'Set up in a forearm plank, then walk the elbows a few inches forward of the shoulders.',
