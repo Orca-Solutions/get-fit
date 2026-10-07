@@ -22,3 +22,4 @@ data/*.sqlite*
 test-results/
 playwright-report/
 *.log
+.e2e-data/
