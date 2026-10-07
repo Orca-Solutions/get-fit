@@ -1756,6 +1756,20 @@ export const curation: CuratedEntry[] = [
     cues: ['Do not lean away from the bell', 'Ribs stacked over the hips', 'Slow, even steps'],
   }),
   x({
+    id: 'double-kettlebell-front-rack-carry', name: 'Double Kettlebell Front-Rack Carry', aliases: ['Front-rack carry', 'Double KB rack walk'], family: 'kettlebell-carry',
+    instructions: [
+      'Clean a matched pair of kettlebells to the front rack: bells resting on the outside of the forearms, elbows tucked, fists at collarbone height.',
+      'Stand tall and walk with short steps for the prescribed time, ribs down and breathing behind the brace.',
+      'Lower the bells under control.',
+    ],
+    movementPattern: 'carry', primaryMuscles: ['abs', 'obliques'], secondaryMuscles: ['upper-back', 'front-delts', 'forearms'],
+    mechanic: 'compound', laterality: 'bilateral', stance: 'standing', ...KB, weightConvention: 'per-hand',
+    metric: 'time', repRange: { min: 20, max: 60 }, perSide: false, fatigueCost: 1, difficultyRank: 2,
+    regressions: ['plank'],
+    slots: ['core:anti-extension'], coreDynamic: 'anti-extension', tags: ['carry', 'double-kettlebell'],
+    cues: ['Needs a matched pair (your two 25s)', 'Ribs down, do not lean back', 'Elbows tucked, wrists straight'],
+  }),
+  x({
     id: 'overhead-kettlebell-carry', name: 'Overhead Kettlebell Carry', aliases: ['Waiter carry'], family: 'kettlebell-carry',
     instructions: [
       'Press a kettlebell overhead with one arm, biceps by the ear, wrist straight.',

@@ -27,7 +27,7 @@ export function defaultProfile(t = new Date().toISOString()): Profile {
       { id: 'band-medium', name: 'Medium', order: 2 },
       { id: 'band-heavy', name: 'Heavy', order: 3 },
     ],
-    kettlebellsLb: [25, 35],
+    kettlebells: [{ lb: 25, count: 2 }, { lb: 35, count: 1 }],
     smithBarLb: 20,
     coreWave: 'wave',
   };

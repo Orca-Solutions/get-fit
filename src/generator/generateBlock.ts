@@ -135,6 +135,7 @@ function usable(ctx: Ctx, ex: Exercise, location: Location): boolean {
   if (flags?.avoid || flags?.unavailable) return false;
   if (ex.level === 'advanced') return false;
   const have = ctx.input.profile.equipmentByLocation[location];
+  if (ex.loadType === 'kettlebell' && ex.weightConvention === 'per-hand' && !ctx.input.profile.kettlebells.some((k) => k.count >= 2)) return false;
   return ex.equipment.every((e) => have.includes(e));
 }
 
@@ -463,7 +464,7 @@ function buildCore(ctx: Ctx, common: Common, base: Record<CoreDynamic, Exercise>
           ex = harder;
         } else note = heavyNote(ctx, ex);
       } else if (!deload && zone === 'L') {
-        note = ex.loadType === 'kettlebell' ? `Light week: the ${Math.min(...ctx.input.profile.kettlebellsLb)} lb kettlebell, more reps.` : 'Light week: more reps or longer holds; slow 3-second lowering if it gets easy.';
+        note = ex.loadType === 'kettlebell' ? `Light week: the ${Math.min(...kbWeights(ctx.input.profile, ex))} lb kettlebell${ex.weightConvention === 'per-hand' ? 's' : ''}, more reps.` : 'Light week: more reps or longer holds; slow 3-second lowering if it gets easy.';
       }
       const want = ex.metric === 'time' ? targets.seconds : targets.reps;
       const range = repsFor(ex, want);
@@ -495,7 +496,18 @@ function buildCore(ctx: Ctx, common: Common, base: Record<CoreDynamic, Exercise>
 }
 
 function heavyNote(ctx: Ctx, ex: Exercise): string {
-  if (ex.loadType === 'kettlebell') return `Heavy week: use the ${Math.max(...ctx.input.profile.kettlebellsLb)} lb kettlebell.`;
+  if (ex.loadType === 'kettlebell') {
+    const pair = ex.weightConvention === 'per-hand';
+    const top = Math.max(...kbWeights(ctx.input.profile, ex));
+    return pair ? `Heavy week: the ${top} lb pair, longer carry or slower steps.` : `Heavy week: use the ${top} lb kettlebell.`;
+  }
   if (ex.loadType === 'band') return 'Heavy week: next band up, or a step further from the anchor.';
   return 'Heavy week: add a pause at the hardest point, or hold a kettlebell.';
+}
+
+/** Kettlebell weights usable for a movement: double-bell moves need a matched pair. */
+export function kbWeights(profile: Profile, ex: Pick<Exercise, 'weightConvention'>): number[] {
+  const need = ex.weightConvention === 'per-hand' ? 2 : 1;
+  const w = profile.kettlebells.filter((k) => k.count >= need).map((k) => k.lb);
+  return w.length ? w : [0];
 }
