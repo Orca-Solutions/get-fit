@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 test('log a workout, survive a reload, and see it in history', async ({ page }) => {
   await page.goto('/');
@@ -81,6 +81,28 @@ test('finishing a movement stays on it, and editing a logged set then tapping âœ
   await reps1.fill('7');
   await page.getByRole('button', { name: 'Undo set 1' }).click();
   await expect(page.getByRole('button', { name: 'Undo set 1' })).toBeVisible();
+  // Wait for the edit to reach IndexedDB before reloading, or the reload can cut the write off.
+  await expect.poll(() => storedFirstSet(page)).toBe(7);
   await page.reload();
   await expect(page.getByLabel(/Set 1 (reps|seconds)/)).toHaveValue('7');
 });
+
+/** Reps (or seconds) of the live set 1 as stored in the app's IndexedDB. */
+function storedFirstSet(page: Page) {
+  return page.evaluate(
+    () =>
+      new Promise<number | null>((resolve, reject) => {
+        const open = indexedDB.open('get-fit');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const req = open.result.transaction('loggedSets').objectStore('loggedSets').getAll();
+          req.onerror = () => reject(req.error);
+          req.onsuccess = () => {
+            const set = (req.result as { setIndex: number; deletedAt?: string | null; reps?: number | null; seconds?: number | null }[]).find((s) => s.setIndex === 0 && !s.deletedAt);
+            open.result.close();
+            resolve(set ? (set.reps ?? set.seconds ?? null) : null);
+          };
+        };
+      }),
+  );
+}
