@@ -33,7 +33,7 @@ export const GYM_EQUIPMENT: readonly Equipment[] = [
   'dumbbell', 'kettlebell', 'cable', 'machine', 'smith-machine', 'bench', 'pull-up-bar',
   'back-extension-bench', 'plate', 'mat', 'none',
 ];
-export const HOME_EQUIPMENT: readonly Equipment[] = ['band', 'kettlebell', 'mat', 'none'];
+export const HOME_EQUIPMENT: readonly Equipment[] = ['band', 'kettlebell', 'ab-wheel', 'mat', 'none'];
 
 export const usableWith = (ex: Pick<Exercise, 'equipment'>, available: readonly Equipment[]): boolean =>
   ex.equipment.every((e) => available.includes(e));
@@ -55,7 +55,7 @@ export const MUSCLES = [
 ] as const;
 export const EQUIPMENT = [
   'dumbbell', 'kettlebell', 'cable', 'machine', 'smith-machine', 'bench', 'pull-up-bar', 'back-extension-bench',
-  'plate', 'band', 'mat', 'none',
+  'plate', 'band', 'ab-wheel', 'mat', 'none',
 ] as const;
 export const LOAD_TYPES = ['smith', 'dumbbell', 'kettlebell', 'machine', 'cable', 'bodyweight', 'assisted', 'band', 'plate'] as const;
 export const WEIGHT_CONVENTIONS = ['total', 'per-hand', 'added', 'assist', 'band', 'none'] as const;
