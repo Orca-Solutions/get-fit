@@ -246,7 +246,7 @@ Plan and log are separate tables joined by `plannedSetId`. That makes "planned v
 |---|---|---|
 | Install | "Add to Home Screen", opens full-screen like an app | Xcode build; free Apple account re-signs every 7 days, or $99/yr for TestFlight |
 | Updates | Instant: push to repo, app refreshes | Rebuild and reinstall each time |
-| Can Claude build and test it in the cloud? | Yes, fully (including mobile-viewport browser tests) | Only via a session on jason's Mac with Xcode |
+| Can it be built and tested in the cloud? | Yes, fully (including mobile-viewport browser tests) | Only via a session on jason's Mac with Xcode |
 | Offline | Yes (service worker + on-device database) | Yes |
 | Nice-to-haves lost | Apple Health, Watch app, home-screen widgets, reliable background rest-timer alerts | — |
 | Laptop access to history | Same URL in any browser | No |
@@ -276,7 +276,7 @@ jason chose a small backend, on Railway like his personal treasury app. The phon
 
 ### 4.3 Stack
 
-- **Vite + React + TypeScript.** The most common, best-documented combination, which matters for a project built and maintained by Claude.
+- **Vite + React + TypeScript.** The most common, best-documented combination, which matters for a project built and maintained with coding agents.
 - **Dexie** (IndexedDB wrapper) with live queries, so screens update the moment a set is saved.
 - **vite-plugin-pwa** for the manifest, service worker and offline caching.
 - **React Router** for the handful of screens; plain CSS (or Tailwind if preferred during build) with a dark, high-contrast, large-tap-target gym UI.
