@@ -6,6 +6,7 @@ import { getSyncStatus, setSyncToken, syncNow, type SyncStatus } from '../../lib
 import { uuid } from '../../lib/ids';
 import { today } from '../../lib/dates';
 import { useProfile } from '../../lib/hooks';
+import { parseKettlebells } from '../../lib/kettlebells';
 import type { Profile } from '../../types';
 
 export default function Settings() {
@@ -28,8 +29,8 @@ export default function Settings() {
       <div className="card">
         <NumberField label="Bodyweight (lb), used for assisted machines" value={profile.bodyweightLb} onSave={(v) => save({ bodyweightLb: v })} />
         <NumberField label="Smith machine bar weight (lb), added to the plates you log" value={profile.smithBarLb} onSave={(v) => save({ smithBarLb: v })} />
-        <label className="field-label">Kettlebells (lb, comma separated)</label>
-        <TextField value={profile.kettlebellsLb.join(', ')} onSave={(v) => save({ kettlebellsLb: v.split(',').map((x) => Number(x.trim())).filter((n) => n > 0).sort((a, b) => a - b) })} />
+        <label className="field-label">Kettlebells at home (lb, "25x2" for a pair)</label>
+        <TextField value={profile.kettlebells.map((k) => (k.count > 1 ? `${k.lb}x${k.count}` : `${k.lb}`)).join(', ')} onSave={(v) => save({ kettlebells: parseKettlebells(v) })} />
         <label className="field-label">Core day</label>
         <div className="seg">
           <button className={profile.coreWave === 'wave' ? 'on' : ''} onClick={() => save({ coreWave: 'wave' })}>Light wave</button>

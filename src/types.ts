@@ -126,7 +126,8 @@ export type Profile = SyncFields & {
   schedule: ScheduleEntry[];
   equipmentByLocation: Record<Location, Equipment[]>;
   bands: Band[];
-  kettlebellsLb: number[];
+  /** Home kettlebells as weight × how many you own (a matched pair unlocks double-bell moves). */
+  kettlebells: { lb: number; count: number }[];
   smithBarLb: number;
   coreWave: 'wave' | 'flat';
 };

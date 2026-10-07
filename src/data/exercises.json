@@ -9874,6 +9874,74 @@
     "license": "MIT"
   },
   {
+    "id": "double-kettlebell-front-rack-carry",
+    "name": "Double Kettlebell Front-Rack Carry",
+    "aliases": [
+      "Front-rack carry",
+      "Double KB rack walk"
+    ],
+    "family": "kettlebell-carry",
+    "movementPattern": "carry",
+    "primaryMuscles": [
+      "abs",
+      "obliques"
+    ],
+    "secondaryMuscles": [
+      "upper-back",
+      "front-delts",
+      "forearms"
+    ],
+    "mechanic": "compound",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "kettlebell"
+    ],
+    "metric": "time",
+    "loadType": "kettlebell",
+    "weightConvention": "per-hand",
+    "loadIncrementLb": 10,
+    "repRange": {
+      "min": 20,
+      "max": 60
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [
+      "plank"
+    ],
+    "progressions": [],
+    "slots": [
+      "core:anti-extension"
+    ],
+    "coreDynamic": "anti-extension",
+    "tags": [
+      "carry",
+      "double-kettlebell"
+    ],
+    "cues": [
+      "Needs a matched pair (your two 25s)",
+      "Ribs down, do not lean back",
+      "Elbows tucked, wrists straight"
+    ],
+    "instructions": [
+      "Clean a matched pair of kettlebells to the front rack: bells resting on the outside of the forearms, elbows tucked, fists at collarbone height.",
+      "Stand tall and walk with short steps for the prescribed time, ribs down and breathing behind the brace.",
+      "Lower the bells under control."
+    ],
+    "images": [],
+    "source": {
+      "name": "get-fit"
+    },
+    "license": "MIT"
+  },
+  {
     "id": "overhead-kettlebell-carry",
     "name": "Overhead Kettlebell Carry",
     "aliases": [

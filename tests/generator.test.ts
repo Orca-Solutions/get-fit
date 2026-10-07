@@ -3,6 +3,7 @@ import catalog from '../src/data/exercises.json';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
 import { e1rm, effectiveLoad, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
 import { defaultProfile } from '../src/lib/defaultProfile';
+import { parseKettlebells } from '../src/lib/kettlebells';
 import type { Exercise, LoggedSet, PlannedWorkout } from '../src/types';
 
 const exercises = catalog as unknown as Exercise[];
@@ -180,6 +181,22 @@ describe('generateBlock: later blocks', () => {
     const curl = b1.block.baseSlots['chest-biceps|biceps:neutral'];
     const next = gen({ previousBlock: b1.block, startDate: '2026-11-09', stalled: [curl] });
     expect(next.block.baseSlots['chest-biceps|biceps:neutral']).not.toBe(curl);
+  });
+});
+
+describe('kettlebells', () => {
+  it('parses a pair and a single bell', () => {
+    expect(parseKettlebells('25x2, 35')).toEqual([{ lb: 25, count: 2 }, { lb: 35, count: 1 }]);
+    expect(parseKettlebells('35, 25 x 2, junk')).toEqual([{ lb: 25, count: 2 }, { lb: 35, count: 1 }]);
+  });
+
+  it('only programs double-bell moves when there is a matched pair', () => {
+    const singles = { ...profile, kettlebells: [{ lb: 25, count: 1 }, { lb: 35, count: 1 }] };
+    for (let b = 0, prev: GeneratorInput['previousBlock']; b < 5; b++) {
+      const r = gen({ profile: singles, previousBlock: prev, startDate: '2026-10-12' });
+      expect(r.workouts.flatMap((w) => w.exercises).some((e) => e.exerciseId === 'double-kettlebell-front-rack-carry')).toBe(false);
+      prev = r.block;
+    }
   });
 });
 
