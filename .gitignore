@@ -13,3 +13,13 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Build output and local data
+dist/
+dist-server/
+.cache/
+data/*.sqlite*
+test-results/
+playwright-report/
+*.log
+.e2e-data/
