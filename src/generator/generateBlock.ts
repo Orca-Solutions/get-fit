@@ -102,8 +102,9 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
 
   // 3. Coverage check: lift any major muscle averaging under 6 sets a week (§4.2).
   let coverage = coverageReport(workouts, ctx.byId);
-  for (const muscle of coverage.underTarget) {
-    if (addCoverageSet(workouts, ctx.byId, muscle)) coverage = coverageReport(workouts, ctx.byId);
+  for (let guard = 0; guard < 12 && coverage.underTarget.length; guard++) {
+    if (!addCoverageSet(workouts, ctx.byId, coverage.underTarget[0], coverage)) break;
+    coverage = coverageReport(workouts, ctx.byId);
   }
 
   const focusName = FOCUS_LABEL[ctx.focus];
@@ -177,6 +178,8 @@ function scoreBase(ctx: Ctx, e: Exercise, slot: BaseSlot, prevId: string | undef
   const prevFamily = prevId ? ctx.byId.get(prevId)?.family : undefined;
   let s = jitter(ctx, e.id, slot.key);
   if (ctx.blockIndex === 1 && e.starter) s += 10;
+  // Jason already runs the Smith squat, deadlift, bench and press: they lead from block 1.
+  if (slot.role === 'P' && e.loadType === 'smith') s += 3;
   if (e.level === 'beginner') s += 1;
   if (flags?.favourite) s += 3;
   if (prevId) {
@@ -210,9 +213,9 @@ type Common = { blockId: string; date: string; windowEnd?: string; weekIndex: nu
 function repsFor(ex: Exercise, want: { min: number; max: number }): { min: number; max: number } {
   const lo = ex.repRange.min;
   const hi = ex.repRange.max;
-  const width = want.max - want.min;
-  if (want.min < lo) return { min: lo, max: Math.min(hi, lo + Math.max(2, width)) }; // clamp up (§4.1)
-  if (want.max > hi) return { min: Math.max(lo, hi - Math.max(2, width)), max: hi };
+  // Clamp into the movement's own sensible range, keeping a usable window of at least 2 reps (§4.1).
+  if (want.min < lo) return { min: lo, max: Math.min(hi, Math.max(want.max, lo + 2)) };
+  if (want.max > hi) return { min: Math.max(lo, Math.min(want.min, hi - 2)), max: hi };
   return want;
 }
 
@@ -373,16 +376,24 @@ function trimToCap(exercises: PlannedExercise[], cap: number) {
   }
 }
 
-/** Add one set for an under-covered muscle to its best isolation slot in a non-deload session. */
-function addCoverageSet(workouts: PlannedWorkout[], byId: Map<string, Exercise>, muscle: string): boolean {
-  for (const w of workouts) {
-    if (w.isDeload || w.sessionType === 'core') continue;
-    const total = w.exercises.reduce((n, e) => n + e.sets.length, 0);
-    if (total >= 22) continue;
-    const target = w.exercises.find((e) => (e.role === 'I' || e.role === 'V') && byId.get(e.exerciseId)?.primaryMuscles.some((m) => muscleGroupOf(m) === muscle));
-    if (target) {
-      addSet(target);
-      return true;
+/**
+ * Add one set for an under-covered muscle: isolation and variety slots first, then compounds,
+ * never the primary lift, in a non-deload session with room under 22 sets.
+ */
+function addCoverageSet(workouts: PlannedWorkout[], byId: Map<string, Exercise>, muscle: string, coverage: CoverageReport): boolean {
+  // Lift the thinnest week first, so the extra sets spread across the block.
+  const weekSets = (w: PlannedWorkout) => (coverage.weeks[w.weekIndex] as Record<string, number> | undefined)?.[muscle] ?? 0;
+  const ordered = [...workouts].sort((a, b) => weekSets(a) - weekSets(b));
+  for (const roles of [['I', 'V'], ['C']]) {
+    for (const w of ordered) {
+      if (w.isDeload || w.sessionType === 'core' || w.weekIndex > 2) continue;
+      const total = w.exercises.reduce((n, e) => n + e.sets.length, 0);
+      if (total >= 22) continue;
+      const target = w.exercises.find((e) => roles.includes(e.role) && e.sets.length < 4 && byId.get(e.exerciseId)?.primaryMuscles.some((m) => muscleGroupOf(m) === muscle));
+      if (target) {
+        addSet(target);
+        return true;
+      }
     }
   }
   return false;
