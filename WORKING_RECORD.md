@@ -3,7 +3,7 @@
 ## Current state (2026-10-07)
 
 - Planning docs: docs/SPEC.md, docs/periodization.md, docs/exercise-database.md.
-- v1 build on branch `claude/build-app-035sbj`: app, generator, catalog, sync server, CI, Railway config.
+- v1 build (PR #1): app, generator, catalog, sync server, CI, Railway config.
 - Sample generated block shared with jason for review (the one checkpoint before polish).
 
 ## Verification

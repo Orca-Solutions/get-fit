@@ -242,7 +242,7 @@ Stretching, plyometrics, Olympic lifts and strongman are left out of the first v
 2. A hand-maintained curation file (`data/curation/exercises.yaml`) lists each of our ~130 movements: our ID and name, the `sourceId` to pull instructions and photos from (or none, for the + entries), and all the ★ tags.
 3. The script joins them, validates every entry against the schema (enums, ID uniqueness, regressions/progressions point at real IDs, every starter movement has cues), and writes `data/exercises.json`.
 4. Photos for the curated set only (~260 JPGs, about 12 MB) are copied into the app so they work offline.
-5. Tagging the ~130 entries is a drafting job Claude can do in one pass, with jason reviewing the starter set.
+5. Tagging the ~130 entries is a one-pass drafting job, with jason reviewing the starter set.
 
 An alias map (`oldId → newId`) is in place from day one, so merging or renaming movements later never orphans a logged set.
 

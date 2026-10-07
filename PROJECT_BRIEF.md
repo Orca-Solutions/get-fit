@@ -22,5 +22,5 @@ Out of scope: meal planning, running (the daily 2-mile run stays outside the app
 
 ## Permissions
 
-- Claude works on feature branches and opens draft PRs; jason merges.
+- Coding agents work on feature branches and open draft PRs; jason merges.
 - Deploying to Railway and creating the sync token are jason's steps.
