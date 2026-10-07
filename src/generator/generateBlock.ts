@@ -123,7 +123,7 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
     rationale:
       `Block ${blockIndex}: 3 loading weeks and a deload. Each day rotates heavy, moderate and light, so every muscle gets all three. ` +
       `Focus this block: ${focusName}.` +
-      (rotatedNames.length ? ` New this block: ${rotatedNames.join(', ')}.` : ''),
+      (rotatedNames.length ? ` New this block: ${rotatedNames.join(', ')}; core variants rotate too.` : ''),
   };
   return { block, workouts, coverage };
 }
@@ -154,7 +154,8 @@ function pickBase(ctx: Ctx, type: Exclude<SessionType, 'core'>): Exercise[] {
   const rotate = new Set<number>();
   if (ctx.blockIndex > 1) {
     const iso = tpl.base.map((s, i) => (s.role === 'I' ? i : -1)).filter((i) => i >= 0);
-    const comp = tpl.base.map((s, i) => (s.role !== 'I' ? i : -1)).filter((i) => i >= 0);
+    // Secondary compounds rotate before the primary lift, so the main lift sticks around longest.
+    const comp = [...tpl.base.map((s, i) => (s.role === 'C' ? i : -1)), ...tpl.base.map((s, i) => (s.role === 'P' ? i : -1))].filter((i) => i >= 0);
     rotate.add(iso[(ctx.blockIndex - 2) % iso.length]);
     if (ctx.blockIndex % 2 === 0) rotate.add(comp[(ctx.blockIndex / 2 - 1) % comp.length]);
   }
@@ -180,7 +181,8 @@ function scoreBase(ctx: Ctx, e: Exercise, slot: BaseSlot, prevId: string | undef
   if (ctx.blockIndex === 1 && e.starter) s += 10;
   // Jason already runs the Smith squat, deadlift, bench and press: they lead from block 1.
   if (slot.role === 'P' && e.loadType === 'smith') s += 3;
-  if (e.level === 'beginner') s += 1;
+  if (e.level === 'beginner') s += 2;
+  else s -= 3; // intermediate: only when nothing beginner-friendly offers variety
   if (flags?.favourite) s += 3;
   if (prevId) {
     if (e.id === prevId) s -= 20;
@@ -431,7 +433,6 @@ function pickCoreBase(ctx: Ctx): Record<CoreDynamic, Exercise> {
         return s;
       });
       if (!pick) throw new Error(`No home exercise for core dynamic ${dyn}`);
-      if (prevId && pick.id !== prevId) ctx.rotated.push(pick.id);
       ctx.baseSlots[key] = pick.id;
       out[dyn] = pick;
     }
