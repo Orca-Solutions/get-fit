@@ -21,7 +21,8 @@ export default function Workout() {
   const exercises = useExercises();
   const workout = useLiveQuery(() => db.plannedWorkouts.get(plannedId), [plannedId]);
   const session = useLiveQuery(() => sessionFor(plannedId), [plannedId]);
-  const sessionSets = useLiveQuery(async () => (session ? (await db.loggedSets.where('sessionId').equals(session.id).toArray()).filter((s) => !s.deletedAt) : []), [session?.id]) ?? [];
+  const liveSets = useLiveQuery(async () => (session ? (await db.loggedSets.where('sessionId').equals(session.id).toArray()).filter((s) => !s.deletedAt) : undefined), [session?.id]);
+  const sessionSets = liveSets ?? [];
   const [sheet, setSheet] = useState<'swap' | 'info' | 'finish' | null>(null);
   useWakeLock(true);
 
@@ -32,6 +33,11 @@ export default function Workout() {
       return () => clearTimeout(t);
     }
   }, [workout, session, plannedId, today]);
+
+  // Opened without ?m: land on the first unfinished movement once, then stay put while logging.
+  useEffect(() => {
+    if (workout && liveSets && !params.has('m')) setParams({ m: String(firstUnfinished(workout.exercises, liveSets, session?.skipped)) }, { replace: true });
+  }, [workout, liveSets, params, setParams, session?.skipped]);
 
   const index = Math.min(Number(params.get('m') ?? firstUnfinished(workout?.exercises ?? [], sessionSets, session?.skipped)), Math.max(0, (workout?.exercises.length ?? 1) - 1));
   const go = (i: number) => setParams({ m: String(i) }, { replace: true });
@@ -123,7 +129,8 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
   const profile = useProfile();
   const allHistory = useLiveQuery(async () => (await db.loggedSets.where('exerciseId').equals(ex.id).toArray()).filter((s) => !s.deletedAt), [ex.id]) ?? [];
   const history = useMemo(() => summarizeHistory(ex, allHistory.filter((s) => s.sessionId !== sessionId), profile), [ex, allHistory, sessionId, profile]);
-  const mine = sets.filter((s) => s.plannedExerciseId === pe.id).sort((a, b) => a.setIndex - b.setIndex);
+  // Sets for this slot and this movement: after a swap, the other movement's sets stay in its own history.
+  const mine = sets.filter((s) => s.plannedExerciseId === pe.id && s.exerciseId === ex.id).sort((a, b) => a.setIndex - b.setIndex);
   const [extraRows, setExtraRows] = useState(0);
   const [focusWeightRow, setFocusWeightRow] = useState<number | null>(null);
   const rowCount = Math.max(pe.sets.length + extraRows, mine.length ? mine[mine.length - 1].setIndex + 1 : 0);
@@ -200,7 +207,7 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
         <div className="row small" style={{ margin: '8px 0' }}>
           <span className="muted">How did that feel?</span>
           {(['easy', 'right', 'hard'] as const).map((e) => (
-            <button key={e} className={`chip ${effort === e ? 'on' : ''}`} onClick={() => Promise.all(mine.map((s) => logSet(session, s.exerciseId, s.plannedExerciseId, s.setIndex, { ...s, effort: effort === e ? null : e })))}>
+            <button key={e} className={`chip ${effort === e ? 'on' : ''}`} onClick={() => Promise.all(mine.map((s) => logSet(session, s.exerciseId, s.plannedExerciseId, s.setIndex, { effort: effort === e ? null : e })))}>
               {e[0].toUpperCase() + e.slice(1)}
             </button>
           ))}

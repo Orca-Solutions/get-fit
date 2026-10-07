@@ -10,13 +10,11 @@ const exercises = catalog as unknown as Exercise[];
 const byId = new Map(exercises.map((e) => [e.id, e]));
 const start = process.argv[2] ?? '2026-10-12';
 const blocks = Number(process.argv[3] ?? 1);
-let n = 0;
-const newId = () => `id${++n}`;
 
 let prev: Block | undefined;
 for (let b = 0; b < blocks; b++) {
   const startDate = prev ? addWeeks(prev.startDate, 4) : start;
-  const { block, workouts, coverage } = generateBlock({ profile: defaultProfile('2026-10-07T00:00:00Z'), exercises, startDate, previousBlock: prev, now: '2026-10-07T00:00:00Z', newId });
+  const { block, workouts, coverage } = generateBlock({ profile: defaultProfile('2026-10-07T00:00:00Z'), exercises, startDate, previousBlock: prev, now: '2026-10-07T00:00:00Z' });
   console.log(`# Block ${block.index} (starts ${formatShort(block.startDate)})\n\n${block.rationale}\n`);
   for (const w of workouts) {
     const sets = w.exercises.reduce((k, e) => k + e.sets.length, 0);

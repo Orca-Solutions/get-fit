@@ -40,6 +40,7 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
   const [stance, setStance] = useState<number | null>(null);
   const weightRef = useRef<HTMLInputElement>(null);
   const [nudge, setNudge] = useState('');
+  const edited = useRef(false);
 
   // Logged sets show their values in dark text and stay editable.
   useEffect(() => {
@@ -72,7 +73,7 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
       out.bandId = effBand;
       out.stanceSteps = effStance;
     } else if (hasWeight(ex)) {
-      const w = parseNum(weight) ?? carry.weight ?? null;
+      const w = parseNum(weight) ?? (logged ? null : (carry.weight ?? null));
       if (w == null && needsWeight(ex)) {
         setNudge('Enter a weight');
         weightRef.current?.focus();
@@ -84,8 +85,18 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
     return out;
   };
 
+  // ✓ on a logged row that was just edited confirms the edit (blur has usually saved it already);
+  // only an untouched logged row is un-ticked.
   const tick = () => {
-    if (logged) return onUnlog();
+    if (logged) {
+      if (edited.current) {
+        edited.current = false;
+        const v = collect();
+        if (v) onLog(v);
+        return;
+      }
+      return onUnlog();
+    }
     const v = collect();
     if (v) onLog(v);
   };
@@ -132,7 +143,10 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
               aria-label={`Set ${index + 1} weight`}
               placeholder={weightPh}
               value={weight}
-              onChange={(e) => setWeight(e.target.value)}
+              onChange={(e) => {
+                edited.current = true;
+                setWeight(e.target.value);
+              }}
               onBlur={commitEdit}
             />
           </td>
@@ -146,7 +160,10 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
             aria-label={`Set ${index + 1} ${timed ? 'seconds' : 'reps'}`}
             placeholder={plannedNum != null ? String(plannedNum) : ''}
             value={reps}
-            onChange={(e) => setReps(e.target.value)}
+            onChange={(e) => {
+              edited.current = true;
+              setReps(e.target.value);
+            }}
             onBlur={commitEdit}
           />
         </td>
@@ -178,5 +195,6 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
 }
 
 function collectLogged(s: LoggedSet): SetInput {
-  return { weight: s.weight, reps: s.reps, seconds: s.seconds, bandId: s.bandId, stanceSteps: s.stanceSteps, effort: s.effort };
+  return { weight: s.weight, reps: s.reps, seconds: s.seconds, bandId: s.bandId, stanceSteps: s.stanceSteps };
 }
+

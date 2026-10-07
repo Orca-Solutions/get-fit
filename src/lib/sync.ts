@@ -5,7 +5,7 @@ import { db as defaultDb, SYNC_TABLES, type GetFitDB, type SyncTable } from '../
 
 type SyncRecord = { id: string; updatedAt: string; deletedAt?: string | null };
 type Change = { table: SyncTable; record: SyncRecord };
-type SyncResponse = { cursor: number; more?: boolean; reset?: boolean; accepted?: number; changes: Change[] };
+type SyncResponse = { cursor: number; epoch?: string; more?: boolean; reset?: boolean; accepted?: number; changes: Change[] };
 
 export type SyncOptions = { db?: GetFitDB; fetch?: typeof fetch; baseUrl?: string };
 export type SyncResult =
@@ -17,6 +17,7 @@ const PUSH_BATCH = 500;
 /** The watermark trails the sync start by this much, so a write racing the sync is pushed next time (re-pushes are no-ops). */
 const WATERMARK_MARGIN_MS = 30_000;
 const DEBOUNCE_MS = 2_000;
+const FETCH_TIMEOUT_MS = 30_000;
 
 const inflight = new WeakMap<GetFitDB, Promise<SyncResult>>();
 
@@ -74,6 +75,7 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
     let pushed = 0;
     let pulled = 0;
     let resetDone = false;
+    const knownEpoch = await getMeta<string>(db, 'serverEpoch');
 
     for (;;) {
       const batch = outbox.splice(0, PUSH_BATCH);
@@ -81,9 +83,19 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ cursor, changes: batch }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
       if (!res.ok) throw new Error(await describeHttpError(res));
       const data = (await res.json()) as SyncResponse;
+      if (data.epoch && knownEpoch && data.epoch !== knownEpoch && !resetDone) {
+        // A different server database (e.g. a wiped volume): start over from cursor 0 and re-push everything.
+        resetDone = true;
+        cursor = 0;
+        outbox = await collectChanges(db, '');
+        await setMeta(db, 'serverEpoch', data.epoch);
+        continue;
+      }
+      if (data.epoch && data.epoch !== knownEpoch) await setMeta(db, 'serverEpoch', data.epoch);
       pushed += data.accepted ?? 0;
       pulled += await applyPulled(db, data.changes, data.cursor);
       cursor = data.cursor;

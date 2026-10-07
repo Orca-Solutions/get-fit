@@ -24,7 +24,7 @@ export default function PlanPreview() {
         <div style={{ fontSize: 20, fontWeight: 700 }}>{w.focus}</div>
         <div className="small muted">{formatShort(w.date)}{w.windowEnd ? `–${formatShort(w.windowEnd).slice(4)}` : ''} · week {w.weekIndex + 1} · {v.planned} sets</div>
         <p className="small muted">{w.rationale}</p>
-        <WorkoutList workout={w} session={v.session} interactive={!!v.session} />
+        <WorkoutList workout={w} session={v.session} interactive={v.logged > 0} />
         {w.exercises.some((e) => e.note) && (
           <div className="small faint stack" style={{ marginTop: 10 }}>
             {w.exercises.filter((e) => e.note).map((e) => <div key={e.id}>{e.note}</div>)}
@@ -34,11 +34,11 @@ export default function PlanPreview() {
           className="btn primary block"
           style={{ marginTop: 12 }}
           onClick={async () => {
-            await startSession(w.id, v.session?.date ?? today);
+            await startSession(w.id, today);
             nav(`/workout/${w.id}`);
           }}
         >
-          {v.session ? 'Open log' : w.date === today ? 'Start workout' : 'Do it today'}
+          {v.logged > 0 ? 'Open log' : w.date === today ? 'Start workout' : 'Do it today'}
         </button>
       </div>
     </>

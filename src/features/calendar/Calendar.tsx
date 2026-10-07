@@ -107,9 +107,9 @@ export default function CalendarView() {
           {sel.map((v) => (
             <div key={v.workout.id} style={{ marginTop: 6 }}>
               <div>{v.workout.focus} · <span className="muted">{STATE_LABEL[v.state]}</span></div>
-              <div className="small muted">{v.workout.exercises.length} moves · {v.planned} sets{v.logged ? ` · ${v.logged} logged` : ''}{v.session && v.session.date !== v.workout.date ? ` · planned ${formatShort(v.workout.date)}` : ''}</div>
+              <div className="small muted">{v.workout.exercises.length} moves · {v.planned} sets{v.logged ? ` · ${v.logged} logged` : ''}{v.logged > 0 && v.session && v.session.date !== v.workout.date ? ` · planned ${formatShort(v.workout.date)}` : ''}</div>
               <div className="row" style={{ marginTop: 8 }}>
-                {v.session ? (
+                {v.logged > 0 ? (
                   <button className="btn small grow" onClick={() => nav(`/workout/${v.workout.id}`)}>Open log</button>
                 ) : (
                   <>
