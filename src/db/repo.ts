@@ -4,7 +4,7 @@ import type { Block, Exercise, ExerciseFlag, LoggedSet, PlannedWorkout, Profile,
 import { addDays, daysBetween, mondayOf, today } from '../lib/dates';
 import { uuid } from '../lib/ids';
 import { scheduleSync } from '../lib/sync';
-import { generateBlock, type ExerciseFlags } from '../generator/generateBlock';
+import { generateBlock, type ExerciseFlags, type GeneratorInput } from '../generator/generateBlock';
 import { isStalled, summarizeHistory } from '../generator/progression';
 import { db, type GetFitDB, type SyncTable } from './db';
 import { PROFILE_ID, defaultProfile } from '../lib/defaultProfile';
@@ -63,13 +63,17 @@ export async function ensurePlan(date = today(), d: GetFitDB = db): Promise<Bloc
   const blocks = await liveBlocks(d);
   const current = blocks.find((b) => b.startDate <= date && date <= blockEnd(b));
   if (current) return current;
+  // A block that starts later (clock or timezone change) means the plan is already ahead: don't stack another.
+  const ahead = blocks.find((b) => b.startDate > date);
+  if (ahead) return ahead;
   const last = blocks[blocks.length - 1];
   const thisMonday = mondayOf(date);
   const start = last && blockEnd(last) >= addDays(thisMonday, -1) ? addDays(blockEnd(last), 1) : thisMonday;
   return createBlock(start, last, d);
 }
 
-async function createBlock(startDate: string, previousBlock: Block | undefined, d: GetFitDB): Promise<Block> {
+/** Everything the generator needs from the device: profile, catalog, flags and what the logs say. */
+async function generatorInput(startDate: string, previousBlock: Block | undefined, d: GetFitDB): Promise<GeneratorInput> {
   const [profile, exercises, flags, sets] = await Promise.all([getProfile(d), allExercises(d), flagMap(d), d.loggedSets.toArray()]);
   const live = sets.filter((s) => !s.deletedAt);
   const known = [...new Set(live.map((s) => s.exerciseId))];
@@ -77,8 +81,12 @@ async function createBlock(startDate: string, previousBlock: Block | undefined, 
     const ex = exercises.find((e) => e.id === id);
     return ex ? isStalled(summarizeHistory(ex, live.filter((s) => s.exerciseId === id), profile)) : false;
   });
-  const recoveryOk = previousBlock ? !(await d.sessions.toArray()).some((s) => s.beatUp && s.date >= previousBlock.startDate) : true;
-  const { block, workouts } = generateBlock({ profile, exercises, flags, startDate, previousBlock, stalled, known, recoveryOk });
+  const recoveryOk = previousBlock ? !(await d.sessions.toArray()).some((s) => !s.deletedAt && s.beatUp && s.date >= previousBlock.startDate) : true;
+  return { profile, exercises, flags, startDate, previousBlock, stalled, known, recoveryOk };
+}
+
+async function createBlock(startDate: string, previousBlock: Block | undefined, d: GetFitDB): Promise<Block> {
+  const { block, workouts } = generateBlock(await generatorInput(startDate, previousBlock, d));
   await d.transaction('rw', d.blocks, d.plannedWorkouts, async () => {
     await d.blocks.put(block);
     await d.plannedWorkouts.bulkPut(workouts);
@@ -98,11 +106,9 @@ export async function regenerateUpcoming(date = today(), d: GetFitDB = db): Prom
     return;
   }
   const previous = blocks.filter((b) => b.startDate < current.startDate).pop();
-  const [profile, exercises, flags] = await Promise.all([getProfile(d), allExercises(d), flagMap(d)]);
-  const { block, workouts } = generateBlock({ profile, exercises, flags, startDate: current.startDate, previousBlock: previous });
+  const { block, workouts } = generateBlock(await generatorInput(current.startDate, previous, d));
   const existing = (await d.plannedWorkouts.where('blockId').equals(current.id).toArray()).filter((w) => !w.deletedAt);
-  const sessions = (await d.sessions.toArray()).filter((s) => !s.deletedAt);
-  const started = new Set(sessions.map((s) => s.plannedWorkoutId));
+  const started = await workoutsWithLogs(d);
   const t = nowIso();
   await d.transaction('rw', d.blocks, d.plannedWorkouts, async () => {
     await d.blocks.put({ ...current, baseSlots: block.baseSlots, rationale: block.rationale, generatorVersion: block.generatorVersion, updatedAt: t });
@@ -116,6 +122,13 @@ export async function regenerateUpcoming(date = today(), d: GetFitDB = db): Prom
 }
 
 // ---------- sessions and logging ----------
+
+/** Planned workouts that have at least one logged set (opening a workout without logging doesn't count). */
+export async function workoutsWithLogs(d: GetFitDB = db): Promise<Set<string>> {
+  const [sessions, sets] = await Promise.all([d.sessions.toArray(), d.loggedSets.toArray()]);
+  const withSets = new Set(sets.filter((s) => !s.deletedAt).map((s) => s.sessionId));
+  return new Set(sessions.filter((s) => !s.deletedAt && s.plannedWorkoutId && withSets.has(s.id)).map((s) => s.plannedWorkoutId!));
+}
 
 export async function sessionFor(plannedWorkoutId: string, d: GetFitDB = db): Promise<Session | undefined> {
   const list = await d.sessions.where('plannedWorkoutId').equals(plannedWorkoutId).toArray();
@@ -137,7 +150,7 @@ export async function updateSession(id: string, patch: Partial<Session>, d: GetF
 export type SetInput = Pick<LoggedSet, 'weight' | 'reps' | 'seconds' | 'bandId' | 'stanceSteps'> & { effort?: LoggedSet['effort'] };
 
 export async function logSet(
-  session: Session,
+  session: Pick<Session, 'id' | 'date'>,
   exerciseId: string,
   plannedExerciseId: string | null,
   setIndex: number,
@@ -145,12 +158,19 @@ export async function logSet(
   d: GetFitDB = db,
 ): Promise<LoggedSet> {
   const t = nowIso();
-  const existing = (await d.loggedSets.where('sessionId').equals(session.id).toArray()).find(
-    (s) => !s.deletedAt && s.exerciseId === exerciseId && s.plannedExerciseId === plannedExerciseId && s.setIndex === setIndex,
-  );
+  const inSession = (await d.loggedSets.where('sessionId').equals(session.id).toArray()).filter((s) => !s.deletedAt);
+  const existing = inSession.find((s) => s.exerciseId === exerciseId && s.plannedExerciseId === plannedExerciseId && s.setIndex === setIndex);
+  let date = session.date;
+  if (!inSession.length) {
+    // A session opened earlier but never logged counts from the day its first set is logged.
+    date = today();
+    const s = await d.sessions.get(session.id);
+    if (s && (s.date !== date || !s.startedAt)) await put('sessions', { ...s, date, startedAt: t }, d);
+  }
+  // Merge into the stored record so a partial update (e.g. just the effort tap) never reverts other fields.
   const rec: LoggedSet = existing
     ? { ...existing, ...values }
-    : { id: uuid(), createdAt: t, updatedAt: t, deletedAt: null, sessionId: session.id, exerciseId, plannedExerciseId, setIndex, date: session.date, loggedAt: t, ...values };
+    : { id: uuid(), createdAt: t, updatedAt: t, deletedAt: null, sessionId: session.id, exerciseId, plannedExerciseId, setIndex, date, loggedAt: t, ...values };
   return put('loggedSets', rec, d);
 }
 
@@ -191,14 +211,25 @@ export async function exportAll(d: GetFitDB = db) {
 }
 
 export async function importAll(data: { tables: Record<string, { id: string; updatedAt: string }[]> }, d: GetFitDB = db) {
+  const tables = ['profile', 'blocks', 'plannedWorkouts', 'sessions', 'loggedSets', 'exerciseFlags', 'customExercises'];
+  // On a fresh device, the backup replaces the default profile and generated plan rather than sitting beside them.
+  if (!(await d.loggedSets.count())) {
+    await d.transaction('rw', [d.profile, d.blocks, d.plannedWorkouts, d.sessions], async () => {
+      await Promise.all([d.profile.clear(), d.blocks.clear(), d.plannedWorkouts.clear(), d.sessions.clear()]);
+    });
+  }
   for (const [t, rows] of Object.entries(data.tables)) {
-    if (!['profile', 'blocks', 'plannedWorkouts', 'sessions', 'loggedSets', 'exerciseFlags', 'customExercises'].includes(t)) continue;
+    if (!tables.includes(t)) continue;
     const table = d.table(t);
     for (const r of rows) {
       const local = (await table.get(r.id)) as { updatedAt: string } | undefined;
       if (!local || r.updatedAt > local.updatedAt) await table.put(r);
     }
   }
+  // Imported rows keep their old timestamps: reset the push watermark so the next sync sends them all.
+  await d.meta.delete('lastPushedAt');
+  await getProfile(d);
+  await ensurePlan(today(), d);
   scheduleSync();
 }
 

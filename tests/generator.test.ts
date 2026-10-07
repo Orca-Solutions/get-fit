@@ -11,8 +11,7 @@ const byId = new Map(exercises.map((e) => [e.id, e]));
 const profile = defaultProfile('2026-10-07T00:00:00Z');
 
 function gen(extra: Partial<GeneratorInput> = {}) {
-  let n = 0;
-  return generateBlock({ profile, exercises, startDate: '2026-10-12', now: '2026-10-07T00:00:00Z', newId: () => `id${++n}`, ...extra });
+  return generateBlock({ profile, exercises, startDate: '2026-10-12', now: '2026-10-07T00:00:00Z', ...extra });
 }
 
 const totalSets = (w: PlannedWorkout) => w.exercises.reduce((n, e) => n + e.sets.length, 0);
@@ -127,6 +126,13 @@ describe('generateBlock: block 1', () => {
   it('gives the focus muscle (side delts) a variety slot on moderate and light days', () => {
     const fri = workouts.filter((w) => w.sessionType === 'back-tri-shoulders' && (w.zone === 'M' || w.zone === 'L'));
     for (const w of fri) expect(w.exercises.some((e) => e.role === 'V' && e.note?.startsWith('Focus'))).toBe(true);
+  });
+
+  it('derives ids from dates so two devices generate the same records', () => {
+    expect(block.id).toBe('block-2026-10-12');
+    expect(workouts[0].id).toBe('w-2026-10-12-legs');
+    expect(workouts[0].exercises[1].id).toBe('w-2026-10-12-legs-1');
+    expect(new Set(workouts.flatMap((w) => w.exercises.map((e) => e.id))).size).toBe(workouts.reduce((n, w) => n + w.exercises.length, 0));
   });
 
   it('is deterministic for the same inputs', () => {

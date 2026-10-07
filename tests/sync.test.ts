@@ -139,6 +139,27 @@ describe('syncNow', () => {
     expect(await laptop.sync()).toMatchObject({ pulled: 2 });
   });
 
+  it('re-pushes everything when it meets a different server database, even with a low cursor', async () => {
+    const first = makeServer();
+    let target = first.fetch;
+    const viaTarget = ((i: RequestInfo | URL, init?: RequestInit) => target(i, init)) as typeof fetch;
+    const phone = await makeDevice(viaTarget);
+    await phone.db.loggedSets.bulkPut([loggedSet('l1', 10, at(-60 * 60_000))]);
+    await phone.sync();
+
+    // The volume is replaced, and another device pushes more records than the phone's cursor before it syncs again.
+    const second = makeServer();
+    target = second.fetch;
+    const laptop = await makeDevice(second.fetch);
+    await laptop.db.loggedSets.bulkPut([loggedSet('x1', 5), loggedSet('x2', 6), loggedSet('x3', 7)]);
+    await laptop.sync();
+
+    expect((await phone.sync()).ok).toBe(true);
+    await laptop.sync();
+    expect(await laptop.db.loggedSets.get('l1')).toBeTruthy();
+    expect(await phone.db.loggedSets.count()).toBe(4);
+  });
+
   it('skips without a token or when offline, and never throws', async () => {
     const server = makeServer();
     const noToken = await makeDevice(server.fetch, null);

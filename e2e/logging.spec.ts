@@ -61,3 +61,26 @@ test('sync token connects to the server', async ({ page }) => {
   await page.getByRole('button', { name: 'Connect' }).click();
   await expect(page.getByText(/Last synced/)).toBeVisible();
 });
+
+test('finishing a movement stays on it, and editing a logged set then tapping ✓ keeps it', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Start workout|Do it today/ }).first().click();
+  const title = await page.locator('.move-title').innerText();
+  const rows = await page.getByRole('button', { name: /^Log set \d+$/ }).count();
+  for (let i = 1; i <= rows; i++) {
+    const w = page.getByLabel(`Set ${i} weight`);
+    if (i === 1 && (await w.isVisible().catch(() => false))) await w.fill('20');
+    await page.getByRole('button', { name: `Log set ${i}` }).click();
+    await expect(page.getByRole('button', { name: `Undo set ${i}` })).toBeVisible();
+  }
+  // Still on the same movement, with the effort question showing.
+  await expect(page.locator('.move-title')).toHaveText(title);
+  await expect(page.getByText('How did that feel?')).toBeVisible();
+
+  const reps1 = page.getByLabel(/Set 1 (reps|seconds)/);
+  await reps1.fill('7');
+  await page.getByRole('button', { name: 'Undo set 1' }).click();
+  await expect(page.getByRole('button', { name: 'Undo set 1' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel(/Set 1 (reps|seconds)/)).toHaveValue('7');
+});

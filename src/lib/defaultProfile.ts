@@ -1,13 +1,18 @@
 import type { Profile } from '../types';
 
 export const PROFILE_ID = 'me';
+export const EPOCH = new Date(0).toISOString();
 
 /** Jason's setup: Planet Fitness gym, bands and 25/35 lb kettlebells at home. All editable in Settings. */
+/**
+ * updatedAt is the epoch on purpose: a fresh device's defaults must never win a sync or an import
+ * against a profile you actually edited. Any change made in Settings gets a real timestamp.
+ */
 export function defaultProfile(t = new Date().toISOString()): Profile {
   return {
     id: PROFILE_ID,
     createdAt: t,
-    updatedAt: t,
+    updatedAt: EPOCH,
     deletedAt: null,
     heightIn: 72,
     bodyweightLb: 168,

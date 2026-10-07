@@ -73,6 +73,7 @@ export function createApp({ db, token, staticDir, pageSize = 2000 }: AppOptions)
       const { rows, more } = db.pull(cursor, pageSize);
       return c.json({
         cursor: rows.length ? rows[rows.length - 1].seq : cursor,
+        epoch: db.epoch,
         more,
         reset,
         accepted: written.size,

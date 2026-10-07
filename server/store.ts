@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
 
 /** Same list as SYNC_TABLES in src/db/db.ts (duplicated so the server never imports app code). */
@@ -25,7 +26,11 @@ export function openStore(file: string) {
       PRIMARY KEY (tbl, id)
     );
     CREATE UNIQUE INDEX IF NOT EXISTS records_seq ON records (seq);
+    CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `);
+  // A random id for this database. If the volume is ever wiped, clients see a new epoch and re-push.
+  db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('epoch', ?)").run(randomUUID());
+  const epoch = db.prepare<[], { value: string }>("SELECT value FROM meta WHERE key = 'epoch'").get()!.value;
 
   const getStored = db.prepare<[string, string], { updated_at: string }>('SELECT updated_at FROM records WHERE tbl = ? AND id = ?');
   const maxSeqStmt = db.prepare<[], { m: number }>('SELECT COALESCE(MAX(seq), 0) AS m FROM records');
@@ -52,6 +57,7 @@ export function openStore(file: string) {
   });
 
   return {
+    epoch,
     applyChanges,
     maxSeq: () => maxSeqStmt.get()!.m,
     /** Records with seq > cursor, oldest first, up to `limit` (plus whether more remain). */

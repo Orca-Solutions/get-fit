@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { startSession } from '../../db/repo';
-import { formatShort } from '../../lib/dates';
+import { formatShort, mondayOf } from '../../lib/dates';
 import { useToday } from '../../lib/hooks';
 import { WorkoutList } from '../plan/WorkoutList';
 import { currentBlock, usePlan, type WorkoutView } from '../plan/usePlan';
@@ -13,11 +13,12 @@ export default function Today() {
   const block = currentBlock(plan.blocks, today);
   const active = plan.views.find((v) => v.workout.date <= today && today <= (v.workout.windowEnd ?? v.workout.date));
   // A session pulled forward or done late shows up today too.
-  const loggedToday = plan.views.find((v) => v.session?.date === today && v !== active);
+  const loggedToday = plan.views.find((v) => v.logged > 0 && v.session?.date === today && v !== active);
   const main = loggedToday ?? active;
-  const weekStart = block ? block.startDate : today;
-  const overdue = plan.views.filter((v) => v.state === 'missed' && v.workout.date >= weekStart && v.workout.weekIndex === main?.workout.weekIndex);
-  const next = plan.views.find((v) => v.workout.date > today && !v.session);
+  // Missed sessions from this week can still be made up (periodization §4.5).
+  const weekStart = mondayOf(today);
+  const overdue = plan.views.filter((v) => v.state === 'missed' && v.workout.date >= weekStart && v !== main);
+  const next = plan.views.find((v) => v.workout.date > today && v.logged === 0);
 
   const open = async (v: WorkoutView) => {
     await startSession(v.workout.id, today);

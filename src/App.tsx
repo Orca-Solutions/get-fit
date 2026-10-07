@@ -1,4 +1,7 @@
+import { useEffect } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { ensurePlan } from './db/repo';
+import { useToday } from './lib/hooks';
 import Today from './features/today/Today';
 import Workout from './features/workout/Workout';
 import CalendarView from './features/calendar/Calendar';
@@ -13,6 +16,11 @@ import { Icon } from './ui/Icon';
 export default function App() {
   const { pathname } = useLocation();
   const inWorkout = pathname.startsWith('/workout/');
+  const today = useToday();
+  // An installed app can stay in memory for days: roll into the next block when the date moves on.
+  useEffect(() => {
+    ensurePlan(today).catch(() => {});
+  }, [today]);
   return (
     <>
       <div className={inWorkout ? 'app no-nav' : 'app'}>

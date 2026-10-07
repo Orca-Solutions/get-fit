@@ -5,7 +5,7 @@ import type {
   Profile, SessionType, SlotKey, SlotRole, Weekday, Zone,
 } from '../types';
 import { addDays } from '../lib/dates';
-import { hash, uuid } from '../lib/ids';
+import { hash } from '../lib/ids';
 import {
   CORE_SUPERSETS, CORE_WAVE, FOCUS_LABEL, FOCUS_ROTATION, FOCUS_SLOTS, GRIP_ROTATION, LIFT_TEMPLATES,
   SESSION_LABEL, V_SLOTS, ZONE_NAME, ZONE_ROTATION, compoundReps, coreTargets, isolationReps, restFor,
@@ -32,8 +32,14 @@ export type GeneratorInput = {
   /** False after an early deload in the last block: skip the volume ramp (§4.1). */
   recoveryOk?: boolean;
   now?: string;
-  newId?: () => string;
 };
+
+/**
+ * Ids are derived from dates, so two devices that both generate the same block (say, one offline at
+ * the gym) produce the same records and sync merges them instead of duplicating the plan.
+ */
+export const blockIdFor = (startDate: string) => `block-${startDate}`;
+export const workoutIdFor = (date: string, type: SessionType) => `w-${date}-${type}`;
 
 export type GeneratedBlock = { block: Block; workouts: PlannedWorkout[]; coverage: CoverageReport };
 
@@ -42,7 +48,6 @@ type Ctx = {
   blockIndex: number;
   focus: FocusMuscle;
   byId: Map<string, Exercise>;
-  newId: () => string;
   now: string;
   baseSlots: Record<string, string>;
   rotated: string[];
@@ -60,14 +65,13 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
     blockIndex,
     focus: FOCUS_ROTATION[(blockIndex - 1) % FOCUS_ROTATION.length],
     byId: new Map(input.exercises.map((e) => [e.id, e])),
-    newId: input.newId ?? uuid,
     now: input.now ?? new Date().toISOString(),
     baseSlots: {},
     rotated: [],
     stalled: new Set(input.stalled ?? []),
     known: new Set(input.known ?? []),
   };
-  const blockId = ctx.newId();
+  const blockId = blockIdFor(input.startDate);
 
   // 1. Pick each day's base exercises once for the whole block (§4.3).
   const liftTypes = Object.keys(LIFT_TEMPLATES) as Exclude<SessionType, 'core'>[];
@@ -248,6 +252,7 @@ function buildLift(
 ): PlannedWorkout {
   const tpl = LIFT_TEMPLATES[type];
   const week = common.weekIndex;
+  const workoutId = workoutIdFor(common.date, type);
   const effZone: Zone = zone === 'deload' ? 'M' : zone;
   const focusSlots = FOCUS_SLOTS[ctx.focus][type];
   const exercises: PlannedExercise[] = [];
@@ -259,7 +264,7 @@ function buildLift(
     const sets = makeSets(nSets, reps, ex.metric, rirFor(week, role), restFor(role, zone));
     const noteParts = [note];
     if (!ctx.known.has(ex.id) && role !== 'G') noteParts.push('First time: ramp up across sets to find a weight that leaves about 3 reps in the tank.');
-    exercises.push({ id: ctx.newId(), exerciseId: ex.id, slot, role, order: exercises.length, sets, note: noteParts.filter(Boolean).join(' ') || undefined });
+    exercises.push({ id: `${workoutId}-${exercises.length}`, exerciseId: ex.id, slot, role, order: exercises.length, sets, note: noteParts.filter(Boolean).join(' ') || undefined });
     inSession.add(ex.id);
   };
 
@@ -345,7 +350,7 @@ function buildLift(
   if (gripName) notes.push(`Finish with ${gripName.toLowerCase()} for grip.`);
 
   return {
-    id: ctx.newId(),
+    id: workoutId,
     createdAt: ctx.now,
     updatedAt: ctx.now,
     deletedAt: null,
@@ -448,6 +453,7 @@ function coreLocation(ctx: Ctx): Location {
 function buildCore(ctx: Ctx, common: Common, base: Record<CoreDynamic, Exercise>): PlannedWorkout {
   const week = common.weekIndex;
   const deload = week === 3;
+  const workoutId = workoutIdFor(common.date, 'core');
   const zone: Zone = ctx.input.profile.coreWave === 'flat' ? 'M' : CORE_WAVE[Math.min(week, 2)];
   const targets = coreTargets(deload ? 'M' : zone);
   const exercises: PlannedExercise[] = [];
@@ -469,7 +475,7 @@ function buildCore(ctx: Ctx, common: Common, base: Record<CoreDynamic, Exercise>
       const want = ex.metric === 'time' ? targets.seconds : targets.reps;
       const range = repsFor(ex, want);
       const sets = makeSets(deload ? 1 : 2, range, ex.metric, deload ? 4 : 2, 45);
-      exercises.push({ id: ctx.newId(), exerciseId: ex.id, slot: `core:${dyn}`, role: 'K', order: exercises.length, supersetGroup: group, sets, note });
+      exercises.push({ id: `${workoutId}-${exercises.length}`, exerciseId: ex.id, slot: `core:${dyn}`, role: 'K', order: exercises.length, supersetGroup: group, sets, note });
     }
   }
   const zoneName = deload ? 'Deload' : ZONE_NAME[zone];
@@ -481,7 +487,7 @@ function buildCore(ctx: Ctx, common: Common, base: Record<CoreDynamic, Exercise>
         ? 'Light core week: 15–25 reps or 45–60 s holds.'
         : 'Moderate core week: 10–15 reps or 30–40 s holds. Four supersets, every core dynamic once.';
   return {
-    id: ctx.newId(),
+    id: workoutId,
     createdAt: ctx.now,
     updatedAt: ctx.now,
     deletedAt: null,
