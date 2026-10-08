@@ -83,6 +83,21 @@ export async function ensurePlan(date = today(), d: GetFitDB = db): Promise<Bloc
   return current;
 }
 
+/**
+ * Plan once the pull has landed. If it's slow, plan early only when there's nothing to show yet;
+ * otherwise wait, so a block another device already rebuilt from its logs isn't regenerated here with a
+ * newer timestamp that would replace it everywhere.
+ */
+export async function planAfterSync(sync: Promise<unknown>, date: string, waitMs: number, d: GetFitDB = db): Promise<void> {
+  const done = sync.catch(() => undefined);
+  const late = new Promise<'late'>((r) => setTimeout(() => r('late'), waitMs));
+  if ((await Promise.race([done, late])) === 'late') {
+    if (!(await liveBlocks(d)).length) await ensurePlan(date, d);
+    await done;
+  }
+  await ensurePlan(date, d);
+}
+
 async function blockCovering(date: string, d: GetFitDB): Promise<Block> {
   const blocks = await liveBlocks(d);
   const current = blocks.find((b) => b.startDate <= date && date <= blockEnd(b));
@@ -275,7 +290,10 @@ export async function importAll(data: { app?: string; tables: Record<string, unk
   let imported = 0;
   let skipped = 0;
   await d.transaction('rw', [...SYNC_TABLES.map((name) => d.table(name)), d.meta], async () => {
-    const replacePlan = !(await d.loggedSets.filter((s) => !s.deletedAt).count());
+    // A device with nothing logged takes the backup's plan as its own, unless it's already connected to
+    // sync: then its plan is everyone's, and a re-stamped old plan would replace it on every device.
+    const connected = !!(await d.meta.get('syncToken'))?.value;
+    const replacePlan = !connected && !(await d.loggedSets.filter((s) => !s.deletedAt).count());
     const PLAN: SyncTable[] = ['profile', 'blocks', 'plannedWorkouts'];
     for (const name of SYNC_TABLES) {
       const rows = data.tables[name];

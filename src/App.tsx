@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { ensurePlan } from './db/repo';
+import { planAfterSync } from './db/repo';
 import { syncNow } from './lib/sync';
 import { useToday } from './lib/hooks';
 import Today from './features/today/Today';
@@ -21,12 +21,9 @@ export default function App() {
   const inWorkout = pathname.startsWith('/workout/');
   const today = useToday();
   // On open, and when the date moves on (an installed app can stay in memory for days): pull what other
-  // devices logged, then make sure the current and next block exist. Weak signal only delays planning
-  // by a few seconds; a block generated before the pull lands has the same ids, so they merge.
+  // devices logged, then make sure the current and next block exist (see planAfterSync).
   useEffect(() => {
-    Promise.race([syncNow(), new Promise((r) => setTimeout(r, PLAN_SYNC_WAIT_MS))])
-      .then(() => ensurePlan(today))
-      .catch((err) => console.error('Planning failed', err));
+    planAfterSync(syncNow(), today, PLAN_SYNC_WAIT_MS).catch((err) => console.error('Planning failed', err));
   }, [today]);
   return (
     <>

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { GetFitDB } from '../src/db/db';
-import { ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/db/repo';
+import { ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/db/repo';
 import { addDays, mondayOf, today } from '../src/lib/dates';
 
 let n = 0;
@@ -157,6 +157,54 @@ describe('repo', () => {
     // Deleted with a fresh timestamp, so the deletion reaches the server and other devices.
     expect(own.every((b) => b.deletedAt && Date.parse(b.updatedAt) > Date.parse(backup.exportedAt))).toBe(true);
     expect((await liveBlocks(phone)).some((b) => b.id === 'block-2026-10-12')).toBe(true);
+  });
+
+  it('restoring on a device already connected to sync leaves the shared plan alone', async () => {
+    const source = await fresh();
+    await ensurePlan('2026-10-14', source);
+    const backup = JSON.parse(JSON.stringify(await exportAll(source)));
+
+    // The device joined the server's plan (rebuilt since), then restores an older backup.
+    const phone = await fresh();
+    await phone.meta.put({ key: 'syncToken', value: 'token' });
+    await ensurePlan('2026-10-14', phone);
+    const before = await phone.blocks.get('block-2026-10-12');
+    await new Promise((r) => setTimeout(r, 5));
+    await importAll(backup, phone);
+    const after = await phone.blocks.get('block-2026-10-12');
+    // Not re-stamped as newest, so it can't replace the server's copy on other devices.
+    expect(after!.updatedAt).toBe(before!.updatedAt);
+    expect((await phone.blocks.toArray()).every((b) => !b.deletedAt)).toBe(true);
+  });
+
+  it('on a slow pull, plans early only when there is nothing to show yet', async () => {
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const slowSync = () => {
+      let done!: () => void;
+      return { promise: new Promise<void>((r) => (done = r)), done: () => done() };
+    };
+
+    // A device with no plan gets one straight away.
+    const empty = await fresh();
+    const s1 = slowSync();
+    const run1 = planAfterSync(s1.promise, '2026-10-14', 10, empty);
+    await wait(100);
+    expect((await liveBlocks(empty)).length).toBeGreaterThan(0);
+    s1.done();
+    await run1;
+
+    // A device with a plan waits for the pull before planning the next block.
+    const d = await fresh();
+    const current = await ensurePlan('2026-10-14', d);
+    const next = `block-${addDays(current.startDate, 28)}`;
+    await d.blocks.delete(next);
+    const s2 = slowSync();
+    const run2 = planAfterSync(s2.promise, '2026-10-14', 10, d);
+    await wait(100);
+    expect(await d.blocks.get(next)).toBeUndefined();
+    s2.done();
+    await run2;
+    expect(await d.blocks.get(next)).toBeDefined();
   });
 
   it('keeps default profile timestamps at the epoch so real settings always win', async () => {
