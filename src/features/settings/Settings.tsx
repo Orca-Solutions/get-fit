@@ -129,6 +129,11 @@ function SyncCard({ flash }: { flash: (m: string) => void }) {
             <div className="small">
               {status.lastSyncedAt ? `Last synced ${new Date(status.lastSyncedAt).toLocaleString()}` : 'Not synced yet'}
               {status.lastError && <div style={{ color: 'var(--warn)' }}>{status.lastError}</div>}
+              {status.heldBack > 0 && (
+                <div style={{ color: 'var(--warn)' }}>
+                  {status.heldBack} damaged {status.heldBack === 1 ? 'record stays' : 'records stay'} on this device and won't sync.
+                </div>
+              )}
             </div>
             <div className="row">
               <button

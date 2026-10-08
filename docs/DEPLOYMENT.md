@@ -50,7 +50,7 @@ Hosting the front end on Pages would split it from the API. That would need code
    | `SYNC_TOKEN` | at least 32 random characters, e.g. `openssl rand -hex 32` | The only auth, and there's no rate limiting, so its length is the brute-force defence. Never commit it, never reuse a short or memorable one. Each device enters it once in Settings › Sync. |
    | `PORT` | set by Railway | The server listens on it. |
    | `STATIC_DIR` | leave unset | Defaults to `./dist`. |
-   | `SYNC_EPOCH_RESET` | leave unset | Only for restoring a backup (see Rollback). Each new value starts a new sync epoch once. |
+   | `SYNC_EPOCH_RESET` | leave unset | Only for restoring a backup (see Rollback). Each new value starts a new sync epoch once. The value is remembered in the database, so use one that's never been used before (the restore date works). |
 
    Without `SYNC_TOKEN` the app still loads, but `/api/*` answers 503.
 4. **Replicas: one.** SQLite on a volume is single-writer. Don't scale horizontally.
@@ -95,8 +95,8 @@ The server holds the only off-device copy of the workout logs, which can't be re
 
 - **Server and app:** redeploy the previous successful deployment in Railway. The server stores records as JSON rows, so an older build reads newer data fine.
 - **Client caveat:** IndexedDB schema versions can't go backwards on a device. If a release bumps the Dexie schema version, plan for a fix-forward release rather than a rollback of that change.
-- **Bad data:** restore the Railway volume backup, and in the same deploy set `SYNC_EPOCH_RESET` to a new value (the date is fine). On start the server begins a new sync epoch, so every device pulls everything and re-uploads everything it has, and writes made after the backup come back from the devices. The newest write per record wins. If the variable is forgotten, the server still notices on a device's next sync that it's behind what that device last saw, and starts the new epoch then.
-- **Damaged records on a device** (for example from a hand-edited backup) are never uploaded. When the server has a good copy of the same record, it replaces the damaged one on the device's next sync.
+- **Bad data:** restore the Railway volume backup, and in the same deploy set `SYNC_EPOCH_RESET` to a value never used before (the restore date is fine; a value already recorded in the backup does nothing). On start the server begins a new sync epoch, so every device pulls everything and re-uploads everything it has, and writes made after the backup come back from the devices. The newest write per record wins. If the variable is forgotten, the server still notices on a device's next sync that it's behind what that device last saw, and starts the new epoch then.
+- **Damaged records on a device** (for example from a hand-edited backup) are never uploaded, and Settings › Sync shows how many are held back. A damaged copy is replaced when the server's good copy next reaches the device: when that record changes on another device, or after a new epoch, when the device pulls everything.
 
 ## How updates reach installed phones
 

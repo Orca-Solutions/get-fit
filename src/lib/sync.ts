@@ -17,7 +17,7 @@ export type SyncOptions = { db?: GetFitDB; fetch?: typeof fetch; baseUrl?: strin
 export type SyncResult =
   | { ok: true; pushed: number; pulled: number }
   | { ok: false; error: string; skipped?: 'no-token' | 'offline' };
-export type SyncStatus = { configured: boolean; syncing: boolean; lastSyncedAt: string | null; lastError: string | null };
+export type SyncStatus = { configured: boolean; syncing: boolean; lastSyncedAt: string | null; lastError: string | null; heldBack: number };
 
 const PUSH_BATCH = 500;
 /** The watermark trails the sync start by this much, so a write racing the sync is pushed next time (re-pushes are no-ops). */
@@ -42,7 +42,14 @@ export async function getSyncStatus(db: GetFitDB = defaultDb): Promise<SyncStatu
     getMeta<string>(db, 'lastSyncedAt'),
     getMeta<string>(db, 'lastError'),
   ]);
-  return { configured: !!token, syncing: inflight.has(db), lastSyncedAt: lastSyncedAt ?? null, lastError: lastError ?? null };
+  return { configured: !!token, syncing: inflight.has(db), lastSyncedAt: lastSyncedAt ?? null, lastError: lastError ?? null, heldBack: await countHeldBack(db) };
+}
+
+/** Local records that fail their shape check, so they are never uploaded (see collectChanges). */
+async function countHeldBack(db: GetFitDB): Promise<number> {
+  let n = 0;
+  for (const table of SYNC_TABLES) await db.table(table).each((r) => void (validRow(table, r) || n++));
+  return n;
 }
 
 /** Runs one sync, or joins the one already running. Resolves with { ok: false, error } instead of throwing. */

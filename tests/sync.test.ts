@@ -385,6 +385,7 @@ describe('syncNow', () => {
     await laptop.db.sessions.put(broken as never);
     await laptop.db.sessions.put({ id: 'junk', updatedAt: at(), createdAt: at(), deletedAt: null } as never);
     await laptop.db.meta.put({ key: 'serverEpoch', value: 'an-older-epoch' });
+    expect((await getSyncStatus(laptop.db)).heldBack).toBe(2);
     expect((await laptop.sync()).ok).toBe(true);
     await phone.sync();
 
@@ -394,6 +395,8 @@ describe('syncNow', () => {
     expect(exported.map((r) => [r.id, r.notes])).toEqual([['s1', 'good']]);
     expect(await phone.db.sessions.get('junk')).toBeUndefined();
     expect(await laptop.db.sessions.get('s1')).toMatchObject({ notes: 'good', date: '2026-10-07' });
+    // The repaired record syncs again; the junk with no server copy is still held back, and shown.
+    expect((await getSyncStatus(laptop.db)).heldBack).toBe(1);
   });
 
   it('skips without a token or when offline, and never throws', async () => {
