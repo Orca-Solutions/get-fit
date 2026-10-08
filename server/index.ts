@@ -11,6 +11,9 @@ const token = process.env.SYNC_TOKEN?.trim() || undefined;
 
 mkdirSync(dataDir, { recursive: true });
 const db = openStore(join(dataDir, 'get-fit.sqlite'));
+// After restoring the volume from a backup, set SYNC_EPOCH_RESET to a new value (e.g. the date) so
+// every device pulls everything and re-uploads what the backup is missing.
+if (db.resetEpochOnce(process.env.SYNC_EPOCH_RESET?.trim() || undefined)) console.log('SYNC_EPOCH_RESET changed: started a new sync epoch.');
 const app = createApp({ db, token, staticDir });
 
 if (!token) console.warn('SYNC_TOKEN is not set: /api/sync will answer 503 until it is.');

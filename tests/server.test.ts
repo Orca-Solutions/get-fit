@@ -179,6 +179,22 @@ describe('pull', () => {
   });
 });
 
+describe('planned restore', () => {
+  it('starts a new epoch once for each new SYNC_EPOCH_RESET value', () => {
+    const db = openStore(':memory:');
+    const start = db.epoch;
+    expect(db.resetEpochOnce(undefined)).toBe(false);
+    expect(db.resetEpochOnce('2026-10-08')).toBe(true);
+    const after = db.epoch;
+    expect(after).not.toBe(start);
+    // Later restarts with the same value leave it alone; a new value rotates again.
+    expect(db.resetEpochOnce('2026-10-08')).toBe(false);
+    expect(db.epoch).toBe(after);
+    expect(db.resetEpochOnce('2026-11-01')).toBe(true);
+    expect(db.epoch).not.toBe(after);
+  });
+});
+
 describe('export', () => {
   it('returns live records grouped by table, without soft-deleted ones', async () => {
     const { sync, app } = setup();

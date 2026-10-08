@@ -371,6 +371,31 @@ describe('syncNow', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it('never uploads damaged local records, and repairs them from the server', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    await phone.db.sessions.put(session('s1', 'good'));
+    await phone.sync();
+    await laptop.sync();
+
+    // The laptop's copy gets damaged (newer timestamp, missing fields), and it also has a damaged
+    // record of its own; then the server's epoch changes, so it re-uploads everything it has.
+    const { date: _drop, ...broken } = session('s1', 'broken', at(60_000));
+    await laptop.db.sessions.put(broken as never);
+    await laptop.db.sessions.put({ id: 'junk', updatedAt: at(), createdAt: at(), deletedAt: null } as never);
+    await laptop.db.meta.put({ key: 'serverEpoch', value: 'an-older-epoch' });
+    expect((await laptop.sync()).ok).toBe(true);
+    await phone.sync();
+
+    // Nothing damaged reached the server or the phone, and the laptop got the good copy back.
+    const res = await server.app.request('/api/export', { headers: { Authorization: `Bearer ${TOKEN}` } });
+    const exported = (await res.json()).tables.sessions as { id: string; notes: string }[];
+    expect(exported.map((r) => [r.id, r.notes])).toEqual([['s1', 'good']]);
+    expect(await phone.db.sessions.get('junk')).toBeUndefined();
+    expect(await laptop.db.sessions.get('s1')).toMatchObject({ notes: 'good', date: '2026-10-07' });
+  });
+
   it('skips without a token or when offline, and never throws', async () => {
     const server = makeServer();
     const noToken = await makeDevice(server.fetch, null);

@@ -189,14 +189,23 @@ async function joinServer(db: GetFitDB, post: (cursor: number, changes: Change[]
   return pulled;
 }
 
-/** Local records changed after the watermark, soft-deleted ones included. */
+/**
+ * Local records changed after the watermark, soft-deleted ones included. A damaged record (say, left
+ * by an old version) is never uploaded, so it can't spread to the server or other devices; the
+ * server's good copy replaces it on the next pull (see applyPulled).
+ */
 async function collectChanges(db: GetFitDB, since: string): Promise<Change[]> {
   return db.transaction('r', SYNC_TABLES.map((t) => db.table(t)), async () => {
     const out: Change[] = [];
+    let damaged = 0;
     for (const table of SYNC_TABLES) {
       const records = (await db.table(table).where('updatedAt').above(since).toArray()) as SyncRecord[];
-      for (const record of records) out.push({ table, record });
+      for (const record of records) {
+        if (validRow(table, record)) out.push({ table, record });
+        else damaged++;
+      }
     }
+    if (damaged) console.warn(`Not uploading ${damaged} damaged local record(s).`);
     return out;
   });
 }
@@ -217,7 +226,9 @@ async function applyPulled(db: GetFitDB, changes: Change[], cursor: number, serv
     for (const { table, record } of changes) {
       // A row that would crash a screen (e.g. a workout with no exercises) is never stored.
       if (!SYNC_TABLES.includes(table) || !validRow(table, record)) continue;
-      const local = (await db.table(table).get(record.id)) as SyncRecord | undefined;
+      const found = (await db.table(table).get(record.id)) as SyncRecord | undefined;
+      // A damaged local copy always gives way to the server's good one, whatever its timestamp.
+      const local = found && validRow(table, found) ? found : undefined;
       if (local && table === 'sessions') {
         const { session, changed } = mergeSession(local as Session, record as Session);
         if (changed) {

@@ -34,6 +34,8 @@ export function openStore(file: string) {
   db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('epoch', ?)").run(randomUUID());
   let epoch = db.prepare<[], { value: string }>("SELECT value FROM meta WHERE key = 'epoch'").get()!.value;
   const setEpoch = db.prepare("UPDATE meta SET value = ? WHERE key = 'epoch'");
+  const getMetaValue = db.prepare<[string], { value: string }>('SELECT value FROM meta WHERE key = ?');
+  const setMetaValue = db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value');
 
   const getStored = db.prepare<[string, string], { updated_at: string }>('SELECT updated_at FROM records WHERE tbl = ? AND id = ?');
   const maxSeqStmt = db.prepare<[], { m: number }>('SELECT COALESCE(MAX(seq), 0) AS m FROM records');
@@ -59,16 +61,18 @@ export function openStore(file: string) {
     return written;
   });
 
+  /** A new id for this database, so every device re-pulls and re-pushes everything. */
+  function rotateEpoch() {
+    epoch = randomUUID();
+    setEpoch.run(epoch);
+    return epoch;
+  }
+
   return {
     get epoch() {
       return epoch;
     },
-    /** A new id for this database, so every device re-pulls and re-pushes everything. */
-    rotateEpoch() {
-      epoch = randomUUID();
-      setEpoch.run(epoch);
-      return epoch;
-    },
+    rotateEpoch,
     /**
      * False when this database no longer has the version of a record a client last pulled: it went
      * back in time (restored from an older backup), so writes made since then are missing here.
@@ -76,6 +80,19 @@ export function openStore(file: string) {
     hasSeen(key: CursorKey) {
       const stored = getStored.get(key.table, key.id);
       return !!stored && stored.updated_at >= new Date(key.updatedAt).toISOString();
+    },
+    /**
+     * Starts a new epoch once per new `marker` (the SYNC_EPOCH_RESET variable), for a planned restore:
+     * every device re-syncs fully even before anything detects that the data went back in time.
+     * Returns true when it rotated.
+     */
+    resetEpochOnce(marker: string | undefined) {
+      if (!marker) return false;
+      const seen = getMetaValue.get('epochResetMarker')?.value;
+      if (seen === marker) return false;
+      rotateEpoch();
+      setMetaValue.run('epochResetMarker', marker);
+      return true;
     },
     applyChanges,
     maxSeq: () => maxSeqStmt.get()!.m,
