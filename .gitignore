@@ -23,3 +23,4 @@ test-results/
 playwright-report/
 *.log
 .e2e-data/
+.e2e-release/

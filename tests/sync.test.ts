@@ -1,4 +1,7 @@
 import 'fake-indexeddb/auto';
+import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GetFitDB } from '../src/db/db';
 import { ensurePlan, getProfile, liveBlocks, logSet, regenerateUpcoming, setFlagIn, startSession, updateSession } from '../src/db/repo';
@@ -322,6 +325,50 @@ describe('syncNow', () => {
     await laptop.sync();
     expect(await laptop.db.loggedSets.get('l1')).toBeTruthy();
     expect(await phone.db.loggedSets.count()).toBe(4);
+  });
+
+  it('recovers every record when the server is restored from an older backup', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'get-fit-restore-'));
+    const file = join(dir, 'get-fit.sqlite');
+    let store = openStore(file);
+    let app = createApp({ db: store, token: TOKEN });
+    const fetchShim = ((input: RequestInfo | URL, init?: RequestInit) => app.request(String(input), init)) as typeof fetch;
+    const phone = await makeDevice(fetchShim);
+    const laptop = await makeDevice(fetchShim);
+    const setOn = (id: string, idx: number) => ({ ...loggedSet(id, 8), setIndex: idx });
+
+    await phone.db.loggedSets.put(setOn('a', 0));
+    await phone.sync();
+    await laptop.sync();
+
+    // Nightly backup of the volume.
+    store.close();
+    copyFileSync(file, join(dir, 'backup.sqlite'));
+    store = openStore(file);
+    app = createApp({ db: store, token: TOKEN });
+
+    // The phone logs set b and syncs it; then the volume is restored from last night's backup.
+    await phone.db.loggedSets.put(setOn('b', 1));
+    await phone.sync();
+    store.close();
+    copyFileSync(join(dir, 'backup.sqlite'), file);
+    rmSync(`${file}-wal`, { force: true });
+    rmSync(`${file}-shm`, { force: true });
+    store = openStore(file);
+    app = createApp({ db: store, token: TOKEN });
+
+    // The laptop gets back first and logs set c; then the phone returns.
+    await laptop.db.loggedSets.put(setOn('c', 2));
+    await laptop.sync();
+    await phone.sync();
+    await laptop.sync();
+
+    const ids = async (d: GetFitDB) => (await d.loggedSets.toArray()).map((s) => s.id).sort();
+    expect(await ids(phone.db)).toEqual(['a', 'b', 'c']);
+    expect(await ids(laptop.db)).toEqual(['a', 'b', 'c']);
+    expect(store.exportAll().loggedSets.map((s) => s.id).sort()).toEqual(['a', 'b', 'c']);
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
   });
 
   it('skips without a token or when offline, and never throws', async () => {

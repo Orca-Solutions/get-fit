@@ -1,13 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { getProfile } from './db/repo';
 import { startAutoSync } from './lib/sync';
+import { registerUpdates } from './lib/update';
 import './styles.css';
 
-registerSW({ immediate: true });
+registerUpdates();
 
 async function boot() {
   // Ask iOS/Chrome not to evict our data. Home-screen apps are exempt anyway; this is belt and braces.

@@ -9,7 +9,9 @@ import { validRow } from './validate';
 
 type SyncRecord = { id: string; createdAt?: string; updatedAt: string; deletedAt?: string | null };
 type Change = { table: SyncTable; record: SyncRecord };
-type SyncResponse = { cursor: number; epoch?: string; more?: boolean; reset?: boolean; accepted?: number; changes: Change[] };
+/** The last record pulled: lets the server tell when it has gone back in time (restored from a backup). */
+type CursorKey = { table: string; id: string; updatedAt: string };
+type SyncResponse = { cursor: number; cursorKey?: CursorKey; epoch?: string; more?: boolean; reset?: boolean; accepted?: number; changes: Change[] };
 
 export type SyncOptions = { db?: GetFitDB; fetch?: typeof fetch; baseUrl?: string };
 export type SyncResult =
@@ -89,11 +91,11 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
     const url = `${opts.baseUrl ?? ''}/api/sync`;
     const startedAt = Date.now();
     const lastPushedAt = (await getMeta<string>(db, 'lastPushedAt')) ?? '';
-    const post = async (cursor: number, changes: Change[]) => {
+    const post = async (cursor: number, changes: Change[], cursorKey?: CursorKey, epoch?: string) => {
       const res = await doFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ cursor, changes }),
+        body: JSON.stringify({ cursor, cursorKey, epoch, changes }),
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
       if (!res.ok) throw new Error(await describeHttpError(res));
@@ -103,17 +105,21 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
     if (!lastPushedAt && !(await getMeta<boolean>(db, 'joined'))) pulled += await joinServer(db, post);
 
     let cursor = (await getMeta<number>(db, 'syncCursor')) ?? 0;
+    let cursorKey = await getMeta<CursorKey>(db, 'syncCursorKey');
     let outbox = await collectChanges(db, lastPushedAt);
     let pushed = 0;
     let resetDone = false;
     const knownEpoch = await getMeta<string>(db, 'serverEpoch');
+    let epoch = knownEpoch;
 
     for (;;) {
-      const data = await post(cursor, outbox.splice(0, PUSH_BATCH));
+      const data = await post(cursor, outbox.splice(0, PUSH_BATCH), cursorKey, epoch);
+      epoch = data.epoch ?? epoch;
       if (data.epoch && knownEpoch && data.epoch !== knownEpoch && !resetDone) {
         // A different server database (e.g. a wiped volume): start over from cursor 0 and re-push everything.
         resetDone = true;
         cursor = 0;
+        cursorKey = undefined;
         outbox = await collectChanges(db, '');
         await setMeta(db, 'serverEpoch', data.epoch);
         continue;
@@ -121,9 +127,10 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
       if (data.epoch && data.epoch !== knownEpoch) await setMeta(db, 'serverEpoch', data.epoch);
       pushed += data.accepted ?? 0;
       const merged: Change[] = [];
-      pulled += await applyPulled(db, data.changes, data.cursor, [], merged);
+      pulled += await applyPulled(db, data.changes, data.cursor, [], merged, data.cursorKey);
       outbox.push(...merged);
       cursor = data.cursor;
+      cursorKey = data.cursorKey ?? cursorKey;
       if (data.reset && !resetDone) {
         // The server lost its data (e.g. a fresh volume): send it everything we have.
         resetDone = true;
@@ -165,7 +172,7 @@ async function joinServer(db: GetFitDB, post: (cursor: number, changes: Change[]
       if (table === 'blocks' && record?.id) serverBlocks.add(record.id);
       if (table === 'plannedWorkouts' && record?.id) serverWorkouts.add(record.id);
     }
-    pulled += await applyPulled(db, data.changes, data.cursor, ['blocks', 'plannedWorkouts']);
+    pulled += await applyPulled(db, data.changes, data.cursor, ['blocks', 'plannedWorkouts'], [], data.cursorKey);
     cursor = data.cursor;
     if (!data.more) break;
   }
@@ -202,7 +209,7 @@ async function collectChanges(db: GetFitDB, since: string): Promise<Change[]> {
  *   another device never reshuffles a workout in progress here;
  * - sessions merge field by field (lib/session.ts); merged results go into `repush`.
  */
-async function applyPulled(db: GetFitDB, changes: Change[], cursor: number, serverWins: SyncTable[] = [], repush: Change[] = []): Promise<number> {
+async function applyPulled(db: GetFitDB, changes: Change[], cursor: number, serverWins: SyncTable[] = [], repush: Change[] = [], cursorKey?: CursorKey): Promise<number> {
   const tables = [...SYNC_TABLES.map((t) => db.table(t)), db.meta];
   return db.transaction('rw', tables, async () => {
     let applied = 0;
@@ -240,6 +247,7 @@ async function applyPulled(db: GetFitDB, changes: Change[], cursor: number, serv
       applied++;
     }
     await setMeta(db, 'syncCursor', cursor);
+    if (cursorKey) await setMeta(db, 'syncCursorKey', cursorKey);
     return applied;
   });
 }

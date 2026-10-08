@@ -7,7 +7,9 @@ export type TableName = (typeof TABLES)[number];
 
 export type SyncRecord = { id: string; updatedAt: string; deletedAt?: string | null; [key: string]: unknown };
 export type Change = { table: TableName; record: SyncRecord };
-type Row = { tbl: TableName; data: string; seq: number };
+type Row = { tbl: TableName; id: string; updated_at: string; data: string; seq: number };
+/** The last record a client pulled: which one, and the version it saw. */
+export type CursorKey = { table: string; id: string; updatedAt: string };
 
 export type Store = ReturnType<typeof openStore>;
 
@@ -30,7 +32,8 @@ export function openStore(file: string) {
   `);
   // A random id for this database. If the volume is ever wiped, clients see a new epoch and re-push.
   db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('epoch', ?)").run(randomUUID());
-  const epoch = db.prepare<[], { value: string }>("SELECT value FROM meta WHERE key = 'epoch'").get()!.value;
+  let epoch = db.prepare<[], { value: string }>("SELECT value FROM meta WHERE key = 'epoch'").get()!.value;
+  const setEpoch = db.prepare("UPDATE meta SET value = ? WHERE key = 'epoch'");
 
   const getStored = db.prepare<[string, string], { updated_at: string }>('SELECT updated_at FROM records WHERE tbl = ? AND id = ?');
   const maxSeqStmt = db.prepare<[], { m: number }>('SELECT COALESCE(MAX(seq), 0) AS m FROM records');
@@ -38,8 +41,8 @@ export function openStore(file: string) {
     INSERT INTO records (tbl, id, updated_at, deleted_at, data, seq) VALUES (@tbl, @id, @updatedAt, @deletedAt, @data, @seq)
     ON CONFLICT (tbl, id) DO UPDATE SET updated_at = excluded.updated_at, deleted_at = excluded.deleted_at, data = excluded.data, seq = excluded.seq
   `);
-  const since = db.prepare<[number, number], Row>('SELECT tbl, data, seq FROM records WHERE seq > ? ORDER BY seq LIMIT ?');
-  const live = db.prepare<[], Row>('SELECT tbl, data, seq FROM records WHERE deleted_at IS NULL ORDER BY tbl, id');
+  const since = db.prepare<[number, number], Row>('SELECT tbl, id, updated_at, data, seq FROM records WHERE seq > ? ORDER BY seq LIMIT ?');
+  const live = db.prepare<[], Row>('SELECT tbl, id, updated_at, data, seq FROM records WHERE deleted_at IS NULL ORDER BY tbl, id');
 
   /** Last write wins: a change is stored only if it is new or strictly newer than what is stored. */
   const applyChanges = db.transaction((changes: Change[]) => {
@@ -57,7 +60,23 @@ export function openStore(file: string) {
   });
 
   return {
-    epoch,
+    get epoch() {
+      return epoch;
+    },
+    /** A new id for this database, so every device re-pulls and re-pushes everything. */
+    rotateEpoch() {
+      epoch = randomUUID();
+      setEpoch.run(epoch);
+      return epoch;
+    },
+    /**
+     * False when this database no longer has the version of a record a client last pulled: it went
+     * back in time (restored from an older backup), so writes made since then are missing here.
+     */
+    hasSeen(key: CursorKey) {
+      const stored = getStored.get(key.table, key.id);
+      return !!stored && stored.updated_at >= new Date(key.updatedAt).toISOString();
+    },
     applyChanges,
     maxSeq: () => maxSeqStmt.get()!.m,
     /** Records with seq > cursor, oldest first, up to `limit` (plus whether more remain). */
@@ -65,7 +84,12 @@ export function openStore(file: string) {
       const rows = since.all(cursor, limit + 1);
       const more = rows.length > limit;
       const page = more ? rows.slice(0, limit) : rows;
-      return { rows: page.map((r) => ({ table: r.tbl, record: JSON.parse(r.data) as SyncRecord, seq: r.seq })), more };
+      const last = page[page.length - 1];
+      return {
+        rows: page.map((r) => ({ table: r.tbl, record: JSON.parse(r.data) as SyncRecord, seq: r.seq })),
+        more,
+        lastKey: last ? ({ table: last.tbl, id: last.id, updatedAt: last.updated_at } satisfies CursorKey) : undefined,
+      };
     },
     /** All non-deleted records grouped by table. */
     exportAll() {

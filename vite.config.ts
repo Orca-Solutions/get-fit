@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // New releases wait for the next launch or an Update tap (lib/update.ts), never reloading an open screen.
+      registerType: 'prompt',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'get-fit',
@@ -29,6 +30,8 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
+        // Take over on first install, so offline works straight away; updates still wait (see registerType).
+        clientsClaim: true,
       },
     }),
   ],

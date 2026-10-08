@@ -193,6 +193,16 @@ describe('repo', () => {
     s1.done();
     await run1;
 
+    // So does a device whose plan ran out while it was put away.
+    const away = await fresh();
+    await ensurePlan('2026-08-03', away);
+    const s3 = slowSync();
+    const run3 = planAfterSync(s3.promise, '2026-10-14', 10, away);
+    await wait(100);
+    expect((await liveBlocks(away)).some((b) => b.startDate <= '2026-10-14' && '2026-10-14' < addDays(b.startDate, 28))).toBe(true);
+    s3.done();
+    await run3;
+
     // A device with a plan waits for the pull before planning the next block.
     const d = await fresh();
     const current = await ensurePlan('2026-10-14', d);

@@ -3,7 +3,7 @@ import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { secureHeaders } from 'hono/secure-headers';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { TABLES, type Change, type Store } from './store.js';
+import { TABLES, type Change, type CursorKey, type Store } from './store.js';
 
 export const MAX_BODY_BYTES = 5 * 1024 * 1024;
 export const MAX_CHANGES = 5000;
@@ -39,9 +39,9 @@ function invalidChange(ch: unknown): string | null {
  * Returns the parsed request or an error message. A malformed change is skipped and counted, not
  * fatal: rejecting the whole batch would make the device resend it, and fail, forever.
  */
-function parseSyncBody(body: unknown): { cursor: number; changes: Change[]; rejected: string[] } | string {
+function parseSyncBody(body: unknown): { cursor: number; cursorKey?: CursorKey; epoch?: string; changes: Change[]; rejected: string[] } | string {
   if (!body || typeof body !== 'object') return 'body must be a JSON object';
-  const { cursor = 0, changes = [] } = body as { cursor?: unknown; changes?: unknown };
+  const { cursor = 0, changes = [], cursorKey, epoch } = body as { cursor?: unknown; changes?: unknown; cursorKey?: Partial<CursorKey>; epoch?: unknown };
   if (typeof cursor !== 'number' || !Number.isSafeInteger(cursor) || cursor < 0) return 'cursor must be a non-negative integer';
   if (!Array.isArray(changes)) return 'changes must be an array';
   if (changes.length > MAX_CHANGES) return `too many changes (max ${MAX_CHANGES} per request)`;
@@ -52,7 +52,8 @@ function parseSyncBody(body: unknown): { cursor: number; changes: Change[]; reje
     if (why) rejected.push(`changes[${i}]: ${why}`);
     else valid.push(ch as Change);
   });
-  return { cursor, changes: valid, rejected };
+  const key = cursorKey && typeof cursorKey.table === 'string' && typeof cursorKey.id === 'string' && isIso(cursorKey.updatedAt) ? (cursorKey as CursorKey) : undefined;
+  return { cursor, cursorKey: key, epoch: typeof epoch === 'string' ? epoch : undefined, changes: valid, rejected };
 }
 
 export function createApp({ db, token, staticDir, pageSize = 2000 }: AppOptions) {
@@ -84,13 +85,22 @@ export function createApp({ db, token, staticDir, pageSize = 2000 }: AppOptions)
       if (typeof req === 'string') return c.json({ error: req }, 400);
       if (req.rejected.length) console.warn(`Skipped ${req.rejected.length} malformed change(s): ${req.rejected.slice(0, 3).join('; ')}`);
 
-      // A cursor ahead of the server means the server lost its data: pull from scratch and tell the client to re-push.
-      const reset = req.cursor > db.maxSeq();
+      // A cursor ahead of the server, or a last-pulled record the server no longer has, means the server
+      // lost data (a wiped volume, or one restored from an older backup). A new epoch makes every device,
+      // not just this one, pull from scratch and re-push everything, so nothing written since is lost.
+      // (A device still on an older epoch is about to re-sync anyway, so its cursor proves nothing.)
+      const current = !req.epoch || req.epoch === db.epoch;
+      const reset = current && (req.cursor > db.maxSeq() || (req.cursor > 0 && !!req.cursorKey && !db.hasSeen(req.cursorKey)));
+      if (reset) {
+        db.rotateEpoch();
+        console.warn('The sync database is behind a device: started a new epoch so every device re-syncs.');
+      }
       const written = db.applyChanges(req.changes);
       const cursor = reset ? 0 : req.cursor;
-      const { rows, more } = db.pull(cursor, pageSize);
+      const { rows, more, lastKey } = db.pull(cursor, pageSize);
       return c.json({
         cursor: rows.length ? rows[rows.length - 1].seq : cursor,
+        cursorKey: lastKey,
         epoch: db.epoch,
         more,
         reset,

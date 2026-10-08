@@ -84,7 +84,7 @@ export async function ensurePlan(date = today(), d: GetFitDB = db): Promise<Bloc
 }
 
 /**
- * Plan once the pull has landed. If it's slow, plan early only when there's nothing to show yet;
+ * Plan once the pull has landed. If it's slow, plan early only when there's nothing to show for today;
  * otherwise wait, so a block another device already rebuilt from its logs isn't regenerated here with a
  * newer timestamp that would replace it everywhere.
  */
@@ -92,7 +92,7 @@ export async function planAfterSync(sync: Promise<unknown>, date: string, waitMs
   const done = sync.catch(() => undefined);
   const late = new Promise<'late'>((r) => setTimeout(() => r('late'), waitMs));
   if ((await Promise.race([done, late])) === 'late') {
-    if (!(await liveBlocks(d)).length) await ensurePlan(date, d);
+    if (!(await liveBlocks(d)).some((blk) => blk.startDate <= date && date <= blockEnd(blk))) await ensurePlan(date, d);
     await done;
   }
   await ensurePlan(date, d);

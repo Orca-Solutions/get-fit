@@ -159,6 +159,24 @@ describe('pull', () => {
     expect(res).toMatchObject({ reset: true, cursor: 1 });
     expect(res.changes).toHaveLength(1);
   });
+
+  it('starts a new epoch when it no longer has the record a client last pulled', async () => {
+    const { sync } = setup();
+    const first = await (await sync({ cursor: 0, changes: [{ table: 'sessions', record: rec('s1', '2026-10-01T10:00:00.000Z') }, { table: 'sessions', record: rec('s2', '2026-10-01T11:00:00.000Z') }] })).json();
+    const pulled = await (await sync({ cursor: 0, changes: [] })).json();
+    expect(pulled.cursorKey).toEqual({ table: 'sessions', id: 's2', updatedAt: '2026-10-01T11:00:00.000Z' });
+
+    // Same or newer version still here: carry on.
+    const ok = await (await sync({ cursor: pulled.cursor, cursorKey: pulled.cursorKey, changes: [] })).json();
+    expect(ok).toMatchObject({ reset: false, epoch: first.epoch });
+    // A version the server doesn't have (it was restored from before it): new epoch, everyone re-syncs.
+    const behind = await (await sync({ cursor: 1, cursorKey: { table: 'sessions', id: 's3', updatedAt: '2026-10-01T12:00:00.000Z' }, changes: [] })).json();
+    expect(behind.reset).toBe(true);
+    expect(behind.epoch).not.toBe(first.epoch);
+    // Another device still on the old epoch re-syncs on its own; it doesn't start yet another epoch.
+    const other = await (await sync({ cursor: 1, epoch: first.epoch, cursorKey: { table: 'sessions', id: 's3', updatedAt: '2026-10-01T12:00:00.000Z' }, changes: [] })).json();
+    expect(other.epoch).toBe(behind.epoch);
+  });
 });
 
 describe('export', () => {

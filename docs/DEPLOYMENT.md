@@ -80,7 +80,7 @@ The server holds the only off-device copy of the workout logs, which can't be re
 - **Railway volume backups:** turn on scheduled backups for the `/data` volume. Daily is plenty.
 - **Off-site export (optional):** a scheduled job can run `curl -H "Authorization: Bearer $SYNC_TOKEN" https://getfit.orcasolutions.dev/api/export` and store the JSON somewhere private. It contains personal data, so treat it as such.
 - **In the app:** Settings › Export my data saves a JSON backup, which can be restored from the same screen and never removes sets, or the logged sets as CSV. On an installed iPhone app it opens the share sheet (Save to Files).
-- **If the volume is ever lost:** the server starts with a new database id (epoch). Each device notices on its next sync and re-uploads everything it has, so restoring from the devices works too.
+- **If the volume is ever lost or restored from a backup:** the server ends up with a new database id (epoch). Each device notices on its next sync, pulls everything and re-uploads everything it has, so nothing synced after the backup is lost while a device still has it.
 
 ## Rollout
 
@@ -94,11 +94,11 @@ The server holds the only off-device copy of the workout logs, which can't be re
 
 - **Server and app:** redeploy the previous successful deployment in Railway. The server stores records as JSON rows, so an older build reads newer data fine.
 - **Client caveat:** IndexedDB schema versions can't go backwards on a device. If a release bumps the Dexie schema version, plan for a fix-forward release rather than a rollback of that change.
-- **Bad data:** restore the Railway volume backup, then let devices re-sync. The newest write per record wins, so devices fill in anything newer than the backup.
+- **Bad data:** restore the Railway volume backup, then let devices re-sync. The server notices on each device's next sync that it's behind what that device last saw, and starts a new epoch. Every device then pulls everything and re-uploads everything it has, so writes made after the backup come back from the devices. The newest write per record wins.
 
 ## How updates reach installed phones
 
-- The service worker uses `autoUpdate`. When the app is opened, the browser fetches `sw.js`. If anything changed, the new version installs in the background and takes over on the next launch or reload. Expect one or two launches before a phone shows a new release.
+- When the app is opened, the browser fetches `sw.js`. If anything changed, the new version installs in the background and waits. It takes over when the app is next launched, or straight away if the user taps **Update** on the "A new version is ready" bar. The app never reloads an open screen by itself, so nothing being typed mid-workout is lost. Expect one or two launches before a phone shows a new release.
 - Releases are atomic per device: the whole app is precached, so a device runs either the old version or the new one, never a mix.
 - Keep the API backward compatible for at least one release, because phones may run the previous app version for a while. `/api/sync` already ignores unknown fields and only validates `id`, `updatedAt` and `deletedAt`.
 
