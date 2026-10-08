@@ -25,7 +25,7 @@ This project is not affiliated with AnatolyFit. It's an independent, from-scratc
 - **Plan generator:** 4-week blocks (3 loading weeks and a deload), always planned one block ahead; a block planned ahead is refreshed from your latest logs on its first day. Mon chest and biceps, Wed legs, Fri back, triceps and shoulders, weekend core at home. Each lifting day rotates heavy, moderate and light; lighter days add variety movements and a grip finisher. The rules are written down in [docs/periodization.md](docs/periodization.md) and implemented in [src/generator](src/generator).
 - **Calendar:** month and week views with done, partial, missed and done-late states, deload weeks shaded.
 - **History and library:** per-movement history with an estimated-1RM trend; about 130 curated movements with start/end photos.
-- **Sync:** each device keeps a full offline copy and syncs to a small server when it has signal, so the phone and a desktop browser share one plan and history. Export and import JSON from Settings.
+- **Sync:** each device keeps a full offline copy and syncs to a small server when it has signal, so the phone and a desktop browser share one plan and history. Settings › Export my data saves a full JSON backup (restorable, never removes sets) or your logged sets as CSV.
 
 ## Stack
 

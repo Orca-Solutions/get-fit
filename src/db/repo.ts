@@ -228,8 +228,30 @@ export async function exportAll(d: GetFitDB = db) {
   return { app: 'get-fit', version: 1, exportedAt: nowIso(), tables: out };
 }
 
-export async function importAll(data: { tables: Record<string, { id: string; updatedAt: string }[]> }, d: GetFitDB = db) {
+/** Every logged set as CSV, oldest first, for opening in a spreadsheet. Weights are in lb. */
+export async function exportSetsCsv(d: GetFitDB = db): Promise<string> {
+  const [sets, exercises, profile] = await Promise.all([d.loggedSets.toArray(), allExercises(d), getProfile(d)]);
+  const name = new Map(exercises.map((e) => [e.id, e.name]));
+  const band = new Map(profile.bands.map((b) => [b.id, b.name]));
+  const cell = (v: unknown) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const rows = sets
+    .filter((s) => !s.deletedAt)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.loggedAt.localeCompare(b.loggedAt))
+    .map((s) => [s.date, name.get(s.exerciseId) ?? s.exerciseId, s.setIndex + 1, s.weight, s.reps, s.seconds, s.bandId ? band.get(s.bandId) ?? s.bandId : null, s.stanceSteps, s.effort, s.loggedAt]);
+  const header = ['date', 'exercise', 'set', 'weight_lb', 'reps', 'seconds', 'band', 'stance_steps', 'effort', 'logged_at'];
+  return [header, ...rows].map((r) => r.map(cell).join(',')).join('\n') + '\n';
+}
+
+/**
+ * Restore a backup made by exportAll. Records merge by id and only replace older copies, so logged
+ * sets already on this device are never removed. Throws on a file that isn't a get-fit backup.
+ */
+export async function importAll(data: { app?: string; tables: Record<string, { id: string; updatedAt: string }[]> }, d: GetFitDB = db) {
   const tables = ['profile', 'blocks', 'plannedWorkouts', 'sessions', 'loggedSets', 'exerciseFlags', 'customExercises'];
+  if (!data || typeof data.tables !== 'object' || (data.app !== undefined && data.app !== 'get-fit')) throw new Error('Not a get-fit backup.');
   // On a fresh device, the backup replaces the default profile and generated plan rather than sitting beside them.
   if (!(await d.loggedSets.count())) {
     await d.transaction('rw', [d.profile, d.blocks, d.plannedWorkouts, d.sessions], async () => {

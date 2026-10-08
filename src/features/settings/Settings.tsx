@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
-import { ensurePlan, exportAll, getProfile, importAll, put, regenerateUpcoming } from '../../db/repo';
+import { ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, put, regenerateUpcoming } from '../../db/repo';
 import { getSyncStatus, setSyncToken, syncNow, type SyncStatus } from '../../lib/sync';
 import { uuid } from '../../lib/ids';
 import { today } from '../../lib/dates';
@@ -68,24 +68,21 @@ export default function Settings() {
 
       <SyncCard flash={flash} />
 
-      <h2 className="section">Backup</h2>
-      <div className="card row">
-        <button
-          className="btn grow"
-          onClick={async () => {
-            const data = await exportAll();
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `get-fit-${today()}.json`;
-            a.click();
-            URL.revokeObjectURL(a.href);
-          }}
-        >
-          Export JSON
-        </button>
-        <label className="btn grow">
-          Import JSON
+      <h2 className="section">Export my data</h2>
+      <div className="card stack">
+        <p className="small muted" style={{ margin: 0 }}>
+          Save a copy of everything (logs, plan, settings and bands) as a backup file, or your logged sets as a spreadsheet. Restoring a backup adds what's missing and never removes sets.
+        </p>
+        <div className="row">
+          <button className="btn grow" onClick={async () => download(`get-fit-backup-${today()}.json`, JSON.stringify(await exportAll(), null, 2), 'application/json')}>
+            Back up (JSON)
+          </button>
+          <button className="btn grow" onClick={async () => download(`get-fit-sets-${today()}.csv`, await exportSetsCsv(), 'text/csv')}>
+            Sets (CSV)
+          </button>
+        </div>
+        <label className="btn block">
+          Restore from backup
           <input
             type="file"
             accept="application/json"
@@ -95,10 +92,11 @@ export default function Settings() {
               if (!f) return;
               try {
                 await importAll(JSON.parse(await f.text()));
-                flash('Imported');
+                flash('Backup restored');
               } catch {
-                flash('That file could not be read');
+                flash("That file isn't a get-fit backup");
               }
+              e.target.value = '';
             }}
           />
         </label>
@@ -174,6 +172,15 @@ function SyncCard({ flash }: { flash: (m: string) => void }) {
  * On a fresh device (nothing logged yet), drop the default profile and generated plan before the
  * first sync so the server's copies come down instead of two plans existing side by side.
  */
+function download(filename: string, text: string, type: string) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = filename;
+  a.click();
+  // Revoking right away can cancel the download in Safari.
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+}
+
 /** A device's first sync replaces its own generated plan with the server's (joinServer in lib/sync). */
 async function connectSync(token: string) {
   await setSyncToken(token);

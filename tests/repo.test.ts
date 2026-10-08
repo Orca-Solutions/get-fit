@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { GetFitDB } from '../src/db/db';
-import { ensurePlan, getProfile, importAll, logSet, startSession, workoutsWithLogs } from '../src/db/repo';
+import { ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, logSet, startSession, workoutsWithLogs } from '../src/db/repo';
 import { addDays, mondayOf, today } from '../src/lib/dates';
 
 let n = 0;
@@ -95,6 +95,30 @@ describe('repo', () => {
     expect((await getProfile(phone)).bodyweightLb).toBe(181);
     expect(await phone.blocks.count()).toBe(2); // the backup's current and next block, no duplicates
     expect(await phone.meta.get('lastPushedAt')).toBeUndefined();
+  });
+
+  it('restores a backup without removing sets logged since, and exports sets as CSV', async () => {
+    const phone = await fresh();
+    const block = await ensurePlan(today(), phone);
+    const w = (await phone.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((x) => x.sessionType !== 'core')!;
+    const s = await startSession(w.id, w.date, phone);
+    await logSet(s, w.exercises[0].exerciseId, w.exercises[0].id, 0, { weight: 95, reps: 8 }, phone);
+    const backup = JSON.parse(JSON.stringify(await exportAll(phone)));
+
+    // After the backup: one more set, and the first one deleted by mistake.
+    await logSet(s, w.exercises[0].exerciseId, w.exercises[0].id, 1, { weight: 95, reps: 7 }, phone);
+    await phone.loggedSets.clear();
+    await logSet(s, w.exercises[0].exerciseId, w.exercises[0].id, 2, { weight: 90, reps: 9 }, phone);
+    await importAll(backup, phone);
+    expect((await phone.loggedSets.toArray()).map((x) => x.reps).sort()).toEqual([8, 9]);
+
+    const csv = (await exportSetsCsv(phone)).trim().split('\n');
+    expect(csv[0]).toBe('date,exercise,set,weight_lb,reps,seconds,band,stance_steps,effort,logged_at');
+    expect(csv).toHaveLength(3);
+    expect(csv[1]).toContain(',95,8,');
+
+    await expect(importAll(JSON.parse('{"hello":1}'), phone)).rejects.toThrow('get-fit backup');
+    await expect(importAll({ app: 'other', tables: {} }, phone)).rejects.toThrow('get-fit backup');
   });
 
   it('keeps default profile timestamps at the epoch so real settings always win', async () => {
