@@ -153,7 +153,8 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
   };
 
   return (
-    <>
+    <div className="logger">
+      <div className="logger-main">
       <div className="row" style={{ alignItems: 'flex-start', marginTop: 8 }}>
         <div className="grow">
           {pe.supersetGroup && <div className="pill">Superset {pe.supersetGroup}</div>}
@@ -167,7 +168,7 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
           )}
           {note && <div className="small faint" style={{ marginTop: 4 }}>{note}</div>}
         </div>
-        <Photo ex={ex} />
+        <span className="phone-only"><Photo ex={ex} /></span>
       </div>
 
       <table className="sets">
@@ -216,7 +217,11 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
         </div>
       )}
 
-      <HistoryPanel ex={ex} history={history} profile={profile} limit={rowCount >= 5 ? 2 : 3} />
-    </>
+      </div>
+      <div className="logger-side">
+        <span className="desk-only"><Photo ex={ex} size={220} /></span>
+        <HistoryPanel ex={ex} history={history} profile={profile} limit={rowCount >= 5 ? 2 : 3} />
+      </div>
+    </div>
   );
 }

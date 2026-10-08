@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Band, Exercise, LoggedSet, PlannedSet } from '../../types';
 import type { SetInput } from '../../db/repo';
 import { plannedValue } from '../../lib/format';
@@ -101,6 +101,13 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
     if (v) onLog(v);
   };
 
+  // Enter logs the row, or confirms an edit; it never un-ticks a logged set.
+  const onEnter = (e: KeyboardEvent) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (!logged || edited.current) tick();
+  };
+
   // Editing a logged set saves on blur.
   const commitEdit = () => {
     if (!logged) return;
@@ -148,6 +155,7 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
                 setWeight(e.target.value);
               }}
               onBlur={commitEdit}
+              onKeyDown={onEnter}
             />
           </td>
         ) : (
@@ -165,6 +173,7 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
               setReps(e.target.value);
             }}
             onBlur={commitEdit}
+            onKeyDown={onEnter}
           />
         </td>
         <td style={{ width: 60 }}>

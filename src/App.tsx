@@ -39,6 +39,7 @@ export default function App() {
       </div>
       {!inWorkout && (
         <nav className="nav">
+          <div className="nav-brand">get-fit</div>
           <NavLink to="/" end><Icon name="today" />Today</NavLink>
           <NavLink to="/calendar"><Icon name="calendar" />Calendar</NavLink>
           <NavLink to="/history"><Icon name="history" />History</NavLink>

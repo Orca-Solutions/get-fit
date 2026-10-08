@@ -29,7 +29,7 @@ export default function Library() {
           <button key={g} className={`chip ${group === g ? 'on' : ''}`} style={{ width: 'auto', height: 'auto', borderRadius: 999 }} onClick={() => setGroup(g)}>{g}</button>
         ))}
       </div>
-      <ul className="list card">
+      <ul className="list card lib">
         {list.map((e) => {
           const f = flagById.get(e.id);
           return (
