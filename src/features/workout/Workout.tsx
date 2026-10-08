@@ -139,6 +139,8 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
   const hint = lastTimeHint(ex, history, mainTarget, bandName);
   const allDone = mine.length >= pe.sets.length;
   const effort = mine.find((s) => s.effort)?.effort;
+  // The plan is written at block start, so its "first time" advice goes stale once the movement has history.
+  const note = history.length ? pe.note?.replace(/First time:[^.]*\.\s*/, '').trim() : pe.note;
 
   const session = { id: sessionId, date: sessionDate } as Parameters<typeof logSet>[0];
   const carryFor = (i: number): Carry => {
@@ -163,7 +165,7 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
               {hint.suggest != null && <span className="muted"> · try {fmtNum(hint.suggest)}</span>}
             </div>
           )}
-          {pe.note && <div className="small faint" style={{ marginTop: 4 }}>{pe.note}</div>}
+          {note && <div className="small faint" style={{ marginTop: 4 }}>{note}</div>}
         </div>
         <Photo ex={ex} />
       </div>
