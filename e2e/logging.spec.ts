@@ -65,6 +65,9 @@ test('sync token connects to the server', async ({ page }) => {
 test('finishing a movement stays on it, and editing a logged set then tapping ✓ keeps it', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Start workout|Do it today/ }).first().click();
+  // Wait for the workout screen: on a rest day the Today screen has its own title ("Rest day").
+  await expect(page).toHaveURL(/\/workout\//);
+  await expect(page.getByRole('button', { name: 'Log set 1' })).toBeVisible();
   const title = await page.locator('.move-title').innerText();
   const rows = await page.getByRole('button', { name: /^Log set \d+$/ }).count();
   for (let i = 1; i <= rows; i++) {
