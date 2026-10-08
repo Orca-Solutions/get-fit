@@ -52,7 +52,7 @@ One service from this repo. Build command `npm run build`, start command `npm st
 - `DATA_DIR=/data`
 - `SYNC_TOKEN=<a long random string>`; paste the same token into the app's Settings › Sync on each device.
 
-Then open the service URL on the iPhone in Safari, Share › Add to Home Screen.
+Then open the site on the iPhone in Safari, Share › Add to Home Screen. Domain, Cloudflare, backups, rollout and updates: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Credits
 
