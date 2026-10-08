@@ -150,11 +150,14 @@ export async function sessionFor(plannedWorkoutId: string, d: GetFitDB = db): Pr
   return list.find((s) => !s.deletedAt);
 }
 
+export const sessionIdFor = (plannedWorkoutId: string) => `s-${plannedWorkoutId}`;
+
 export async function startSession(plannedWorkoutId: string, date = today(), d: GetFitDB = db): Promise<Session> {
   const existing = await sessionFor(plannedWorkoutId, d);
   if (existing) return existing;
   const t = nowIso();
-  return put('sessions', { id: uuid(), createdAt: t, updatedAt: t, deletedAt: null, plannedWorkoutId, date, startedAt: t, endedAt: null }, d);
+  // One id per planned workout, so two devices that open the same workout before syncing share a session.
+  return put('sessions', { id: sessionIdFor(plannedWorkoutId), createdAt: t, updatedAt: t, deletedAt: null, plannedWorkoutId, date, startedAt: t, endedAt: null }, d);
 }
 
 export async function updateSession(id: string, patch: Partial<Session>, d: GetFitDB = db): Promise<void> {

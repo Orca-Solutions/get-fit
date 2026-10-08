@@ -1,6 +1,7 @@
 // Background sync with the get-fit server (product spec §4.2).
 // Push: every local record whose updatedAt is past the push watermark. Pull: everything the server
 // stored since our cursor. Last write wins per record, by updatedAt. Never throws into the UI.
+// A device's first sync joins the server's plan instead of pushing its own (see joinServer).
 import { db as defaultDb, SYNC_TABLES, type GetFitDB, type SyncTable } from '../db/db';
 
 type SyncRecord = { id: string; updatedAt: string; deletedAt?: string | null };
@@ -70,23 +71,27 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
     const url = `${opts.baseUrl ?? ''}/api/sync`;
     const startedAt = Date.now();
     const lastPushedAt = (await getMeta<string>(db, 'lastPushedAt')) ?? '';
+    const post = async (cursor: number, changes: Change[]) => {
+      const res = await doFetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cursor, changes }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (!res.ok) throw new Error(await describeHttpError(res));
+      return (await res.json()) as SyncResponse;
+    };
+    let pulled = 0;
+    if (!lastPushedAt && !(await getMeta<boolean>(db, 'joined'))) pulled += await joinServer(db, post);
+
     let cursor = (await getMeta<number>(db, 'syncCursor')) ?? 0;
     let outbox = await collectChanges(db, lastPushedAt);
     let pushed = 0;
-    let pulled = 0;
     let resetDone = false;
     const knownEpoch = await getMeta<string>(db, 'serverEpoch');
 
     for (;;) {
-      const batch = outbox.splice(0, PUSH_BATCH);
-      const res = await doFetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ cursor, changes: batch }),
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      });
-      if (!res.ok) throw new Error(await describeHttpError(res));
-      const data = (await res.json()) as SyncResponse;
+      const data = await post(cursor, outbox.splice(0, PUSH_BATCH));
       if (data.epoch && knownEpoch && data.epoch !== knownEpoch && !resetDone) {
         // A different server database (e.g. a wiped volume): start over from cursor 0 and re-push everything.
         resetDone = true;
@@ -122,6 +127,41 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
   }
 }
 
+/**
+ * A device's first sync: pull everything before pushing anything. If the server already has a plan,
+ * the server's blocks and planned workouts replace the ones this device generated on its own (which
+ * may start on a different Monday), so two devices never end up with overlapping plans. Logged sets
+ * and sessions are never dropped; they are pushed afterwards like any other change.
+ */
+async function joinServer(db: GetFitDB, post: (cursor: number, changes: Change[]) => Promise<SyncResponse>): Promise<number> {
+  const serverBlocks = new Set<string>();
+  const serverWorkouts = new Set<string>();
+  let cursor = 0;
+  let pulled = 0;
+  for (;;) {
+    const data = await post(cursor, []);
+    if (data.epoch) await setMeta(db, 'serverEpoch', data.epoch);
+    for (const { table, record } of data.changes) {
+      if (table === 'blocks' && record?.id) serverBlocks.add(record.id);
+      if (table === 'plannedWorkouts' && record?.id) serverWorkouts.add(record.id);
+    }
+    pulled += await applyPulled(db, data.changes, data.cursor, ['blocks', 'plannedWorkouts']);
+    cursor = data.cursor;
+    if (!data.more) break;
+  }
+  await db.transaction('rw', [db.blocks, db.plannedWorkouts, db.sessions, db.loggedSets, db.meta], async () => {
+    if (serverBlocks.size) {
+      const sessions = (await db.sessions.toArray()).filter((s) => !s.deletedAt);
+      const withSets = new Set((await db.loggedSets.toArray()).filter((s) => !s.deletedAt).map((s) => s.sessionId));
+      const logged = new Set(sessions.filter((s) => s.plannedWorkoutId && withSets.has(s.id)).map((s) => s.plannedWorkoutId));
+      await db.blocks.bulkDelete((await db.blocks.toArray()).filter((b) => !serverBlocks.has(b.id)).map((b) => b.id));
+      await db.plannedWorkouts.bulkDelete((await db.plannedWorkouts.toArray()).filter((w) => !serverWorkouts.has(w.id) && !logged.has(w.id)).map((w) => w.id));
+    }
+    await setMeta(db, 'joined', true);
+  });
+  return pulled;
+}
+
 /** Local records changed after the watermark, soft-deleted ones included. */
 async function collectChanges(db: GetFitDB, since: string): Promise<Change[]> {
   return db.transaction('r', SYNC_TABLES.map((t) => db.table(t)), async () => {
@@ -134,15 +174,15 @@ async function collectChanges(db: GetFitDB, since: string): Promise<Change[]> {
   });
 }
 
-/** Stores pulled records that are newer than ours, and the new cursor, in one transaction. */
-async function applyPulled(db: GetFitDB, changes: Change[], cursor: number): Promise<number> {
+/** Stores pulled records that are newer than ours (or any server record for `serverWins` tables), and the new cursor, in one transaction. */
+async function applyPulled(db: GetFitDB, changes: Change[], cursor: number, serverWins: SyncTable[] = []): Promise<number> {
   const tables = [...SYNC_TABLES.map((t) => db.table(t)), db.meta];
   return db.transaction('rw', tables, async () => {
     let applied = 0;
     for (const { table, record } of changes) {
       if (!SYNC_TABLES.includes(table) || !record?.id || !record.updatedAt) continue;
       const local = (await db.table(table).get(record.id)) as SyncRecord | undefined;
-      if (local && !newer(record.updatedAt, local.updatedAt)) continue;
+      if (local && !serverWins.includes(table) && !newer(record.updatedAt, local.updatedAt)) continue;
       await db.table(table).put(record);
       applied++;
     }

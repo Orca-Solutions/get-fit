@@ -173,17 +173,8 @@ function SyncCard({ flash }: { flash: (m: string) => void }) {
  * On a fresh device (nothing logged yet), drop the default profile and generated plan before the
  * first sync so the server's copies come down instead of two plans existing side by side.
  */
+/** A device's first sync replaces its own generated plan with the server's (joinServer in lib/sync). */
 async function connectSync(token: string) {
-  const logged = await db.loggedSets.count();
-  const synced = await db.meta.get('syncCursor');
-  if (!logged && !synced) {
-    await db.transaction('rw', [db.blocks, db.plannedWorkouts, db.sessions, db.profile], async () => {
-      await db.profile.clear();
-      await db.blocks.clear();
-      await db.plannedWorkouts.clear();
-      await db.sessions.clear();
-    });
-  }
   await setSyncToken(token);
 }
 

@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GetFitDB } from '../src/db/db';
+import { ensurePlan, liveBlocks, logSet, startSession } from '../src/db/repo';
 import { getSyncStatus, setSyncToken, syncNow } from '../src/lib/sync';
 import { createApp } from '../server/app';
 import { openStore } from '../server/store';
@@ -52,6 +53,55 @@ describe('syncNow', () => {
     const status = await getSyncStatus(laptop.db);
     expect(status).toMatchObject({ configured: true, syncing: false, lastError: null });
     expect(status.lastSyncedAt).toBeTruthy();
+  });
+
+  it('gives a new device the full plan and history, and keeps its own logs', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const phoneBlock = await ensurePlan('2026-10-14', phone.db);
+    const legs = (await phone.db.plannedWorkouts.where('blockId').equals(phoneBlock.id).toArray()).find((w) => w.sessionType === 'legs')!;
+    await logSet(await startSession(legs.id, legs.date, phone.db), legs.exercises[0].exerciseId, legs.exercises[0].id, 0, { weight: 95, reps: 8 }, phone.db);
+    await phone.sync();
+
+    // The laptop was opened a week later before sync was set up, so it planned its own block from that Monday, and logged a set.
+    const laptop = await makeDevice(server.fetch, null);
+    const own = await ensurePlan('2026-10-21', laptop.db);
+    expect(own.startDate).toBe('2026-10-19');
+    const ownWorkout = (await laptop.db.plannedWorkouts.where('blockId').equals(own.id).toArray())[0];
+    await logSet(await startSession(ownWorkout.id, ownWorkout.date, laptop.db), ownWorkout.exercises[0].exerciseId, null, 0, { weight: 40, reps: 12 }, laptop.db);
+    await setSyncToken(TOKEN, laptop.db);
+    expect(await laptop.sync()).toMatchObject({ ok: true });
+
+    // The laptop now follows the phone's plan, with the phone's history, and its own set survives.
+    expect((await liveBlocks(laptop.db)).map((b) => b.id)).toEqual((await liveBlocks(phone.db)).map((b) => b.id));
+    expect((await ensurePlan('2026-10-21', laptop.db)).id).toBe(phoneBlock.id);
+    expect(await laptop.db.plannedWorkouts.get(legs.id)).toEqual(await phone.db.plannedWorkouts.get(legs.id));
+    expect((await laptop.db.loggedSets.toArray()).map((s) => s.weight).sort()).toEqual([40, 95]);
+
+    // The phone's plan is untouched by the laptop, and it gets the laptop's set.
+    await phone.sync();
+    expect((await liveBlocks(phone.db)).map((b) => b.id)).toEqual([phoneBlock.id, 'block-2026-11-09']);
+    expect((await phone.db.loggedSets.toArray()).map((s) => s.weight).sort()).toEqual([40, 95]);
+  });
+
+  it('keeps every set when two devices log the same workout before syncing', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    const block = await ensurePlan('2026-10-14', phone.db);
+    await phone.sync();
+    await laptop.sync();
+    const w = (await laptop.db.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((x) => x.sessionType === 'legs')!;
+    const [a, b] = [w.exercises[0], w.exercises[1]];
+    await logSet(await startSession(w.id, w.date, phone.db), a.exerciseId, a.id, 0, { weight: 95, reps: 8 }, phone.db);
+    await logSet(await startSession(w.id, w.date, laptop.db), b.exerciseId, b.id, 0, { weight: 60, reps: 10 }, laptop.db);
+    await phone.sync();
+    await laptop.sync();
+    await phone.sync();
+    for (const d of [phone.db, laptop.db]) {
+      expect(await d.sessions.count()).toBe(1);
+      expect((await d.loggedSets.toArray()).map((s) => s.weight).sort()).toEqual([60, 95]);
+    }
   });
 
   it('resolves conflicts by last write wins', async () => {
@@ -188,6 +238,7 @@ describe('syncNow', () => {
     const b = phone.sync();
     expect(a).toBe(b);
     await a;
-    expect(calls).toHaveBeenCalledTimes(1);
+    // A first sync pulls once before pushing (joinServer), then pushes once.
+    expect(calls).toHaveBeenCalledTimes(2);
   });
 });
