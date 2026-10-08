@@ -7,7 +7,7 @@ A personal, single-user workout app for one iPhone: generate a plan in the spiri
 ## Approved scope (v1)
 
 - Installable PWA, offline-first; the phone is the source of truth.
-- Plan generator: 4-week blocks (3 loading + deload); Mon legs, Wed chest and biceps, Fri back, triceps and shoulders, weekend core at home; heavy/moderate/light rotation, variety slots, grip finishers, focus muscle, coverage check (docs/periodization.md).
+- Plan generator: 4-week blocks (3 loading + deload); Mon chest and biceps, Wed legs, Fri back, triceps and shoulders, weekend core at home; heavy/moderate/light rotation, variety slots, grip finishers, focus muscle, coverage check (docs/periodization.md).
 - Logging: reps placeholder = planned reps in grey; weight blank with "last time at this rep count" hint and carry-forward; band level + steps; timed holds.
 - Movement history, calendar (month/week, done/partial/missed/done-late), exercise library (~150 curated movements with photos), settings, JSON export/import.
 - Sync to one Railway service (Hono + SQLite) with a single secret token.

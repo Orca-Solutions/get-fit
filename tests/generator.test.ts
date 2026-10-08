@@ -20,11 +20,11 @@ const lifts = (ws: PlannedWorkout[]) => ws.filter((w) => w.sessionType !== 'core
 describe('generateBlock: block 1', () => {
   const { block, workouts, coverage } = gen();
 
-  it('places 4 weeks of Mon/Wed/Fri lifting and a Sat–Sun core window', () => {
+  it('places 4 weeks of Mon/Wed/Fri lifting (legs midweek) and a Sat–Sun core window', () => {
     expect(workouts).toHaveLength(16);
     expect(workouts.slice(0, 4).map((w) => [w.date, w.sessionType])).toEqual([
-      ['2026-10-12', 'legs'],
-      ['2026-10-14', 'chest-biceps'],
+      ['2026-10-12', 'chest-biceps'],
+      ['2026-10-14', 'legs'],
       ['2026-10-16', 'back-tri-shoulders'],
       ['2026-10-17', 'core'],
     ]);
@@ -38,6 +38,8 @@ describe('generateBlock: block 1', () => {
     expect(zones('legs')).toEqual(['H', 'M', 'L', 'deload']);
     expect(zones('chest-biceps')).toEqual(['M', 'L', 'H', 'deload']);
     expect(zones('back-tri-shoulders')).toEqual(['L', 'H', 'M', 'deload']);
+    // Each loading week has one heavy, one moderate and one light lifting day.
+    for (let week = 0; week < 3; week++) expect(lifts(workouts).filter((w) => w.weekIndex === week).map((w) => w.zone).sort()).toEqual(['H', 'L', 'M']);
   });
 
   it('keeps every lifting session to 6–8 movements and 12–22 sets', () => {
@@ -130,8 +132,8 @@ describe('generateBlock: block 1', () => {
 
   it('derives ids from dates so two devices generate the same records', () => {
     expect(block.id).toBe('block-2026-10-12');
-    expect(workouts[0].id).toBe('w-2026-10-12-legs');
-    expect(workouts[0].exercises[1].id).toBe('w-2026-10-12-legs-1');
+    expect(workouts[0].id).toBe('w-2026-10-12-chest-biceps');
+    expect(workouts[0].exercises[1].id).toBe('w-2026-10-12-chest-biceps-1');
     expect(new Set(workouts.flatMap((w) => w.exercises.map((e) => e.id))).size).toBe(workouts.reduce((n, w) => n + w.exercises.length, 0));
   });
 

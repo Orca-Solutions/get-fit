@@ -52,7 +52,7 @@ export default function Settings() {
 
       <h2 className="section">Plan</h2>
       <div className="card stack">
-        <p className="small muted" style={{ margin: 0 }}>Mon legs · Wed chest & biceps · Fri back, triceps & shoulders · Sat or Sun core at home. Runs stay out of the app.</p>
+        <p className="small muted" style={{ margin: 0 }}>Mon chest & biceps · Wed legs · Fri back, triceps & shoulders · Sat or Sun core at home. Runs stay out of the app.</p>
         <button
           className="btn block"
           onClick={async () => {

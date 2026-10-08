@@ -67,7 +67,7 @@ Out of scope: meal planning, running (jason's daily morning run stays as it is),
 - Shows today's planned workout with a sets-done progress bar. On a rest day it shows "Rest day" with the next session ("Fri · Upper B") and a button to pull it forward to today.
 - Each row: movement, planned sets × reps (or seconds) and status (not started, partial, done). Eight rows fit on an iPhone screen without scrolling.
 - Tapping a row jumps straight to that movement's logging screen. "Start/Resume" goes to the first unfinished one.
-- Can log on a different day than planned (do Monday's legs on Tuesday); the session records the real date and the calendar shows it as done late, not missed.
+- Can log on a different day than planned (do Wednesday's legs on Thursday); the session records the real date and the calendar shows it as done late, not missed.
 
 ### 2.2 Movement logging screen (the core screen)
 
@@ -174,7 +174,7 @@ Browse and search the exercise DB by muscle group, movement pattern, and equipme
 
 ### 2.7 Settings
 
-Profile (height, current bodyweight, units: lb default), weekly schedule (Mon legs, Wed upper A, Fri upper B, weekend core; editable), equipment by location (gym: everything; home: resistance bands, bodyweight, kettlebells), **my bands** (set up once: name or colour of each band, ordered lightest to heaviest; the first band movement prompts for this if the list is empty), other training preferences the generator needs (owned by the periodization thread: session length), rest timer on/off, export/import JSON backup, sync token and "last synced" time (see §4).
+Profile (height, current bodyweight, units: lb default), weekly schedule (Mon upper A, Wed legs, Fri upper B, weekend core; editable), equipment by location (gym: everything; home: resistance bands, bodyweight, kettlebells), **my bands** (set up once: name or colour of each band, ordered lightest to heaviest; the first band movement prompts for this if the list is empty), other training preferences the generator needs (owned by the periodization thread: session length), rest timer on/off, export/import JSON backup, sync token and "last synced" time (see §4).
 
 ---
 
@@ -334,7 +334,7 @@ substitutes(exerciseId, exercises, context): Exercise[]   // powers the Swap but
 - Suggested split (for that thread to confirm): `generateBlock` decides the *structure* up front (which muscles, patterns, rep schemes on which days); `resolveLoads` picks *weights* a week at a time from real logs, so the plan adapts when you lift more or less than planned.
 - **Weights aren't shown as targets.** jason wants the weight field blank because the right weight depends on the rep target. The generator can still compute `targetWeight` for its own progression logic, but the UI shows only a "last time at this rep count" hint from the logs. With no history the hint is simply absent and the first logged sets become the baseline.
 - Each `Block` and `PlannedWorkout` carries a one-line `rationale` that the Today screen shows, so the "strange" variation is explained rather than mysterious.
-- jason has set the schedule: legs Monday, two largely non-overlapping upper days Wednesday and Friday (arms split across them, as AnatolyFit did), core on the weekend, 6–8 movements and 12–22 sets per session. The generator fills those slots and stamps each `PlannedWorkout` with its date and `sessionType`; the calendar renders them. Core day is at home, so the generator must pick its movements from `equipmentByLocation.home` only.
+- jason has set the schedule: legs Wednesday (moved from Monday on 2026-10-08 so a Sunday long run doesn't precede it), two largely non-overlapping upper days Monday and Friday (arms split across them, as AnatolyFit did), core on the weekend, 6–8 movements and 12–22 sets per session. The generator fills those slots and stamps each `PlannedWorkout` with its date and `sessionType`; the calendar renders them. Core day is at home, so the generator must pick its movements from `equipmentByLocation.home` only.
 - Other prefs (session length, how the daily 2-mile run affects leg work) are that thread's questions to ask; the app just stores the answers.
 
 ---

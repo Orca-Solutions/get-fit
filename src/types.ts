@@ -37,10 +37,10 @@ export type GripType = 'support' | 'crush' | 'pinch' | 'wrist-flexion' | 'wrist-
  * "v:" slots are the variety pools that only appear on moderate and light days.
  */
 export type SlotKey =
-  // Monday: legs
+  // Wednesday: legs
   | 'legs:squat' | 'legs:hinge' | 'legs:single-leg' | 'legs:knee-extension' | 'legs:knee-flexion' | 'legs:calf'
   | 'legs:v:hip-extension' | 'legs:v:squat-machine' | 'legs:v:adduction' | 'legs:v:abduction' | 'legs:v:hinge-variant'
-  // Wednesday: chest and biceps
+  // Monday: chest and biceps
   | 'chest:flat-press' | 'chest:incline-press' | 'chest:fly'
   | 'biceps:supinated' | 'biceps:neutral' | 'biceps:stretch'
   | 'chest:v:press-variant' | 'biceps:v:curl-variant'

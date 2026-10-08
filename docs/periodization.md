@@ -1,6 +1,6 @@
 # Training logic: "strange periodization", made explicit
 
-Milestone 1 draft · training-logic thread · 2026-10-07 · rev 3: Mon legs / Wed + Fri upper / Sat home core covering all 8 dynamics, grip finishers, morning run untouched · rev 3.1: home cables are resistance bands · rev 3.2: Planet Fitness with Smith machine for main lifts, 25 and 35 lb kettlebells
+Milestone 1 draft · training-logic thread · 2026-10-07 · rev 3: Mon legs / Wed + Fri upper / Sat home core covering all 8 dynamics, grip finishers, morning run untouched · rev 3.1: home cables are resistance bands · rev 3.2: Planet Fitness with Smith machine for main lifts, 25 and 35 lb kettlebells · rev 3.3 (2026-10-08): legs moved to Wednesday and chest & biceps to Monday, so an occasional Sunday long run doesn't fall the day before leg day
 
 ## Background: Anatoly and AnatolyFit
 
@@ -65,9 +65,9 @@ There is no published spec called "strange periodization." The phrase does not a
 | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 |---|---|---|---|---|---|---|
 | AM run | AM run | AM run | AM run | AM run | AM run | AM run |
-| **Legs** | — | **Chest & biceps** | — | **Back, triceps & shoulders** | **Core (home)** | — |
+| **Chest & biceps** | — | **Legs** | — | **Back, triceps & shoulders** | **Core (home)** | — |
 
-Your 2-mile morning run is fixed. The plan never schedules, moves or adjusts it. The upper-body pairing is Anatoly's own published split: Wednesday chest and biceps, Friday back, triceps and shoulders, with grip, wrists and abs done separately [1]. Grip and forearm work is tacked onto lifting days (4.1). The two days barely overlap. Arms still get hit twice: biceps directly on Wednesday and indirectly through Friday's rows, and triceps directly on Friday and indirectly through Wednesday's presses. That's my reading of "mostly arms split into 2 days," and decision 1 asks you to confirm it.
+Your 2-mile morning run is fixed. The plan never schedules, moves or adjusts it. Legs sit midweek so an occasional Sunday long run doesn't land the day before leg day (rev 3.3). The upper-body pairing is Anatoly's own published split: chest and biceps, then back, triceps and shoulders, with grip, wrists and abs done separately [1]. Grip and forearm work is tacked onto lifting days (4.1). The two days barely overlap. Arms still get hit twice: biceps directly on Monday and indirectly through Friday's rows, and triceps directly on Friday and indirectly through Monday's presses. That's my reading of "mostly arms split into 2 days," and decision 1 asks you to confirm it.
 
 **Session size (your numbers):** 6–8 movements and usually about 17 working sets, ranging from about 12 to 22. Sessions run roughly 55–75 minutes. The core day is done at home with resistance bands, bodyweight and kettlebells. It runs about 16 sets in 30–35 minutes, as supersets.
 
@@ -163,7 +163,7 @@ Wednesday's slot 3 is an isolation slot, so that day runs P, C, I, I, I, I. This
 
 **Zone rotation (the undulation):** the zones shift by one day each week. Over a block, every muscle group gets one heavy, one moderate and one light session:
 
-| | Mon (Legs) | Wed (Chest & biceps) | Fri (Back, triceps & shoulders) |
+| | Wed (Legs) | Mon (Chest & biceps) | Fri (Back, triceps & shoulders) |
 |---|---|---|---|
 | Week 1 | H | M | L |
 | Week 2 | M | L | H |
@@ -279,7 +279,7 @@ after each session logged:
 
 ## 6. Sample 2 weeks (block 1, weeks 1–2)
 
-Example exercises appear in brackets only for readability. The generator picks by attributes. "Cal" means calibrate (4.4.4). Block 1's focus muscle is side delts. Week 2 loads come from week 1 logs.
+Example exercises appear in brackets only for readability. The generator picks by attributes. "Cal" means calibrate (4.4.4). Block 1's focus muscle is side delts. Week 2 loads come from week 1 logs. This sample predates rev 3.3: legs are now on Wednesday and chest & biceps on Monday, with each day keeping its zone.
 
 **Week 1 (all sessions at RIR 3)**
 
@@ -379,7 +379,7 @@ Each change is one step up its difficulty ladder.
 | Core | 16 (Sat), all 8 dynamics | ok |
 | Grip/forearms | 4 finisher sets + indirect from pulls and curls | ok |
 
-Week 3 shifts once more (Mon L, Wed H, Fri M) at RIR 1–2. Week 4 is the deload. Block 2 rotates one or two base slots per day and moves the focus to chest.
+Week 3 shifts once more (legs L, chest & biceps H, back M) at RIR 1–2. Week 4 is the deload. Block 2 rotates one or two base slots per day and moves the focus to chest.
 
 ## 7. Decisions I need from you
 

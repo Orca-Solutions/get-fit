@@ -18,8 +18,9 @@ export function defaultProfile(t = new Date().toISOString()): Profile {
     bodyweightLb: 168,
     units: 'lb',
     schedule: [
-      { weekdays: [1], type: 'legs', location: 'gym' },
-      { weekdays: [3], type: 'chest-biceps', location: 'gym' },
+      // Legs midweek, so a Sunday long run doesn't land the day before leg day.
+      { weekdays: [1], type: 'chest-biceps', location: 'gym' },
+      { weekdays: [3], type: 'legs', location: 'gym' },
       { weekdays: [5], type: 'back-tri-shoulders', location: 'gym' },
       { weekdays: [6, 0], type: 'core', location: 'home' },
     ],
