@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Band, Exercise, LoggedSet, PlannedSet } from '../../types';
 import type { SetInput } from '../../db/repo';
 import { plannedValue } from '../../lib/format';
@@ -34,6 +34,7 @@ function parseNum(s: string): number | null {
  */
 export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlog, onDelete, autoFocusWeight }: Props) {
   const timed = ex.metric === 'time';
+  const hasLogged = !!logged;
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [bandId, setBandId] = useState<string | null>(null);
@@ -42,15 +43,20 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
   const [nudge, setNudge] = useState('');
   const edited = useRef(false);
 
-  // Logged sets show their values in dark text and stay editable.
+  // Logged sets show their values in dark text and stay editable. Reset the inputs only when the stored
+  // values change: any write to this session (another set, a sync pull) hands us a fresh object, and
+  // resetting on that would wipe what's being typed.
+  const lw = logged?.weight;
+  const lr = timed ? logged?.seconds : logged?.reps;
+  const lb = logged?.bandId;
+  const ls = logged?.stanceSteps;
   useEffect(() => {
-    if (logged) {
-      setWeight(logged.weight != null ? fmtNum(logged.weight) : '');
-      setReps(String((timed ? logged.seconds : logged.reps) ?? ''));
-      setBandId(logged.bandId ?? null);
-      setStance(logged.stanceSteps ?? null);
-    }
-  }, [logged, timed]);
+    if (!hasLogged) return;
+    setWeight(lw != null ? fmtNum(lw) : '');
+    setReps(String(lr ?? ''));
+    setBandId(lb ?? null);
+    setStance(ls ?? null);
+  }, [hasLogged, lw, lr, lb, ls]);
 
   useEffect(() => {
     if (autoFocusWeight) weightRef.current?.focus();
@@ -101,6 +107,13 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
     if (v) onLog(v);
   };
 
+  // Enter logs the row, or confirms an edit; it never un-ticks a logged set.
+  const onEnter = (e: KeyboardEvent) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (!logged || edited.current) tick();
+  };
+
   // Editing a logged set saves on blur.
   const commitEdit = () => {
     if (!logged) return;
@@ -148,6 +161,7 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
                 setWeight(e.target.value);
               }}
               onBlur={commitEdit}
+              onKeyDown={onEnter}
             />
           </td>
         ) : (
@@ -165,6 +179,7 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
               setReps(e.target.value);
             }}
             onBlur={commitEdit}
+            onKeyDown={onEnter}
           />
         </td>
         <td style={{ width: 60 }}>

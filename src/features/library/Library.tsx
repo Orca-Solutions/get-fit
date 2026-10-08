@@ -29,7 +29,7 @@ export default function Library() {
           <button key={g} className={`chip ${group === g ? 'on' : ''}`} style={{ width: 'auto', height: 'auto', borderRadius: 999 }} onClick={() => setGroup(g)}>{g}</button>
         ))}
       </div>
-      <ul className="list card">
+      <ul className="list card lib">
         {list.map((e) => {
           const f = flagById.get(e.id);
           return (
@@ -38,7 +38,7 @@ export default function Library() {
                 {e.images[0] ? <img className="photo" style={{ width: 44, height: 44 }} src={`/${e.images[0]}`} alt="" loading="lazy" /> : <span className="photo" style={{ width: 44, height: 44 }} />}
                 <span className="grow">
                   <div className="ellipsis">{e.name}{f?.favourite ? ' ★' : ''}</div>
-                  <div className="small muted ellipsis">{e.primaryMuscles.join(', ')}{f?.avoid ? ' · avoided' : f?.unavailable ? " · can't do here" : ''}</div>
+                  <div className="small muted ellipsis">{e.primaryMuscles.join(', ')}{f?.avoid ? ' · avoided' : f?.unavailable ? " · can't do" : f?.unavailableAt?.length ? ` · not at ${f.unavailableAt.map((l) => (l === 'gym' ? 'the gym' : 'home')).join(' or ')}` : ''}</div>
                 </span>
               </Link>
             </li>

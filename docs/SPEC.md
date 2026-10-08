@@ -67,7 +67,7 @@ Out of scope: meal planning, running (jason's daily morning run stays as it is),
 - Shows today's planned workout with a sets-done progress bar. On a rest day it shows "Rest day" with the next session ("Fri · Upper B") and a button to pull it forward to today.
 - Each row: movement, planned sets × reps (or seconds) and status (not started, partial, done). Eight rows fit on an iPhone screen without scrolling.
 - Tapping a row jumps straight to that movement's logging screen. "Start/Resume" goes to the first unfinished one.
-- Can log on a different day than planned (do Monday's legs on Tuesday); the session records the real date and the calendar shows it as done late, not missed.
+- Can log on a different day than planned (do Wednesday's legs on Thursday); the session records the real date and the calendar shows it as done late, not missed.
 
 ### 2.2 Movement logging screen (the core screen)
 
@@ -174,7 +174,7 @@ Browse and search the exercise DB by muscle group, movement pattern, and equipme
 
 ### 2.7 Settings
 
-Profile (height, current bodyweight, units: lb default), weekly schedule (Mon legs, Wed upper A, Fri upper B, weekend core; editable), equipment by location (gym: everything; home: resistance bands, bodyweight, kettlebells), **my bands** (set up once: name or colour of each band, ordered lightest to heaviest; the first band movement prompts for this if the list is empty), other training preferences the generator needs (owned by the periodization thread: session length), rest timer on/off, export/import JSON backup, sync token and "last synced" time (see §4).
+Profile (height, current bodyweight, units: lb default), weekly schedule (Mon upper A, Wed legs, Fri upper B, weekend core; editable), equipment by location (gym: everything; home: resistance bands, bodyweight, kettlebells), **my bands** (set up once: name or colour of each band, ordered lightest to heaviest; the first band movement prompts for this if the list is empty), other training preferences the generator needs (owned by the periodization thread: session length), rest timer on/off, export/import JSON backup, sync token and "last synced" time (see §4).
 
 ---
 
@@ -266,8 +266,8 @@ jason chose a small backend, on Railway like his personal treasury app. The phon
                                                  └─────────────────────────┘
 ```
 
-- **Logging never waits on the network.** Sets save on the phone instantly; sync runs in the background on app open, after each ticked set when there's signal, and at "Finish". At the gym with no signal, nothing changes until you're back online.
-- **Sync protocol:** every record already has `id`, `updatedAt` and `deletedAt` (§3). The phone pushes records changed since its last sync and pulls records the server has that are newer. Last write wins per record, which is fine for one person. A laptop browser opening the same URL gets the full history.
+- **Logging never waits on the network.** Sets save on the phone instantly; sync runs in the background on app open, when the app comes back into view or focus, when the network returns, every minute while it's open, after each ticked set when there's signal, and at "Finish". It also pulls before generating or regenerating a block, so a device never plans from stale data. Plain polling is enough for one person's devices; no websockets or queues. At the gym with no signal, nothing changes until you're back online.
+- **Sync protocol:** every record already has `id`, `updatedAt` and `deletedAt` (§3). The phone pushes records changed since its last sync and pulls records the server has that are newer. Last write wins per record, which is fine for one person. A laptop browser opening the same URL gets the full history. A device's first sync pulls before it pushes: if the server already has a plan, it replaces the plan that device generated on its own, so devices never end up with overlapping blocks; that device's logged sets are kept and pushed. Block, workout and session ids come from dates and planned workouts, so two devices that generate the same block or open the same workout before syncing write the same records instead of duplicates.
 - **Auth:** one long secret token, entered once on each device and stored there; the API rejects anything without it. No accounts or passwords.
 - **Database:** SQLite on a Railway volume, inside the same service as the API. One service, one bill line, and the database is a single file that's easy to back up. (Railway's Postgres works too, but it's a second always-on service for no benefit at this size.)
 - **Cost:** Railway bills by usage. The Hobby plan is $5/month and includes $5 of usage, which a one-user service fits inside. The Free plan ($1/month of credit, 0.5 GB RAM after the trial) is probably tight for an always-on service. If jason's treasury app is already on Hobby, this adds little or nothing. ([Railway pricing](https://railway.com/pricing), checked 2026-10-07.)
@@ -334,7 +334,7 @@ substitutes(exerciseId, exercises, context): Exercise[]   // powers the Swap but
 - Suggested split (for that thread to confirm): `generateBlock` decides the *structure* up front (which muscles, patterns, rep schemes on which days); `resolveLoads` picks *weights* a week at a time from real logs, so the plan adapts when you lift more or less than planned.
 - **Weights aren't shown as targets.** jason wants the weight field blank because the right weight depends on the rep target. The generator can still compute `targetWeight` for its own progression logic, but the UI shows only a "last time at this rep count" hint from the logs. With no history the hint is simply absent and the first logged sets become the baseline.
 - Each `Block` and `PlannedWorkout` carries a one-line `rationale` that the Today screen shows, so the "strange" variation is explained rather than mysterious.
-- jason has set the schedule: legs Monday, two largely non-overlapping upper days Wednesday and Friday (arms split across them, as AnatolyFit did), core on the weekend, 6–8 movements and 12–22 sets per session. The generator fills those slots and stamps each `PlannedWorkout` with its date and `sessionType`; the calendar renders them. Core day is at home, so the generator must pick its movements from `equipmentByLocation.home` only.
+- jason has set the schedule: legs Wednesday (moved from Monday on 2026-10-08 so a Sunday long run doesn't precede it), two largely non-overlapping upper days Monday and Friday (arms split across them, as AnatolyFit did), core on the weekend, 6–8 movements and 12–22 sets per session. The generator fills those slots and stamps each `PlannedWorkout` with its date and `sessionType`; the calendar renders them. Core day is at home, so the generator must pick its movements from `equipmentByLocation.home` only.
 - Other prefs (session length, how the daily 2-mile run affects leg work) are that thread's questions to ask; the app just stores the answers.
 
 ---

@@ -55,6 +55,8 @@ export default function CalendarView() {
         </div>
       </div>
 
+      <div className="cal-wrap">
+      <div className="cal-main">
       {mode === 'month' ? (
         <div className="cal">
           {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((h) => <div className="h" key={h}>{h}</div>)}
@@ -100,6 +102,8 @@ export default function CalendarView() {
         <span>shaded = deload week · green edge = new block</span>
       </div>
 
+      </div>
+      <div className="cal-side">
       {selected && (
         <div className="card">
           <div className="muted small">{formatShort(selected)}</div>
@@ -132,6 +136,8 @@ export default function CalendarView() {
           ))}
         </div>
       )}
+      </div>
+      </div>
     </>
   );
 }

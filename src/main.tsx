@@ -1,20 +1,20 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { registerSW } from 'virtual:pwa-register';
 import App from './App';
-import { ensurePlan, getProfile } from './db/repo';
-import { syncNow } from './lib/sync';
+import { getProfile } from './db/repo';
+import { startAutoSync } from './lib/sync';
+import { registerUpdates } from './lib/update';
 import './styles.css';
 
-registerSW({ immediate: true });
+registerUpdates();
 
 async function boot() {
   // Ask iOS/Chrome not to evict our data. Home-screen apps are exempt anyway; this is belt and braces.
   navigator.storage?.persist?.().catch(() => {});
-  await syncNow().catch(() => {});
-  await getProfile();
-  await ensurePlan();
+  // Render straight away: syncing and planning run from App, so weak signal or a planning error never
+  // leaves a blank screen.
+  await getProfile().catch(() => {});
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <BrowserRouter>
@@ -22,8 +22,7 @@ async function boot() {
       </BrowserRouter>
     </StrictMode>,
   );
-  window.addEventListener('online', () => syncNow());
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && syncNow());
+  startAutoSync();
 }
 
 boot();

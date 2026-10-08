@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import catalog from '../src/data/exercises.json';
+import { BANDS, groupOf, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
 import { e1rm, effectiveLoad, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
 import { defaultProfile } from '../src/lib/defaultProfile';
+import { addDays } from '../src/lib/dates';
 import { parseKettlebells } from '../src/lib/kettlebells';
 import type { Exercise, LoggedSet, PlannedWorkout } from '../src/types';
 
@@ -20,17 +22,17 @@ const lifts = (ws: PlannedWorkout[]) => ws.filter((w) => w.sessionType !== 'core
 describe('generateBlock: block 1', () => {
   const { block, workouts, coverage } = gen();
 
-  it('places 4 weeks of Mon/Wed/Fri lifting and a Sat–Sun core window', () => {
+  it('places 4 weeks of Mon/Wed/Fri lifting (legs midweek) and a Sat–Sun core window', () => {
     expect(workouts).toHaveLength(16);
     expect(workouts.slice(0, 4).map((w) => [w.date, w.sessionType])).toEqual([
-      ['2026-10-12', 'legs'],
-      ['2026-10-14', 'chest-biceps'],
+      ['2026-10-12', 'chest-biceps'],
+      ['2026-10-14', 'legs'],
       ['2026-10-16', 'back-tri-shoulders'],
       ['2026-10-17', 'core'],
     ]);
     expect(workouts[3].windowEnd).toBe('2026-10-18');
     expect(block.index).toBe(1);
-    expect(block.focusMuscle).toBe('side-delts');
+    expect(block.rationale).toContain('same sets per muscle');
   });
 
   it('rotates zones by one day each week, then deloads', () => {
@@ -38,6 +40,8 @@ describe('generateBlock: block 1', () => {
     expect(zones('legs')).toEqual(['H', 'M', 'L', 'deload']);
     expect(zones('chest-biceps')).toEqual(['M', 'L', 'H', 'deload']);
     expect(zones('back-tri-shoulders')).toEqual(['L', 'H', 'M', 'deload']);
+    // Each loading week has one heavy, one moderate and one light lifting day.
+    for (let week = 0; week < 3; week++) expect(lifts(workouts).filter((w) => w.weekIndex === week).map((w) => w.zone).sort()).toEqual(['H', 'L', 'M']);
   });
 
   it('keeps every lifting session to 6–8 movements and 12–22 sets', () => {
@@ -53,9 +57,10 @@ describe('generateBlock: block 1', () => {
   it('shapes heavy, moderate and light days differently', () => {
     const legs = workouts.filter((w) => w.sessionType === 'legs');
     const [h, m, l, d] = legs;
+    // Variety slots: none on heavy days, up to 1 on moderate and 2 on light days, filled by need.
     expect(h.exercises.filter((e) => e.role === 'V')).toHaveLength(0);
-    expect(m.exercises.filter((e) => e.role === 'V')).toHaveLength(1);
-    expect(l.exercises.filter((e) => e.role === 'V')).toHaveLength(2);
+    expect(m.exercises.filter((e) => e.role === 'V').length).toBeLessThanOrEqual(1);
+    expect(l.exercises.filter((e) => e.role === 'V').length).toBeLessThanOrEqual(2);
     expect(h.exercises[0].sets[0].targetReps).toEqual({ min: 6, max: 8 });
     expect(m.exercises[0].sets[0].targetReps).toEqual({ min: 8, max: 12 });
     expect(d.exercises).toHaveLength(6);
@@ -116,22 +121,39 @@ describe('generateBlock: block 1', () => {
     }
   });
 
-  it('meets the weekly floors and the block average for major muscles', () => {
+  it('keeps every muscle inside its weekly band in every loading week', () => {
     expect(coverage.warnings).toEqual([]);
-    for (const g of ['quads', 'glutes-hamstrings', 'chest', 'back', 'side-delts', 'biceps', 'triceps'] as const) {
-      expect(coverage.average[g], g).toBeGreaterThanOrEqual(6);
-    }
+    expect(coverage.under).toEqual([]);
+    expect(coverage.over).toEqual([]);
   });
 
-  it('gives the focus muscle (side delts) a variety slot on moderate and light days', () => {
-    const fri = workouts.filter((w) => w.sessionType === 'back-tri-shoulders' && (w.zone === 'M' || w.zone === 'L'));
-    for (const w of fri) expect(w.exercises.some((e) => e.role === 'V' && e.note?.startsWith('Focus'))).toBe(true);
+  it('adds a third chest press on Monday and a second back compound on Friday, each from a new family', () => {
+    const fam = (key: string) => byId.get(block.baseSlots[key])!;
+    const press = fam('chest-biceps|chest:v:press-variant');
+    expect(press.loadType).not.toBe('bodyweight');
+    expect([fam('chest-biceps|chest:flat-press').family, fam('chest-biceps|chest:incline-press').family]).not.toContain(press.family);
+    const row = fam('back-tri-shoulders|back:v:row-variant');
+    expect([fam('back-tri-shoulders|back:vertical-pull').family, fam('back-tri-shoulders|back:horizontal-pull').family]).not.toContain(row.family);
+    expect(Object.keys(block.baseSlots)).not.toContain('chest-biceps|biceps:stretch');
+    expect(Object.keys(block.baseSlots)).not.toContain('back-tri-shoulders|triceps:pushdown');
+  });
+
+  it('only gives a variety slot to a muscle still under its band', () => {
+    for (const w of lifts(workouts).filter((w) => !w.isDeload)) {
+      for (const pe of w.exercises.filter((e) => e.role === 'V')) {
+        const ex = byId.get(pe.exerciseId)!;
+        // Without this movement, each banded main muscle it trains sat under the band's floor.
+        for (const g of ex.primaryMuscles.map(groupOf).filter((g): g is CoverageGroup => !!g && !!BANDS[g])) {
+          expect(coverage.weeks[w.weekIndex][g] - pe.sets.length, `${ex.id} on ${w.date}`).toBeLessThan(BANDS[g]![0]);
+        }
+      }
+    }
   });
 
   it('derives ids from dates so two devices generate the same records', () => {
     expect(block.id).toBe('block-2026-10-12');
-    expect(workouts[0].id).toBe('w-2026-10-12-legs');
-    expect(workouts[0].exercises[1].id).toBe('w-2026-10-12-legs-1');
+    expect(workouts[0].id).toBe('w-2026-10-12-chest-biceps');
+    expect(workouts[0].exercises[1].id).toBe('w-2026-10-12-chest-biceps-1');
     expect(new Set(workouts.flatMap((w) => w.exercises.map((e) => e.id))).size).toBe(workouts.reduce((n, w) => n + w.exercises.length, 0));
   });
 
@@ -152,9 +174,8 @@ describe('generateBlock: later blocks', () => {
   const b2 = gen({ previousBlock: b1.block, startDate: '2026-11-09' });
   const b3 = gen({ previousBlock: b2.block, startDate: '2026-12-07' });
 
-  it('rotates one or two base slots per lifting day and moves the focus', () => {
+  it('rotates one or two base slots per lifting day', () => {
     expect(b2.block.index).toBe(2);
-    expect(b2.block.focusMuscle).toBe('chest');
     for (const type of ['legs', 'chest-biceps', 'back-tri-shoulders']) {
       const keys = Object.keys(b1.block.baseSlots).filter((k) => k.startsWith(`${type}|`));
       const changed = keys.filter((k) => b1.block.baseSlots[k] !== b2.block.baseSlots[k]);
@@ -176,6 +197,13 @@ describe('generateBlock: later blocks', () => {
     expect(heavy1.exercises[0].sets[0].targetReps).toEqual({ min: 6, max: 8 });
   });
 
+  it('keeps every muscle inside its weekly band as blocks rotate', () => {
+    for (const b of [b2, b3]) {
+      expect(b.coverage.under, `block ${b.block.index}`).toEqual([]);
+      expect(b.coverage.over, `block ${b.block.index}`).toEqual([]);
+    }
+  });
+
   it('keeps sessions within 22 sets as volume ramps', () => {
     for (const w of lifts(b3.workouts)) expect(totalSets(w)).toBeLessThanOrEqual(22);
   });
@@ -187,6 +215,54 @@ describe('generateBlock: later blocks', () => {
     const curl = b1.block.baseSlots['chest-biceps|biceps:neutral'];
     const next = gen({ previousBlock: b1.block, startDate: '2026-11-09', stalled: [curl] });
     expect(next.block.baseSlots['chest-biceps|biceps:neutral']).not.toBe(curl);
+  });
+});
+
+describe('generateBlock: flags never stop the plan', () => {
+  const inSlot = (slot: string) => exercises.filter((e) => e.slots.includes(slot as never)).map((e) => e.id);
+  const avoidAll = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, { avoid: true }]));
+
+  it('fills a slot whose whole pool is avoided with a related movement, and says so', () => {
+    const { block, workouts } = gen({ flags: avoidAll(inSlot('legs:knee-flexion')) });
+    const pick = byId.get(block.baseSlots['legs|legs:knee-flexion'])!;
+    expect(inSlot('legs:knee-flexion')).not.toContain(pick.id);
+    expect(pick.primaryMuscles).toContain('hamstrings');
+    expect(block.rationale).toMatch(/Every knee flexion movement is flagged, so .+ fills that slot\./);
+    expect(workouts.filter((w) => w.sessionType === 'legs').every((w) => w.exercises.some((e) => e.exerciseId === pick.id))).toBe(true);
+  });
+
+  it('keeps a flagged movement, with a notice, when nothing related is left', () => {
+    const hamstrings = exercises.filter((e) => e.primaryMuscles.includes('hamstrings')).map((e) => e.id);
+    const { block } = gen({ flags: avoidAll(hamstrings) });
+    expect(inSlot('legs:knee-flexion')).toContain(block.baseSlots['legs|legs:knee-flexion']);
+    expect(block.rationale).toMatch(/nothing similar is left, so .+ stays in/);
+  });
+
+  it('does the same for an emptied core pool at home', () => {
+    const { block } = gen({ flags: avoidAll(inSlot('core:hip-flexion')) });
+    expect(block.baseSlots['core|core:hip-flexion']).toBeTruthy();
+    expect(block.rationale).toContain('Every hip flexion movement is flagged');
+  });
+
+  it("applies can't-do-here only where it was set", () => {
+    const core = gen().block.baseSlots['core|core:anti-extension'];
+    // Marked as not possible at the gym: still fine for the home core day.
+    expect(gen({ flags: { [core]: { unavailableAt: ['gym'] } } }).block.baseSlots['core|core:anti-extension']).toBe(core);
+    expect(gen({ flags: { [core]: { unavailableAt: ['home'] } } }).block.baseSlots['core|core:anti-extension']).not.toBe(core);
+  });
+});
+
+describe('generateBlock: weekly bands over many blocks', () => {
+  // TODO: from block 6 Friday runs out of room (back 8 one week, triceps 10.5, rear delts about 2 from
+  // block 8). Expected to fail until that's fixed; it.fails turns red once it passes, as a reminder.
+  it.fails('keeps every muscle inside its weekly band for 10 chained blocks', () => {
+    let prev = gen().block;
+    for (let i = 2; i <= 10; i++) {
+      const next = gen({ previousBlock: prev, startDate: addDays(prev.startDate, 28) });
+      expect(next.coverage.under, `block ${i}`).toEqual([]);
+      expect(next.coverage.over, `block ${i}`).toEqual([]);
+      prev = next.block;
+    }
   });
 });
 

@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { ensurePlan } from './db/repo';
+import { planAfterSync } from './db/repo';
+import { syncNow } from './lib/sync';
+import { applyUpdate, useUpdateReady } from './lib/update';
 import { useToday } from './lib/hooks';
 import Today from './features/today/Today';
 import Workout from './features/workout/Workout';
@@ -13,17 +15,27 @@ import Settings from './features/settings/Settings';
 import PlanPreview from './features/plan/PlanPreview';
 import { Icon } from './ui/Icon';
 
+const PLAN_SYNC_WAIT_MS = 4_000;
+
 export default function App() {
   const { pathname } = useLocation();
   const inWorkout = pathname.startsWith('/workout/');
   const today = useToday();
-  // An installed app can stay in memory for days: roll into the next block when the date moves on.
+  const updateReady = useUpdateReady();
+  // On open, and when the date moves on (an installed app can stay in memory for days): pull what other
+  // devices logged, then make sure the current and next block exist (see planAfterSync).
   useEffect(() => {
-    ensurePlan(today).catch(() => {});
+    planAfterSync(syncNow(), today, PLAN_SYNC_WAIT_MS).catch((err) => console.error('Planning failed', err));
   }, [today]);
   return (
     <>
       <div className={inWorkout ? 'app no-nav' : 'app'}>
+        {updateReady && !inWorkout && (
+          <div className="update-bar">
+            <span>A new version is ready.</span>
+            <button className="btn small primary" onClick={applyUpdate}>Update</button>
+          </div>
+        )}
         <Routes>
           <Route path="/" element={<Today />} />
           <Route path="/workout/:plannedId" element={<Workout />} />
@@ -39,6 +51,7 @@ export default function App() {
       </div>
       {!inWorkout && (
         <nav className="nav">
+          <div className="nav-brand">get-fit</div>
           <NavLink to="/" end><Icon name="today" />Today</NavLink>
           <NavLink to="/calendar"><Icon name="calendar" />Calendar</NavLink>
           <NavLink to="/history"><Icon name="history" />History</NavLink>

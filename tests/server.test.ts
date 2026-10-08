@@ -49,17 +49,33 @@ describe('auth', () => {
 });
 
 describe('validation', () => {
-  it('rejects unknown tables, bad ids, bad dates, bad cursors and junk bodies', async () => {
+  it('rejects bad cursors and junk bodies', async () => {
     const { sync } = setup();
-    const bad = [
-      { cursor: 0, changes: [{ table: 'meta', record: rec('a', '2026-10-01T10:00:00.000Z') }] },
-      { cursor: 0, changes: [{ table: 'sessions', record: { ...rec('a', '2026-10-01T10:00:00.000Z'), id: 5 } }] },
-      { cursor: 0, changes: [{ table: 'sessions', record: rec('a', 'yesterday') }] },
-      { cursor: -1, changes: [] },
-      { cursor: 0, changes: 'nope' },
-      'not json',
-    ];
+    const bad = [{ cursor: -1, changes: [] }, { cursor: 0, changes: 'nope' }, 'not json'];
     for (const body of bad) expect((await sync(body)).status).toBe(400);
+  });
+
+  it('skips malformed changes (unknown table, bad id, bad date) but stores the rest of the batch', async () => {
+    const { sync, db } = setup();
+    const res = await sync({
+      cursor: 0,
+      changes: [
+        { table: 'meta', record: rec('a', '2026-10-01T10:00:00.000Z') },
+        { table: 'sessions', record: { ...rec('a', '2026-10-01T10:00:00.000Z'), id: 5 } },
+        { table: 'sessions', record: rec('b', 'yesterday') },
+        { table: 'loggedSets', record: rec('good', '2026-10-01T10:00:00.000Z') },
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ accepted: 1, rejected: 3 });
+    expect(db.exportAll().loggedSets.map((r) => r.id)).toEqual(['good']);
+  });
+
+  it('sends security headers', async () => {
+    const { app } = setup();
+    const res = await app.request('/api/health');
+    expect(res.headers.get('Strict-Transport-Security')).toContain('max-age=');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
   });
 
   it('caps the number of changes and the body size', async () => {
@@ -142,6 +158,40 @@ describe('pull', () => {
     const res = await (await sync({ cursor: 50, changes: [] })).json();
     expect(res).toMatchObject({ reset: true, cursor: 1 });
     expect(res.changes).toHaveLength(1);
+  });
+
+  it('starts a new epoch when it no longer has the record a client last pulled', async () => {
+    const { sync } = setup();
+    const first = await (await sync({ cursor: 0, changes: [{ table: 'sessions', record: rec('s1', '2026-10-01T10:00:00.000Z') }, { table: 'sessions', record: rec('s2', '2026-10-01T11:00:00.000Z') }] })).json();
+    const pulled = await (await sync({ cursor: 0, changes: [] })).json();
+    expect(pulled.cursorKey).toEqual({ table: 'sessions', id: 's2', updatedAt: '2026-10-01T11:00:00.000Z' });
+
+    // Same or newer version still here: carry on.
+    const ok = await (await sync({ cursor: pulled.cursor, cursorKey: pulled.cursorKey, changes: [] })).json();
+    expect(ok).toMatchObject({ reset: false, epoch: first.epoch });
+    // A version the server doesn't have (it was restored from before it): new epoch, everyone re-syncs.
+    const behind = await (await sync({ cursor: 1, cursorKey: { table: 'sessions', id: 's3', updatedAt: '2026-10-01T12:00:00.000Z' }, changes: [] })).json();
+    expect(behind.reset).toBe(true);
+    expect(behind.epoch).not.toBe(first.epoch);
+    // Another device still on the old epoch re-syncs on its own; it doesn't start yet another epoch.
+    const other = await (await sync({ cursor: 1, epoch: first.epoch, cursorKey: { table: 'sessions', id: 's3', updatedAt: '2026-10-01T12:00:00.000Z' }, changes: [] })).json();
+    expect(other.epoch).toBe(behind.epoch);
+  });
+});
+
+describe('planned restore', () => {
+  it('starts a new epoch once for each new SYNC_EPOCH_RESET value', () => {
+    const db = openStore(':memory:');
+    const start = db.epoch;
+    expect(db.resetEpochOnce(undefined)).toBe(false);
+    expect(db.resetEpochOnce('2026-10-08')).toBe(true);
+    const after = db.epoch;
+    expect(after).not.toBe(start);
+    // Later restarts with the same value leave it alone; a new value rotates again.
+    expect(db.resetEpochOnce('2026-10-08')).toBe(false);
+    expect(db.epoch).toBe(after);
+    expect(db.resetEpochOnce('2026-11-01')).toBe(true);
+    expect(db.epoch).not.toBe(after);
   });
 });
 

@@ -1,6 +1,11 @@
 import 'fake-indexeddb/auto';
+import { copyFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GetFitDB } from '../src/db/db';
+import { ensurePlan, getProfile, liveBlocks, logSet, regenerateUpcoming, setFlagIn, startSession, updateSession } from '../src/db/repo';
+import { movementFor } from '../src/lib/session';
 import { getSyncStatus, setSyncToken, syncNow } from '../src/lib/sync';
 import { createApp } from '../server/app';
 import { openStore } from '../server/store';
@@ -52,6 +57,168 @@ describe('syncNow', () => {
     const status = await getSyncStatus(laptop.db);
     expect(status).toMatchObject({ configured: true, syncing: false, lastError: null });
     expect(status.lastSyncedAt).toBeTruthy();
+  });
+
+  it('gives a new device the full plan and history, and keeps its own logs', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const phoneBlock = await ensurePlan('2026-10-14', phone.db);
+    const legs = (await phone.db.plannedWorkouts.where('blockId').equals(phoneBlock.id).toArray()).find((w) => w.sessionType === 'legs')!;
+    await logSet(await startSession(legs.id, legs.date, phone.db), legs.exercises[0].exerciseId, legs.exercises[0].id, 0, { weight: 95, reps: 8 }, phone.db);
+    await phone.sync();
+
+    // The laptop was opened a week later before sync was set up, so it planned its own block from that Monday, and logged a set.
+    const laptop = await makeDevice(server.fetch, null);
+    const own = await ensurePlan('2026-10-21', laptop.db);
+    expect(own.startDate).toBe('2026-10-19');
+    const ownWorkout = (await laptop.db.plannedWorkouts.where('blockId').equals(own.id).toArray())[0];
+    await logSet(await startSession(ownWorkout.id, ownWorkout.date, laptop.db), ownWorkout.exercises[0].exerciseId, null, 0, { weight: 40, reps: 12 }, laptop.db);
+    await setSyncToken(TOKEN, laptop.db);
+    expect(await laptop.sync()).toMatchObject({ ok: true });
+
+    // The laptop now follows the phone's plan, with the phone's history, and its own set survives.
+    expect((await liveBlocks(laptop.db)).map((b) => b.id)).toEqual((await liveBlocks(phone.db)).map((b) => b.id));
+    expect((await ensurePlan('2026-10-21', laptop.db)).id).toBe(phoneBlock.id);
+    expect(await laptop.db.plannedWorkouts.get(legs.id)).toEqual(await phone.db.plannedWorkouts.get(legs.id));
+    expect((await laptop.db.loggedSets.toArray()).map((s) => s.weight).sort()).toEqual([40, 95]);
+
+    // The phone's plan is untouched by the laptop, and it gets the laptop's set.
+    await phone.sync();
+    expect((await liveBlocks(phone.db)).map((b) => b.id)).toEqual([phoneBlock.id, 'block-2026-11-09']);
+    expect((await phone.db.loggedSets.toArray()).map((s) => s.weight).sort()).toEqual([40, 95]);
+  });
+
+  it('keeps every set when two devices log the same workout before syncing', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    const block = await ensurePlan('2026-10-14', phone.db);
+    await phone.sync();
+    await laptop.sync();
+    const w = (await laptop.db.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((x) => x.sessionType === 'legs')!;
+    const [a, b] = [w.exercises[0], w.exercises[1]];
+    await logSet(await startSession(w.id, w.date, phone.db), a.exerciseId, a.id, 0, { weight: 95, reps: 8 }, phone.db);
+    await logSet(await startSession(w.id, w.date, laptop.db), b.exerciseId, b.id, 0, { weight: 60, reps: 10 }, laptop.db);
+    await phone.sync();
+    await laptop.sync();
+    await phone.sync();
+    for (const d of [phone.db, laptop.db]) {
+      expect(await d.sessions.count()).toBe(1);
+      expect((await d.loggedSets.toArray()).map((s) => s.weight).sort()).toEqual([60, 95]);
+    }
+  });
+
+  it('keeps sets logged offline mid-workout and uploads them once back online', async () => {
+    const server = makeServer();
+    let online = false;
+    const flaky = ((input: RequestInfo | URL, init?: RequestInit) => (online ? server.fetch(input, init) : Promise.reject(new TypeError('Failed to fetch')))) as typeof fetch;
+    const phone = await makeDevice(flaky);
+    const laptop = await makeDevice(server.fetch);
+    // An older copy of set l1 already sits on the server (e.g. logged on the laptop earlier).
+    await laptop.db.loggedSets.put(loggedSet('l1', 6, at(-60_000)));
+    await laptop.sync();
+
+    // At the gym with no signal: the phone edits l1 and logs two new sets; every sync attempt fails.
+    await phone.db.loggedSets.bulkPut([loggedSet('l1', 10, at(-1_000)), loggedSet('l2', 9), loggedSet('l3', 8)]);
+    expect(await phone.sync()).toEqual({ ok: false, error: 'Failed to fetch' });
+    vi.stubGlobal('navigator', { onLine: false });
+    expect(await phone.sync()).toMatchObject({ ok: false, skipped: 'offline' });
+    vi.unstubAllGlobals();
+    expect((await phone.db.loggedSets.toArray()).map((s) => s.reps).sort()).toEqual([10, 8, 9].sort());
+
+    // Back online: the queued sets upload, and pulling the server's older l1 doesn't overwrite the phone's edit.
+    online = true;
+    expect(await phone.sync()).toMatchObject({ ok: true, pushed: 3 });
+    expect((await phone.db.loggedSets.get('l1'))?.reps).toBe(10);
+    await laptop.sync();
+    expect((await laptop.db.loggedSets.orderBy('id').toArray()).map((s) => [s.id, s.reps])).toEqual([['l1', 10], ['l2', 9], ['l3', 8]]);
+  });
+
+  it("never lets a plan rebuilt on another device hide sets logged here", async () => {
+    const server = makeServer();
+    let online = true;
+    const flaky = ((input: RequestInfo | URL, init?: RequestInit) => (online ? server.fetch(input, init) : Promise.reject(new TypeError('Failed to fetch')))) as typeof fetch;
+    const phone = await makeDevice(flaky);
+    const laptop = await makeDevice(server.fetch);
+    const block = await ensurePlan('2026-10-14', phone.db);
+    await phone.sync();
+    await laptop.sync();
+    const legs = (await phone.db.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((w) => w.sessionType === 'legs')!;
+    const squat = legs.exercises[0];
+
+    // Phone at the gym, offline: logs a squat set. Laptop flags the squat and regenerates.
+    online = false;
+    const s = await startSession(legs.id, legs.date, phone.db);
+    await logSet(s, squat.exerciseId, squat.id, 0, { weight: 95, reps: 8 }, phone.db);
+    await setFlagIn(laptop.db, squat.exerciseId, { avoid: true });
+    await regenerateUpcoming(legs.date, laptop.db);
+    await laptop.sync();
+    const rebuilt = (await laptop.db.plannedWorkouts.get(legs.id))!;
+    expect(rebuilt.exercises[0].exerciseId).not.toBe(squat.exerciseId);
+
+    // Phone back online: its workout in progress keeps its plan, and the laptop shows the squat set in slot 1.
+    online = true;
+    await phone.sync();
+    await laptop.sync();
+    expect((await phone.db.plannedWorkouts.get(legs.id))!.exercises[0].exerciseId).toBe(squat.exerciseId);
+    const laptopSets = await laptop.db.loggedSets.toArray();
+    const laptopSession = await laptop.db.sessions.get(s.id);
+    expect(movementFor(rebuilt.exercises[0], laptopSession, laptopSets)).toBe(squat.exerciseId);
+  });
+
+  it('merges a swap made on one device with a note written on another', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    const block = await ensurePlan('2026-10-14', phone.db);
+    const w = (await phone.db.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((x) => x.sessionType === 'legs')!;
+    const s = await startSession(w.id, w.date, phone.db);
+    await phone.sync();
+    await laptop.sync();
+
+    await updateSession(s.id, { swaps: { [w.exercises[1].id]: 'leg-press' } }, phone.db);
+    await new Promise((r) => setTimeout(r, 5));
+    await updateSession(s.id, { notes: 'knee felt fine' }, laptop.db);
+    await laptop.sync();
+    await phone.sync();
+    await laptop.sync();
+    for (const d of [phone.db, laptop.db]) {
+      const merged = (await d.sessions.get(s.id))!;
+      expect(merged.swaps).toEqual({ [w.exercises[1].id]: 'leg-press' });
+      expect(merged.notes).toBe('knee felt fine');
+    }
+  });
+
+  it('counts the same set logged on two devices before syncing once', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    const block = await ensurePlan('2026-10-14', phone.db);
+    await phone.sync();
+    await laptop.sync();
+    const w = (await laptop.db.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((x) => x.sessionType === 'legs')!;
+    const pe = w.exercises[0];
+    await logSet(await startSession(w.id, w.date, phone.db), pe.exerciseId, pe.id, 0, { weight: 95, reps: 8 }, phone.db);
+    await new Promise((r) => setTimeout(r, 5));
+    await logSet(await startSession(w.id, w.date, laptop.db), pe.exerciseId, pe.id, 0, { weight: 95, reps: 9 }, laptop.db);
+    await phone.sync();
+    await laptop.sync();
+    await phone.sync();
+    for (const d of [phone.db, laptop.db]) {
+      const sets = (await d.loggedSets.toArray()).filter((x) => !x.deletedAt);
+      expect(sets.map((x) => x.reps)).toEqual([9]);
+    }
+  });
+
+  it('agrees on when tracking started, so missed days match across devices', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    await phone.db.profile.put({ ...(await getProfile(phone.db)), createdAt: '2026-10-07T08:00:00.000Z' });
+    await getProfile(laptop.db); // set up later, with its own (later) createdAt and an untouched profile
+    await phone.sync();
+    await laptop.sync();
+    expect((await getProfile(laptop.db)).createdAt).toBe('2026-10-07T08:00:00.000Z');
   });
 
   it('resolves conflicts by last write wins', async () => {
@@ -160,6 +327,78 @@ describe('syncNow', () => {
     expect(await phone.db.loggedSets.count()).toBe(4);
   });
 
+  it('recovers every record when the server is restored from an older backup', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'get-fit-restore-'));
+    const file = join(dir, 'get-fit.sqlite');
+    let store = openStore(file);
+    let app = createApp({ db: store, token: TOKEN });
+    const fetchShim = ((input: RequestInfo | URL, init?: RequestInit) => app.request(String(input), init)) as typeof fetch;
+    const phone = await makeDevice(fetchShim);
+    const laptop = await makeDevice(fetchShim);
+    const setOn = (id: string, idx: number) => ({ ...loggedSet(id, 8), setIndex: idx });
+
+    await phone.db.loggedSets.put(setOn('a', 0));
+    await phone.sync();
+    await laptop.sync();
+
+    // Nightly backup of the volume.
+    store.close();
+    copyFileSync(file, join(dir, 'backup.sqlite'));
+    store = openStore(file);
+    app = createApp({ db: store, token: TOKEN });
+
+    // The phone logs set b and syncs it; then the volume is restored from last night's backup.
+    await phone.db.loggedSets.put(setOn('b', 1));
+    await phone.sync();
+    store.close();
+    copyFileSync(join(dir, 'backup.sqlite'), file);
+    rmSync(`${file}-wal`, { force: true });
+    rmSync(`${file}-shm`, { force: true });
+    store = openStore(file);
+    app = createApp({ db: store, token: TOKEN });
+
+    // The laptop gets back first and logs set c; then the phone returns.
+    await laptop.db.loggedSets.put(setOn('c', 2));
+    await laptop.sync();
+    await phone.sync();
+    await laptop.sync();
+
+    const ids = async (d: GetFitDB) => (await d.loggedSets.toArray()).map((s) => s.id).sort();
+    expect(await ids(phone.db)).toEqual(['a', 'b', 'c']);
+    expect(await ids(laptop.db)).toEqual(['a', 'b', 'c']);
+    expect(store.exportAll().loggedSets.map((s) => s.id).sort()).toEqual(['a', 'b', 'c']);
+    store.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('never uploads damaged local records, and repairs them from the server', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    await phone.db.sessions.put(session('s1', 'good'));
+    await phone.sync();
+    await laptop.sync();
+
+    // The laptop's copy gets damaged (newer timestamp, missing fields), and it also has a damaged
+    // record of its own; then the server's epoch changes, so it re-uploads everything it has.
+    const { date: _drop, ...broken } = session('s1', 'broken', at(60_000));
+    await laptop.db.sessions.put(broken as never);
+    await laptop.db.sessions.put({ id: 'junk', updatedAt: at(), createdAt: at(), deletedAt: null } as never);
+    await laptop.db.meta.put({ key: 'serverEpoch', value: 'an-older-epoch' });
+    expect((await getSyncStatus(laptop.db)).heldBack).toBe(2);
+    expect((await laptop.sync()).ok).toBe(true);
+    await phone.sync();
+
+    // Nothing damaged reached the server or the phone, and the laptop got the good copy back.
+    const res = await server.app.request('/api/export', { headers: { Authorization: `Bearer ${TOKEN}` } });
+    const exported = (await res.json()).tables.sessions as { id: string; notes: string }[];
+    expect(exported.map((r) => [r.id, r.notes])).toEqual([['s1', 'good']]);
+    expect(await phone.db.sessions.get('junk')).toBeUndefined();
+    expect(await laptop.db.sessions.get('s1')).toMatchObject({ notes: 'good', date: '2026-10-07' });
+    // The repaired record syncs again; the junk with no server copy is still held back, and shown.
+    expect((await getSyncStatus(laptop.db)).heldBack).toBe(1);
+  });
+
   it('skips without a token or when offline, and never throws', async () => {
     const server = makeServer();
     const noToken = await makeDevice(server.fetch, null);
@@ -188,6 +427,7 @@ describe('syncNow', () => {
     const b = phone.sync();
     expect(a).toBe(b);
     await a;
-    expect(calls).toHaveBeenCalledTimes(1);
+    // A first sync pulls once before pushing (joinServer), then pushes once.
+    expect(calls).toHaveBeenCalledTimes(2);
   });
 });

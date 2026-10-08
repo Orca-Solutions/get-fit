@@ -22,10 +22,10 @@ This project is not affiliated with AnatolyFit. It's an independent, from-scratc
 
 - **Today:** the day's generated workout with a one-line reason for its shape, progress, and a jump into logging.
 - **Logging:** one screen per movement. Reps show the plan in grey and typing replaces them; weight starts blank with "last time at this rep count" above it, and carries forward to later sets. ✓ logs whatever is grey. Band movements log band and steps from the anchor; holds log seconds. History for the movement sits right below.
-- **Plan generator:** 4-week blocks (3 loading weeks and a deload). Mon legs, Wed chest and biceps, Fri back, triceps and shoulders, weekend core at home. Each lifting day rotates heavy, moderate and light; lighter days add variety movements and a grip finisher. The rules are written down in [docs/periodization.md](docs/periodization.md) and implemented in [src/generator](src/generator).
+- **Plan generator:** 4-week blocks (3 loading weeks and a deload), always planned one block ahead; a block planned ahead is refreshed from your latest logs on its first day. Mon chest and biceps, Wed legs, Fri back, triceps and shoulders, weekend core at home. Each lifting day rotates heavy, moderate and light; lighter days add variety movements and a grip finisher. The rules are written down in [docs/periodization.md](docs/periodization.md) and implemented in [src/generator](src/generator).
 - **Calendar:** month and week views with done, partial, missed and done-late states, deload weeks shaded.
 - **History and library:** per-movement history with an estimated-1RM trend; about 130 curated movements with start/end photos.
-- **Sync:** the phone is the source of truth and syncs to a small server when it has signal. Export and import JSON from Settings.
+- **Sync:** each device keeps a full offline copy and syncs to a small server when it has signal, so the phone and a desktop browser share one plan and history. Settings › Export my data saves a full JSON backup (restorable, never removes sets) or your logged sets as CSV.
 
 ## Stack
 
@@ -39,7 +39,7 @@ npm run dev          # app on http://localhost:5173 (proxies /api to :3000)
 npm test             # unit tests: generator, progression, sync, server, catalog
 npm run typecheck
 npm run sample       # print a generated block as Markdown
-npm run build && SYNC_TOKEN=dev npm start   # production build on http://localhost:3000
+npm run build && SYNC_TOKEN=$(openssl rand -hex 32) npm start   # production build on http://localhost:3000
 npm run test:e2e     # Playwright at iPhone size against the production build
 ```
 
@@ -50,9 +50,9 @@ The exercise catalog is generated: edit `scripts/curation.ts`, then `npm run bui
 One service from this repo. Build command `npm run build`, start command `npm start`. Add a volume mounted at `/data` and set:
 
 - `DATA_DIR=/data`
-- `SYNC_TOKEN=<a long random string>`; paste the same token into the app's Settings › Sync on each device.
+- `SYNC_TOKEN`: at least 32 random characters, e.g. from `openssl rand -hex 32`. It is the only protection on the API (there's no rate limiting), so never use a short or memorable one. Paste the same token into the app's Settings › Sync on each device.
 
-Then open the service URL on the iPhone in Safari, Share › Add to Home Screen.
+Then open the site on the iPhone in Safari, Share › Add to Home Screen. Domain, Cloudflare, backups, rollout and updates: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Credits
 

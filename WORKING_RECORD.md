@@ -18,4 +18,4 @@
 - Supersets shown as one screen with alternating rows (core day currently steps through each movement in order).
 - Early deload trigger within a block; 10-day-gap load drop in the weight hint.
 - Progression tuning on real logs.
-- Pre-generate the next block during the deload week so the calendar shows it ahead of time.
+- Weekly targets from block 6 on: Friday runs out of room, so back can dip to 8 in one week, triceps reach 10.5 in one week, and from block 8 rear delts sit at 1.5–2 (target 3–5). Blocks 1–5 stay inside every target.

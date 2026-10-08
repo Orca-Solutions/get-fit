@@ -2,7 +2,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
 import { setFlag } from '../../db/repo';
-import { useExercises } from '../../lib/hooks';
+import { useExercises, useProfile } from '../../lib/hooks';
+import type { Location } from '../../types';
 import { Photo } from '../../ui/Photo';
 
 export default function ExerciseDetail() {
@@ -10,8 +11,13 @@ export default function ExerciseDetail() {
   const nav = useNavigate();
   const ex = useExercises().get(exerciseId);
   const flag = useLiveQuery(() => db.exerciseFlags.get(exerciseId), [exerciseId]);
+  const profile = useProfile();
   if (!ex) return <p className="muted">Unknown movement.</p>;
-  const toggle = (k: 'favourite' | 'avoid' | 'unavailable') => setFlag(ex.id, { [k]: !flag?.[k] });
+  const toggle = (k: 'favourite' | 'avoid') => setFlag(ex.id, { [k]: !flag?.[k] });
+  // "Can't do" is per place: the gym might lack a machine you have at home, or the other way round.
+  const places = (['gym', 'home'] as Location[]).filter((l) => ex.equipment.every((q) => profile.equipmentByLocation[l].includes(q)));
+  const blockedAt = flag?.unavailable ? places : (flag?.unavailableAt ?? []);
+  const toggleAt = (l: Location) => setFlag(ex.id, { unavailable: false, unavailableAt: blockedAt.includes(l) ? blockedAt.filter((x) => x !== l) : [...blockedAt, l] });
   return (
     <>
       <div className="topbar">
@@ -32,9 +38,13 @@ export default function ExerciseDetail() {
       <div className="row">
         <button className={`chip ${flag?.favourite ? 'on' : ''}`} onClick={() => toggle('favourite')}>★ Favourite</button>
         <button className={`chip ${flag?.avoid ? 'on' : ''}`} onClick={() => toggle('avoid')}>Avoid</button>
-        <button className={`chip ${flag?.unavailable ? 'on' : ''}`} onClick={() => toggle('unavailable')}>Can't do here</button>
+        {places.map((l) => (
+          <button key={l} className={`chip ${blockedAt.includes(l) ? 'on' : ''}`} onClick={() => toggleAt(l)}>
+            Can't do at {l === 'gym' ? 'the gym' : 'home'}
+          </button>
+        ))}
       </div>
-      <p className="small faint">Avoided and can't-do movements are left out of new plans and swaps. Favourites are picked more often.</p>
+      <p className="small faint">Avoided movements are left out of new plans and swaps everywhere; can't-do ones only at that place. Favourites are picked more often.</p>
       {ex.cues.length > 0 && (
         <div className="card">
           <div className="small muted">Cues</div>

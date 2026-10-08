@@ -7,9 +7,10 @@ import { lastTimeHint, summarizeHistory, fmtNum } from '../../generator/progress
 import { prescription } from '../../lib/format';
 import { useExercises, useProfile, useToday, useWakeLock } from '../../lib/hooks';
 import { Photo } from '../../ui/Photo';
-import type { Exercise, LoggedSet, PlannedExercise } from '../../types';
+import type { Exercise, LoggedSet, PlannedExercise, Session } from '../../types';
 import { HistoryPanel } from './HistoryPanel';
 import { SetRow, type Carry } from './SetRow';
+import { movementFor } from '../../lib/session';
 import { FinishSheet, InfoSheet, SwapSheet } from './WorkoutSheets';
 
 export default function Workout() {
@@ -48,7 +49,7 @@ export default function Workout() {
   if (!workout) return <p className="muted">Workout not found.</p>;
 
   const pe = workout.exercises[index];
-  const actualId = session.swaps?.[pe.id] ?? pe.exerciseId;
+  const actualId = movementFor(pe, session, sessionSets);
   const ex = exercises.get(actualId);
   const plannedTotal = workout.exercises.filter((e) => !session.skipped?.includes(e.id)).reduce((n, e) => n + e.sets.length, 0);
   const isLast = index === workout.exercises.length - 1;
@@ -95,7 +96,7 @@ export default function Workout() {
           {isLast ? (
             <button className="btn primary grow" onClick={() => setSheet('finish')}>Finish</button>
           ) : (
-            <NextButton pe={pe} next={workout.exercises[index + 1]} sets={sessionSets} names={exercises} swaps={session.swaps} onClick={() => go(index + 1)} />
+            <NextButton pe={pe} next={workout.exercises[index + 1]} sets={sessionSets} names={exercises} session={session} onClick={() => go(index + 1)} />
           )}
         </div>
       </div>
@@ -110,9 +111,9 @@ export default function Workout() {
   );
 }
 
-function NextButton({ pe, next, sets, names, swaps, onClick }: { pe: PlannedExercise; next: PlannedExercise; sets: LoggedSet[]; names: Map<string, Exercise>; swaps?: Record<string, string>; onClick: () => void }) {
+function NextButton({ pe, next, sets, names, session, onClick }: { pe: PlannedExercise; next: PlannedExercise; sets: LoggedSet[]; names: Map<string, Exercise>; session: Session; onClick: () => void }) {
   const done = sets.filter((s) => s.plannedExerciseId === pe.id).length >= pe.sets.length;
-  const nextName = names.get(swaps?.[next.id] ?? next.exerciseId)?.name ?? 'next';
+  const nextName = names.get(movementFor(next, session, sets))?.name ?? 'next';
   return (
     <button className={`btn grow ${done ? 'primary' : ''}`} onClick={onClick}>
       {done ? <span className="ellipsis">Next: {nextName} ›</span> : 'Next ›'}
@@ -139,6 +140,8 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
   const hint = lastTimeHint(ex, history, mainTarget, bandName);
   const allDone = mine.length >= pe.sets.length;
   const effort = mine.find((s) => s.effort)?.effort;
+  // The plan is written at block start, so its "first time" advice goes stale once the movement has history.
+  const note = history.length ? pe.note?.replace(/First time:[^.]*\.\s*/, '').trim() : pe.note;
 
   const session = { id: sessionId, date: sessionDate } as Parameters<typeof logSet>[0];
   const carryFor = (i: number): Carry => {
@@ -151,7 +154,8 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
   };
 
   return (
-    <>
+    <div className="logger">
+      <div className="logger-main">
       <div className="row" style={{ alignItems: 'flex-start', marginTop: 8 }}>
         <div className="grow">
           {pe.supersetGroup && <div className="pill">Superset {pe.supersetGroup}</div>}
@@ -163,9 +167,9 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
               {hint.suggest != null && <span className="muted"> · try {fmtNum(hint.suggest)}</span>}
             </div>
           )}
-          {pe.note && <div className="small faint" style={{ marginTop: 4 }}>{pe.note}</div>}
+          {note && <div className="small faint" style={{ marginTop: 4 }}>{note}</div>}
         </div>
-        <Photo ex={ex} />
+        <span className="phone-only"><Photo ex={ex} /></span>
       </div>
 
       <table className="sets">
@@ -214,7 +218,11 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
         </div>
       )}
 
-      <HistoryPanel ex={ex} history={history} profile={profile} limit={rowCount >= 5 ? 2 : 3} />
-    </>
+      </div>
+      <div className="logger-side">
+        <span className="desk-only"><Photo ex={ex} size={220} /></span>
+        <HistoryPanel ex={ex} history={history} profile={profile} limit={rowCount >= 5 ? 2 : 3} />
+      </div>
+    </div>
   );
 }

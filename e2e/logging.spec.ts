@@ -65,6 +65,9 @@ test('sync token connects to the server', async ({ page }) => {
 test('finishing a movement stays on it, and editing a logged set then tapping ✓ keeps it', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Start workout|Do it today/ }).first().click();
+  // Wait for the workout screen: on a rest day the Today screen has its own title ("Rest day").
+  await expect(page).toHaveURL(/\/workout\//);
+  await expect(page.getByRole('button', { name: 'Log set 1' })).toBeVisible();
   const title = await page.locator('.move-title').innerText();
   const rows = await page.getByRole('button', { name: /^Log set \d+$/ }).count();
   for (let i = 1; i <= rows; i++) {
@@ -106,3 +109,44 @@ function storedFirstSet(page: Page) {
       }),
   );
 }
+
+test('opens straight away when the server is unreachable', async ({ page }) => {
+  await page.goto('/settings');
+  await page.getByPlaceholder('Sync token').fill('e2e-token');
+  await page.getByRole('button', { name: 'Connect' }).click();
+  await expect(page.getByText(/Last synced/)).toBeVisible();
+  // Weak gym signal: the browser thinks it's online but sync requests never answer.
+  await page.route('**/api/sync', () => {});
+  await page.goto('/');
+  // The screen is up at once, and the plan shows after a short wait for the sync, not its 30 s timeout.
+  await expect(page.locator('.topbar h1')).toBeVisible({ timeout: 2_000 });
+  await expect(page.locator('.card').first()).not.toHaveText(/Setting up/, { timeout: 8_000 });
+});
+
+test('an edit in progress survives other writes to the workout', async ({ page, context }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Start workout|Do it today/ }).first().click();
+  await expect(page).toHaveURL(/\/workout\//);
+  await expect(page.getByRole('button', { name: 'Log set 1' })).toBeVisible();
+  for (const i of [1, 2]) {
+    const w = page.getByLabel(`Set ${i} weight`);
+    if (await w.isVisible().catch(() => false)) await w.fill('20');
+  }
+  await page.getByRole('button', { name: 'Log set 1' }).click();
+  await expect(page.getByRole('button', { name: 'Undo set 1' })).toBeVisible();
+
+  // Start changing set 1 and leave the cursor there, then save set 2 from another tab (as a sync pull
+  // or a quick tap would): the workout's sets refresh while set 1 is mid-edit.
+  const other = await context.newPage();
+  await other.goto(page.url());
+  const w2 = other.getByLabel('Set 2 weight');
+  if (await w2.isVisible().catch(() => false)) await w2.fill('20');
+  const reps1 = page.getByLabel(/Set 1 (reps|seconds)/);
+  await reps1.fill('4');
+  await expect(reps1).toBeFocused();
+  await other.getByRole('button', { name: 'Log set 2' }).click();
+  await expect(other.getByRole('button', { name: 'Undo set 2' })).toBeVisible();
+
+  await expect(page.getByRole('button', { name: 'Undo set 2' })).toBeVisible();
+  await expect(reps1).toHaveValue('4');
+});

@@ -37,10 +37,10 @@ export type GripType = 'support' | 'crush' | 'pinch' | 'wrist-flexion' | 'wrist-
  * "v:" slots are the variety pools that only appear on moderate and light days.
  */
 export type SlotKey =
-  // Monday: legs
+  // Wednesday: legs
   | 'legs:squat' | 'legs:hinge' | 'legs:single-leg' | 'legs:knee-extension' | 'legs:knee-flexion' | 'legs:calf'
   | 'legs:v:hip-extension' | 'legs:v:squat-machine' | 'legs:v:adduction' | 'legs:v:abduction' | 'legs:v:hinge-variant'
-  // Wednesday: chest and biceps
+  // Monday: chest and biceps
   | 'chest:flat-press' | 'chest:incline-press' | 'chest:fly'
   | 'biceps:supinated' | 'biceps:neutral' | 'biceps:stretch'
   | 'chest:v:press-variant' | 'biceps:v:curl-variant'
@@ -169,14 +169,13 @@ export type Block = SyncFields & {
   startDate: string;
   weeks: number;
   index: number; // 1-based block number
-  focusMuscle: FocusMuscle;
   generatorVersion: string;
   rationale: string;
   /** exerciseId chosen per base slot, by session type. Used to rotate next block. */
   baseSlots: Record<string, string>;
+  /** Built before it started; its unlogged workouts are rebuilt from the latest logs when it becomes current. */
+  plannedAhead?: boolean;
 };
-
-export type FocusMuscle = 'side-delts' | 'chest' | 'arms' | 'upper-back' | 'glutes-hamstrings';
 
 export type Session = SyncFields & {
   plannedWorkoutId: string | null;
@@ -192,6 +191,8 @@ export type Session = SyncFields & {
   skipped?: string[];
   /** Movements added on the fly. */
   extras?: { id: string; exerciseId: string }[];
+  /** When each field was last changed ("notes", "swaps.<plannedExerciseId>", ...), so devices merge per field. */
+  fieldAt?: Record<string, string>;
 };
 
 export type LoggedSet = SyncFields & {
@@ -213,5 +214,8 @@ export type ExerciseFlag = SyncFields & {
   // id = exerciseId
   favourite?: boolean;
   avoid?: boolean;
+  /** Older flag: can't do it anywhere. New flags use unavailableAt. */
   unavailable?: boolean;
+  /** Locations where it can't be done (e.g. the gym lacks the machine). */
+  unavailableAt?: Location[];
 };

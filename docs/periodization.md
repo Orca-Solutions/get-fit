@@ -1,6 +1,6 @@
 # Training logic: "strange periodization", made explicit
 
-Milestone 1 draft · training-logic thread · 2026-10-07 · rev 3: Mon legs / Wed + Fri upper / Sat home core covering all 8 dynamics, grip finishers, morning run untouched · rev 3.1: home cables are resistance bands · rev 3.2: Planet Fitness with Smith machine for main lifts, 25 and 35 lb kettlebells
+Milestone 1 draft · training-logic thread · 2026-10-07 · rev 3: Mon legs / Wed + Fri upper / Sat home core covering all 8 dynamics, grip finishers, morning run untouched · rev 3.1: home cables are resistance bands · rev 3.2: Planet Fitness with Smith machine for main lifts, 25 and 35 lb kettlebells · rev 3.3 (2026-10-08): legs moved to Wednesday and chest & biceps to Monday, so an occasional Sunday long run doesn't fall the day before leg day · rev 3.4 (2026-10-08): a third chest press on Monday and a second back compound on Friday, per-muscle weekly targets in place of the focus muscle
 
 ## Background: Anatoly and AnatolyFit
 
@@ -65,9 +65,9 @@ There is no published spec called "strange periodization." The phrase does not a
 | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
 |---|---|---|---|---|---|---|
 | AM run | AM run | AM run | AM run | AM run | AM run | AM run |
-| **Legs** | — | **Chest & biceps** | — | **Back, triceps & shoulders** | **Core (home)** | — |
+| **Chest & biceps** | — | **Legs** | — | **Back, triceps & shoulders** | **Core (home)** | — |
 
-Your 2-mile morning run is fixed. The plan never schedules, moves or adjusts it. The upper-body pairing is Anatoly's own published split: Wednesday chest and biceps, Friday back, triceps and shoulders, with grip, wrists and abs done separately [1]. Grip and forearm work is tacked onto lifting days (4.1). The two days barely overlap. Arms still get hit twice: biceps directly on Wednesday and indirectly through Friday's rows, and triceps directly on Friday and indirectly through Wednesday's presses. That's my reading of "mostly arms split into 2 days," and decision 1 asks you to confirm it.
+Your 2-mile morning run is fixed. The plan never schedules, moves or adjusts it. Legs sit midweek so an occasional Sunday long run doesn't land the day before leg day (rev 3.3). The upper-body pairing is Anatoly's own published split: chest and biceps, then back, triceps and shoulders, with grip, wrists and abs done separately [1]. Grip and forearm work is tacked onto lifting days (4.1). The two days barely overlap. Arms still get hit twice: biceps directly on Monday and indirectly through Friday's rows, and triceps directly on Friday and indirectly through Monday's presses. That's my reading of "mostly arms split into 2 days," and decision 1 asks you to confirm it.
 
 **Session size (your numbers):** 6–8 movements and usually about 17 working sets, ranging from about 12 to 22. Sessions run roughly 55–75 minutes. The core day is done at home with resistance bands, bodyweight and kettlebells. It runs about 16 sets in 30–35 minutes, as supersets.
 
@@ -126,17 +126,17 @@ Sets per slot:
 
 Each lifting day has 6 base slots, which stay put for the whole block, and a variety pool that the V slots draw from:
 
-| Slot | Mon: Legs | Wed: Chest & biceps | Fri: Back, triceps & shoulders |
+| Slot | Wed: Legs | Mon: Chest & biceps | Fri: Back, triceps & shoulders |
 |---|---|---|---|
 | 1 · P | squat pattern, bilateral | horizontal press, flat | vertical pull |
 | 2 · C | hinge, bilateral | horizontal press, incline | horizontal pull |
 | 3 · C | single-leg, knee-dominant | (I) chest fly / adduction | vertical press |
 | 4 · I | knee extension | elbow flexion, supinated | shoulder abduction (side delt) |
 | 5 · I | knee flexion | elbow flexion, neutral grip | elbow extension, overhead (stretch) |
-| 6 · I | calf | elbow flexion, stretch position | elbow extension, pushdown |
-| V pool | hip extension; hack squat or leg press; hip adduction; hinge variant | chest press variant (machine, assisted dip, push-up); forearm or reverse curl; third curl angle | rear delt or face pull; row or pullover variant; shrug |
+| 6 | (I) calf | (C) chest press variant, a different family from slots 1–2 (machine press or assisted dip) | (C) row or pullover, a different family from slot 2 |
+| V pool | hip extension; hack squat or leg press; hip adduction; hip abduction; hinge variant | stretch-position curl; forearm, reverse or other curl angle; chest press variant | pushdown; side delt; row or pullover variant; rear delt or face pull; shrug |
 
-Wednesday's slot 3 is an isolation slot, so that day runs P, C, I, I, I, I. This keeps chest at about 10 sets and makes the day as arm-heavy as AnatolyFit's.
+Monday runs P, C, I, I, I, C: slot 3 is a fly, and slot 6 is a third press, so chest keeps pace with biceps. Friday's slot 6 is a second back compound, because back is the biggest upper-body muscle and was the least trained. The stretch-position curl and the pushdown moved to the V pools.
 
 **Core day (Saturday, at home: resistance bands, bodyweight, kettlebells).** Every session hits every core dynamic once: 8 slots of 2 sets each, run as 4 supersets that pair opposing dynamics, in about 30–35 minutes.
 
@@ -163,20 +163,37 @@ Wednesday's slot 3 is an isolation slot, so that day runs P, C, I, I, I, I. This
 
 **Zone rotation (the undulation):** the zones shift by one day each week. Over a block, every muscle group gets one heavy, one moderate and one light session:
 
-| | Mon (Legs) | Wed (Chest & biceps) | Fri (Back, triceps & shoulders) |
+| | Wed (Legs) | Mon (Chest & biceps) | Fri (Back, triceps & shoulders) |
 |---|---|---|---|
 | Week 1 | H | M | L |
 | Week 2 | M | L | H |
 | Week 3 | L | H | M |
 | Week 4 | deload | deload | deload |
 
-**Focus muscle:** each block names one muscle group to get 2–3 extra sets a week. On M and L days it claims a V slot. On H days, where there are no V slots, it adds 1 set to its I slot. The rotation is side delts → chest → arms → upper back → glutes/hamstrings, then repeats. Side delts go first because this split gives them the least work.
+**No focus or emphasis rotation (jason, 2026-10-08).** Every muscle should grow at about the same rate, and a missed week shouldn't throw a rotation off. So every loading week aims for the same per-muscle targets:
 
-**Coverage check:** the generator sums sets per muscle across the 3 loading weeks (secondary muscles count 0.5) and checks two things:
-- **Block average:** if a major muscle averages under 6 sets a week, a set is added to its best slot. If it averages over the block ceiling, a set comes off an isolation slot.
+| Muscle | Sets per week |
+|---|---|
+| Quads | 9–11 |
+| Glutes/hamstrings | 10–12 |
+| Chest | 9–11 |
+| Back | 9–11 |
+| Side delts | 6–8 |
+| Biceps | 7–9 |
+| Triceps | 7–9 |
+| Calves, rear delts | 3–5 |
+
+**How a week reaches its targets.** Sets count 1 for a main muscle and 0.5 for a secondary one. The generator first adds up what the base movements alone give each muscle that week. Then:
+- **Heavy days:** a muscle under its target gets 1 extra set on its slot (leg extension for quads, the slot 6 row for back, lateral raise for side delts, and so on).
+- **Moderate and light days:** the V slots (1 and 2) go to muscles under their target, biggest shortfall first. A V slot can also hold a movement outside the targeted muscles (shrug, adductors, forearm curl). It never adds a muscle that is already at its target, or one that 2 more sets would push over. If nothing qualifies, the slot stays empty, so Monday doesn't pick a fourth curl.
+- **Grip finishers** skip movements, such as reverse curls, that would push biceps over.
+
+**Coverage check:** after laying out the weeks, the generator checks every loading week against the targets:
+- **Over:** a set comes off an isolation or variety slot above 2 sets, then a secondary compound. Otherwise a variety movement goes. The primary lift is never trimmed.
+- **Under:** a set is added to an isolation or variety slot, then a compound, as long as it pushes no other muscle over. Failing that, a 2-set variety movement is added on a moderate or light day with room.
 - **Weekly floor:** no major muscle drops below 4 sets in any week, including its L week.
 
-Minor muscles (calves, rear delts, forearms) have a floor of 2. The grip tack-ons cover forearms, and your daily running also counts for something on calves. The core day is checked differently: every session must contain all 8 dynamics. This check is what prevents the lopsided weeks AnatolyFit reviewers describe.
+A missed session just means fewer sets that week; nothing carries over. Minor muscles (calves, rear delts, forearms) have a floor of 2; forearms have no target because grip finishers cover them. The grip tack-ons cover forearms, and your daily running also counts for something on calves. The core day is checked differently: every session must contain all 8 dynamics. This check is what prevents the lopsided weeks AnatolyFit reviewers describe.
 
 ### 4.3 Exercise selection and variety
 
@@ -236,12 +253,11 @@ Everything runs on what you **logged**, not what was prescribed. Logged reps and
 
 ```
 for each block:
-  pick focus muscle (rotation)
   for each day template (Legs, Chest & biceps, Back/tri/shoulders, Core):
     select exercises for base slots (4.3), keeping most from last block
   for week 1..3:
     assign zone per day (rotation table) and RIR from effort ramp
-    choose V-slot movements from each day's pool (M: 1, L: 2), focus claims one
+    muscles under their weekly target claim H-day extra sets and V slots (M: up to 1, L: up to 2)
     sets per slot from role × zone table; add grip tack-ons to 2 lifting days
     core day: all 8 dynamics, core wave for this week (M/H/L)
     coverage check (4.2)
@@ -279,7 +295,7 @@ after each session logged:
 
 ## 6. Sample 2 weeks (block 1, weeks 1–2)
 
-Example exercises appear in brackets only for readability. The generator picks by attributes. "Cal" means calibrate (4.4.4). Block 1's focus muscle is side delts. Week 2 loads come from week 1 logs.
+Example exercises appear in brackets only for readability. The generator picks by attributes. "Cal" means calibrate (4.4.4). Block 1's focus muscle is side delts. Week 2 loads come from week 1 logs. This sample predates rev 3.3 and 3.4: legs are now on Wednesday and chest & biceps on Monday, each day keeping its zone, and the focus muscle is replaced by weekly targets (4.2). `npm run sample` prints the current version.
 
 **Week 1 (all sessions at RIR 3)**
 
@@ -379,7 +395,7 @@ Each change is one step up its difficulty ladder.
 | Core | 16 (Sat), all 8 dynamics | ok |
 | Grip/forearms | 4 finisher sets + indirect from pulls and curls | ok |
 
-Week 3 shifts once more (Mon L, Wed H, Fri M) at RIR 1–2. Week 4 is the deload. Block 2 rotates one or two base slots per day and moves the focus to chest.
+Week 3 shifts once more (legs L, chest & biceps H, back M) at RIR 1–2. Week 4 is the deload. Block 2 rotates one or two base slots per day and moves the focus to chest.
 
 ## 7. Decisions I need from you
 
@@ -419,11 +435,10 @@ Week 3 shifts once more (Mon L, Wed H, Fri M) at RIR 1–2. Week 4 is the deload
 - How Anatoly's powerlifting method relates to the AnatolyFit product, and which parts to copy (Background)
 - The reading of what makes AnatolyFit feel "strange" (section 1)
 - The specific zone rep ranges, the role × zone set table, the day slot templates and the V-slot mechanism (synthesized from refs 4–8, 17 and your session-size numbers)
-- The weekly-floor and block-average coverage thresholds
+- The weekly floor and the per-muscle weekly targets
 - The calendar slide and skip rules for missed sessions
 - The 8-dynamic core template, the core wave and the recommendation to keep it
 - The grip finisher placement on M and L days
-- The focus-muscle rotation
 - The one-third rotation cap (an operationalization of ref 8)
 - The e1RM smoothing and the specific progression thresholds
 - The 10-day gap rule
