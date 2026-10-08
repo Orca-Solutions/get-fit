@@ -119,7 +119,7 @@ async function rebuildFrom(block: Block, from: string, d: GetFitDB): Promise<voi
   const started = await workoutsWithLogs(d);
   const t = nowIso();
   await d.transaction('rw', d.blocks, d.plannedWorkouts, async () => {
-    await d.blocks.put({ ...block, focusMuscle: fresh.focusMuscle, baseSlots: fresh.baseSlots, rationale: fresh.rationale, generatorVersion: fresh.generatorVersion, plannedAhead: false, updatedAt: t });
+    await d.blocks.put({ ...block, baseSlots: fresh.baseSlots, rationale: fresh.rationale, generatorVersion: fresh.generatorVersion, plannedAhead: false, updatedAt: t });
     for (const old of existing) {
       if (old.date < from || started.has(old.id)) continue;
       const w = workouts.find((x) => x.date === old.date && x.sessionType === old.sessionType);

@@ -1,7 +1,13 @@
 // Day templates, zone tables and rotations from docs/periodization.md §4.
-import type { CoreDynamic, FocusMuscle, GripType, SessionType, SlotKey, SlotRole, Zone } from '../types';
+import type { CoreDynamic, GripType, SessionType, SlotKey, SlotRole, Zone } from '../types';
+import type { CoverageGroup } from './coverage';
 
-export type BaseSlot = { key: SlotKey; role: Exclude<SlotRole, 'V' | 'G' | 'K'> };
+export type BaseSlot = {
+  key: SlotKey;
+  role: Exclude<SlotRole, 'V' | 'G' | 'K'>;
+  /** Pick from a different movement family than the day's other base slots (a second row, a second press). */
+  distinctFamily?: boolean;
+};
 
 export const LIFT_TEMPLATES: Record<Exclude<SessionType, 'core'>, { base: BaseSlot[]; vPool: SlotKey[]; label: string }> = {
   legs: {
@@ -24,9 +30,10 @@ export const LIFT_TEMPLATES: Record<Exclude<SessionType, 'core'>, { base: BaseSl
       { key: 'chest:fly', role: 'I' },
       { key: 'biceps:supinated', role: 'I' },
       { key: 'biceps:neutral', role: 'I' },
-      { key: 'biceps:stretch', role: 'I' },
+      // A third chest press (machine press or assisted dip) keeps chest level with biceps (§4.2).
+      { key: 'chest:v:press-variant', role: 'C', distinctFamily: true },
     ],
-    vPool: ['chest:v:press-variant', 'biceps:v:curl-variant'],
+    vPool: ['biceps:stretch', 'biceps:v:curl-variant', 'chest:v:press-variant'],
   },
   'back-tri-shoulders': {
     label: 'Back, triceps & shoulders',
@@ -36,9 +43,10 @@ export const LIFT_TEMPLATES: Record<Exclude<SessionType, 'core'>, { base: BaseSl
       { key: 'shoulders:vertical-press', role: 'C' },
       { key: 'shoulders:side-delt', role: 'I' },
       { key: 'triceps:overhead', role: 'I' },
-      { key: 'triceps:pushdown', role: 'I' },
+      // A second row or pullover: back is the biggest upper-body muscle and was the least trained (§4.2).
+      { key: 'back:v:row-variant', role: 'C', distinctFamily: true },
     ],
-    vPool: ['shoulders:v:rear-delt', 'back:v:row-variant', 'back:v:shrug'],
+    vPool: ['triceps:pushdown', 'shoulders:side-delt', 'back:v:row-variant', 'shoulders:v:rear-delt', 'back:v:shrug'],
   },
 };
 
@@ -95,29 +103,19 @@ export function restFor(role: SlotRole, zone: Zone | 'deload'): number {
 /** Variety slots per zone (Anatoly's "wider variety when the bar gets lighter"). */
 export const V_SLOTS: Record<Zone, number> = { H: 0, M: 1, L: 2 };
 
-export const FOCUS_ROTATION: FocusMuscle[] = ['side-delts', 'chest', 'arms', 'upper-back', 'glutes-hamstrings'];
-
-export const FOCUS_LABEL: Record<FocusMuscle, string> = {
-  'side-delts': 'side delts',
-  chest: 'chest',
-  arms: 'arms',
-  'upper-back': 'upper back',
-  'glutes-hamstrings': 'glutes and hamstrings',
-};
-
 /**
- * Where the focus muscle lands per session: the V slot it claims on M/L days,
- * and the base slot that gets +1 set on an H day.
+ * Where a muscle under its weekly band gets its extra set on a heavy day (§4.2 balance targets).
+ * On moderate and light days it claims the variety slots instead.
  */
-export const FOCUS_SLOTS: Record<FocusMuscle, Partial<Record<SessionType, { v: SlotKey[]; heavyExtra: SlotKey }>>> = {
-  'side-delts': { 'back-tri-shoulders': { v: ['shoulders:side-delt'], heavyExtra: 'shoulders:side-delt' } },
-  chest: { 'chest-biceps': { v: ['chest:v:press-variant', 'chest:fly'], heavyExtra: 'chest:fly' } },
-  arms: {
-    'chest-biceps': { v: ['biceps:v:curl-variant'], heavyExtra: 'biceps:supinated' },
-    'back-tri-shoulders': { v: ['triceps:pushdown', 'triceps:overhead'], heavyExtra: 'triceps:pushdown' },
-  },
-  'upper-back': { 'back-tri-shoulders': { v: ['back:v:row-variant'], heavyExtra: 'back:horizontal-pull' } },
-  'glutes-hamstrings': { legs: { v: ['legs:v:hip-extension', 'legs:v:hinge-variant'], heavyExtra: 'legs:knee-flexion' } },
+export const HEAVY_EXTRA: Partial<Record<CoverageGroup, SlotKey>> = {
+  quads: 'legs:knee-extension',
+  'glutes-hamstrings': 'legs:knee-flexion',
+  calves: 'legs:calf',
+  chest: 'chest:fly',
+  biceps: 'biceps:supinated',
+  back: 'back:v:row-variant',
+  'side-delts': 'shoulders:side-delt',
+  triceps: 'triceps:overhead',
 };
 
 export const GRIP_ROTATION: GripType[] = ['support', 'crush', 'pinch', 'wrist-flexion', 'wrist-extension', 'rotation', 'reverse-curl'];
@@ -138,7 +136,3 @@ export function coreTargets(zone: Zone): { reps: { min: number; max: number }; s
   if (zone === 'L') return { reps: { min: 15, max: 25 }, seconds: { min: 45, max: 60 } };
   return { reps: { min: 10, max: 15 }, seconds: { min: 30, max: 40 } };
 }
-
-/** Major muscles get a 4-set weekly floor and a 6-set block average (§4.2 coverage check). */
-export const MAJOR_MUSCLES = ['quads', 'hamstrings', 'glutes', 'chest', 'lats', 'upper-back', 'side-delts', 'biceps', 'triceps'] as const;
-export const MINOR_MUSCLES = ['calves', 'rear-delts', 'forearms'] as const;

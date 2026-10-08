@@ -169,7 +169,6 @@ export type Block = SyncFields & {
   startDate: string;
   weeks: number;
   index: number; // 1-based block number
-  focusMuscle: FocusMuscle;
   generatorVersion: string;
   rationale: string;
   /** exerciseId chosen per base slot, by session type. Used to rotate next block. */
@@ -177,8 +176,6 @@ export type Block = SyncFields & {
   /** Built before it started; its unlogged workouts are rebuilt from the latest logs when it becomes current. */
   plannedAhead?: boolean;
 };
-
-export type FocusMuscle = 'side-delts' | 'chest' | 'arms' | 'upper-back' | 'glutes-hamstrings';
 
 export type Session = SyncFields & {
   plannedWorkoutId: string | null;
