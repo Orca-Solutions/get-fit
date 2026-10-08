@@ -4,6 +4,7 @@ import { BANDS, groupOf, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
 import { e1rm, effectiveLoad, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
 import { defaultProfile } from '../src/lib/defaultProfile';
+import { addDays } from '../src/lib/dates';
 import { parseKettlebells } from '../src/lib/kettlebells';
 import type { Exercise, LoggedSet, PlannedWorkout } from '../src/types';
 
@@ -214,6 +215,54 @@ describe('generateBlock: later blocks', () => {
     const curl = b1.block.baseSlots['chest-biceps|biceps:neutral'];
     const next = gen({ previousBlock: b1.block, startDate: '2026-11-09', stalled: [curl] });
     expect(next.block.baseSlots['chest-biceps|biceps:neutral']).not.toBe(curl);
+  });
+});
+
+describe('generateBlock: flags never stop the plan', () => {
+  const inSlot = (slot: string) => exercises.filter((e) => e.slots.includes(slot as never)).map((e) => e.id);
+  const avoidAll = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, { avoid: true }]));
+
+  it('fills a slot whose whole pool is avoided with a related movement, and says so', () => {
+    const { block, workouts } = gen({ flags: avoidAll(inSlot('legs:knee-flexion')) });
+    const pick = byId.get(block.baseSlots['legs|legs:knee-flexion'])!;
+    expect(inSlot('legs:knee-flexion')).not.toContain(pick.id);
+    expect(pick.primaryMuscles).toContain('hamstrings');
+    expect(block.rationale).toMatch(/Every knee flexion movement is flagged, so .+ fills that slot\./);
+    expect(workouts.filter((w) => w.sessionType === 'legs').every((w) => w.exercises.some((e) => e.exerciseId === pick.id))).toBe(true);
+  });
+
+  it('keeps a flagged movement, with a notice, when nothing related is left', () => {
+    const hamstrings = exercises.filter((e) => e.primaryMuscles.includes('hamstrings')).map((e) => e.id);
+    const { block } = gen({ flags: avoidAll(hamstrings) });
+    expect(inSlot('legs:knee-flexion')).toContain(block.baseSlots['legs|legs:knee-flexion']);
+    expect(block.rationale).toMatch(/nothing similar is left, so .+ stays in/);
+  });
+
+  it('does the same for an emptied core pool at home', () => {
+    const { block } = gen({ flags: avoidAll(inSlot('core:hip-flexion')) });
+    expect(block.baseSlots['core|core:hip-flexion']).toBeTruthy();
+    expect(block.rationale).toContain('Every hip flexion movement is flagged');
+  });
+
+  it("applies can't-do-here only where it was set", () => {
+    const core = gen().block.baseSlots['core|core:anti-extension'];
+    // Marked as not possible at the gym: still fine for the home core day.
+    expect(gen({ flags: { [core]: { unavailableAt: ['gym'] } } }).block.baseSlots['core|core:anti-extension']).toBe(core);
+    expect(gen({ flags: { [core]: { unavailableAt: ['home'] } } }).block.baseSlots['core|core:anti-extension']).not.toBe(core);
+  });
+});
+
+describe('generateBlock: weekly bands over many blocks', () => {
+  // TODO: from block 6 Friday runs out of room (back 8 one week, triceps 10.5, rear delts about 2 from
+  // block 8). Expected to fail until that's fixed; it.fails turns red once it passes, as a reminder.
+  it.fails('keeps every muscle inside its weekly band for 10 chained blocks', () => {
+    let prev = gen().block;
+    for (let i = 2; i <= 10; i++) {
+      const next = gen({ previousBlock: prev, startDate: addDays(prev.startDate, 28) });
+      expect(next.coverage.under, `block ${i}`).toEqual([]);
+      expect(next.coverage.over, `block ${i}`).toEqual([]);
+      prev = next.block;
+    }
   });
 });
 

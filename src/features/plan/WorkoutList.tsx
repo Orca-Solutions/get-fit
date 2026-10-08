@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../../db/db';
 import { prescription } from '../../lib/format';
 import { useExercises } from '../../lib/hooks';
+import { movementFor } from '../../lib/session';
 import type { PlannedWorkout, Session } from '../../types';
 
 /** One row per movement: name, sets × reps, status. Tapping jumps into logging (or does nothing in preview). */
@@ -13,7 +14,7 @@ export function WorkoutList({ workout, session, interactive }: { workout: Planne
   return (
     <ul className="list">
       {workout.exercises.map((pe, i) => {
-        const actualId = session?.swaps?.[pe.id] ?? pe.exerciseId;
+        const actualId = movementFor(pe, session, sets);
         const ex = exercises.get(actualId);
         const done = sets.filter((s) => s.plannedExerciseId === pe.id).length;
         const skipped = session?.skipped?.includes(pe.id);

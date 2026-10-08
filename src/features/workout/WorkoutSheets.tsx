@@ -6,6 +6,8 @@ import { setE1rm } from '../../generator/progression';
 import { useExercises, useProfile } from '../../lib/hooks';
 import { Sheet } from '../../ui/Sheet';
 import { Photo } from '../../ui/Photo';
+import { flaggedOut } from '../../generator/generateBlock';
+import { movementFor } from '../../lib/session';
 import type { Exercise, Location, LoggedSet, PlannedExercise, PlannedWorkout, Profile, Session } from '../../types';
 
 /** Same slot first, then same movement pattern and muscles; only what's available where you are. */
@@ -27,14 +29,13 @@ export function SwapSheet({ pe, current, session, location, profile, onClose }: 
   const exercises = useExercises();
   const flags = useLiveQuery(() => db.exerciseFlags.toArray(), []) ?? [];
   const list = useMemo(() => {
-    const avoid = new Set(flags.filter((f) => f.avoid || f.unavailable).map((f) => f.id));
+    const avoid = new Set(flags.filter((f) => flaggedOut(f, location)).map((f) => f.id));
     return substitutes(pe, current, [...exercises.values()], location, profile).filter((e) => !avoid.has(e.id));
   }, [pe, current, exercises, location, profile, flags]);
   const planned = exercises.get(pe.exerciseId);
   const choose = async (id: string) => {
-    const swaps = { ...(session.swaps ?? {}) };
-    if (id === pe.exerciseId) delete swaps[pe.id];
-    else swaps[pe.id] = id;
+    // Swapping back is recorded too, so it beats sets already logged under the other movement.
+    const swaps = { ...(session.swaps ?? {}), [pe.id]: id };
     await updateSession(session.id, { swaps });
     onClose();
   };
@@ -131,7 +132,7 @@ export function FinishSheet({ workout, session, sets, onClose, onDone }: { worko
       <div className="stack">
         <div>{sets.length} of {planned} sets{minutes > 0 && minutes < 600 ? ` · ${minutes} min` : ''}{volume ? ` · ${Math.round(volume).toLocaleString()} lb moved` : ''}</div>
         {prs.length > 0 && <div style={{ color: 'var(--accent)' }}>New best: {prs.join(', ')}</div>}
-        {unfinished.length > 0 && <div className="small" style={{ color: 'var(--warn)' }}>Not finished: {unfinished.map((e) => exercises.get(session.swaps?.[e.id] ?? e.exerciseId)?.name).join(', ')}</div>}
+        {unfinished.length > 0 && <div className="small" style={{ color: 'var(--warn)' }}>Not finished: {unfinished.map((e) => exercises.get(movementFor(e, session, sets))?.name).join(', ')}</div>}
       </div>
       <label className="field-label">How hard was today?</label>
       <div className="row">

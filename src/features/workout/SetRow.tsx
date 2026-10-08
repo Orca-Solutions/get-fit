@@ -34,6 +34,7 @@ function parseNum(s: string): number | null {
  */
 export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlog, onDelete, autoFocusWeight }: Props) {
   const timed = ex.metric === 'time';
+  const hasLogged = !!logged;
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [bandId, setBandId] = useState<string | null>(null);
@@ -42,15 +43,20 @@ export function SetRow({ index, ex, planned, logged, carry, bands, onLog, onUnlo
   const [nudge, setNudge] = useState('');
   const edited = useRef(false);
 
-  // Logged sets show their values in dark text and stay editable.
+  // Logged sets show their values in dark text and stay editable. Reset the inputs only when the stored
+  // values change: any write to this session (another set, a sync pull) hands us a fresh object, and
+  // resetting on that would wipe what's being typed.
+  const lw = logged?.weight;
+  const lr = timed ? logged?.seconds : logged?.reps;
+  const lb = logged?.bandId;
+  const ls = logged?.stanceSteps;
   useEffect(() => {
-    if (logged) {
-      setWeight(logged.weight != null ? fmtNum(logged.weight) : '');
-      setReps(String((timed ? logged.seconds : logged.reps) ?? ''));
-      setBandId(logged.bandId ?? null);
-      setStance(logged.stanceSteps ?? null);
-    }
-  }, [logged, timed]);
+    if (!hasLogged) return;
+    setWeight(lw != null ? fmtNum(lw) : '');
+    setReps(String(lr ?? ''));
+    setBandId(lb ?? null);
+    setStance(ls ?? null);
+  }, [hasLogged, lw, lr, lb, ls]);
 
   useEffect(() => {
     if (autoFocusWeight) weightRef.current?.focus();

@@ -49,17 +49,33 @@ describe('auth', () => {
 });
 
 describe('validation', () => {
-  it('rejects unknown tables, bad ids, bad dates, bad cursors and junk bodies', async () => {
+  it('rejects bad cursors and junk bodies', async () => {
     const { sync } = setup();
-    const bad = [
-      { cursor: 0, changes: [{ table: 'meta', record: rec('a', '2026-10-01T10:00:00.000Z') }] },
-      { cursor: 0, changes: [{ table: 'sessions', record: { ...rec('a', '2026-10-01T10:00:00.000Z'), id: 5 } }] },
-      { cursor: 0, changes: [{ table: 'sessions', record: rec('a', 'yesterday') }] },
-      { cursor: -1, changes: [] },
-      { cursor: 0, changes: 'nope' },
-      'not json',
-    ];
+    const bad = [{ cursor: -1, changes: [] }, { cursor: 0, changes: 'nope' }, 'not json'];
     for (const body of bad) expect((await sync(body)).status).toBe(400);
+  });
+
+  it('skips malformed changes (unknown table, bad id, bad date) but stores the rest of the batch', async () => {
+    const { sync, db } = setup();
+    const res = await sync({
+      cursor: 0,
+      changes: [
+        { table: 'meta', record: rec('a', '2026-10-01T10:00:00.000Z') },
+        { table: 'sessions', record: { ...rec('a', '2026-10-01T10:00:00.000Z'), id: 5 } },
+        { table: 'sessions', record: rec('b', 'yesterday') },
+        { table: 'loggedSets', record: rec('good', '2026-10-01T10:00:00.000Z') },
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ accepted: 1, rejected: 3 });
+    expect(db.exportAll().loggedSets.map((r) => r.id)).toEqual(['good']);
+  });
+
+  it('sends security headers', async () => {
+    const { app } = setup();
+    const res = await app.request('/api/health');
+    expect(res.headers.get('Strict-Transport-Security')).toContain('max-age=');
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
   });
 
   it('caps the number of changes and the body size', async () => {

@@ -191,6 +191,8 @@ export type Session = SyncFields & {
   skipped?: string[];
   /** Movements added on the fly. */
   extras?: { id: string; exerciseId: string }[];
+  /** When each field was last changed ("notes", "swaps.<plannedExerciseId>", ...), so devices merge per field. */
+  fieldAt?: Record<string, string>;
 };
 
 export type LoggedSet = SyncFields & {
@@ -212,5 +214,8 @@ export type ExerciseFlag = SyncFields & {
   // id = exerciseId
   favourite?: boolean;
   avoid?: boolean;
+  /** Older flag: can't do it anywhere. New flags use unavailableAt. */
   unavailable?: boolean;
+  /** Locations where it can't be done (e.g. the gym lacks the machine). */
+  unavailableAt?: Location[];
 };

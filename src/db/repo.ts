@@ -6,8 +6,10 @@ import { uuid } from '../lib/ids';
 import { scheduleSync } from '../lib/sync';
 import { generateBlock, type ExerciseFlags, type GeneratorInput } from '../generator/generateBlock';
 import { isStalled, summarizeHistory } from '../generator/progression';
-import { db, type GetFitDB, type SyncTable } from './db';
+import { db, SYNC_TABLES, type GetFitDB, type SyncTable } from './db';
+import { validRow } from '../lib/validate';
 import { PROFILE_ID, defaultProfile } from '../lib/defaultProfile';
+import { changedFields } from '../lib/session';
 
 export { PROFILE_ID, defaultProfile };
 
@@ -41,10 +43,16 @@ export async function flagMap(d: GetFitDB = db): Promise<ExerciseFlags> {
   return Object.fromEntries(flags.filter((f) => !f.deletedAt).map((f) => [f.id, f]));
 }
 
-export async function setFlag(exerciseId: string, patch: Partial<Pick<ExerciseFlag, 'favourite' | 'avoid' | 'unavailable'>>) {
+type FlagPatch = Partial<Pick<ExerciseFlag, 'favourite' | 'avoid' | 'unavailable' | 'unavailableAt'>>;
+
+export function setFlag(exerciseId: string, patch: FlagPatch) {
+  return setFlagIn(db, exerciseId, patch);
+}
+
+export async function setFlagIn(d: GetFitDB, exerciseId: string, patch: FlagPatch) {
   const t = nowIso();
-  const existing = (await db.exerciseFlags.get(exerciseId)) ?? { id: exerciseId, createdAt: t, updatedAt: t, deletedAt: null };
-  await put('exerciseFlags', { ...existing, ...patch });
+  const existing = (await d.exerciseFlags.get(exerciseId)) ?? { id: exerciseId, createdAt: t, updatedAt: t, deletedAt: null };
+  await put('exerciseFlags', { ...existing, ...patch }, d);
 }
 
 export async function liveBlocks(d: GetFitDB = db): Promise<Block[]> {
@@ -112,14 +120,14 @@ async function createBlock(startDate: string, previousBlock: Block | undefined, 
 }
 
 /** Re-run the generator for `block`'s workouts from `from` on. Logged or started days are never touched. */
-async function rebuildFrom(block: Block, from: string, d: GetFitDB): Promise<void> {
+async function rebuildFrom(block: Block, from: string, d: GetFitDB, keepPlannedAhead = false): Promise<void> {
   const previous = (await liveBlocks(d)).filter((b) => b.startDate < block.startDate).pop();
   const { block: fresh, workouts } = generateBlock(await generatorInput(block.startDate, previous, d));
   const existing = (await d.plannedWorkouts.where('blockId').equals(block.id).toArray()).filter((w) => !w.deletedAt);
   const started = await workoutsWithLogs(d);
   const t = nowIso();
   await d.transaction('rw', d.blocks, d.plannedWorkouts, async () => {
-    await d.blocks.put({ ...block, baseSlots: fresh.baseSlots, rationale: fresh.rationale, generatorVersion: fresh.generatorVersion, plannedAhead: false, updatedAt: t });
+    await d.blocks.put({ ...block, baseSlots: fresh.baseSlots, rationale: fresh.rationale, generatorVersion: fresh.generatorVersion, plannedAhead: keepPlannedAhead && !!block.plannedAhead, updatedAt: t });
     for (const old of existing) {
       if (old.date < from || started.has(old.id)) continue;
       const w = workouts.find((x) => x.date === old.date && x.sessionType === old.sessionType);
@@ -133,7 +141,8 @@ async function rebuildFrom(block: Block, from: string, d: GetFitDB): Promise<voi
 export async function regenerateUpcoming(date = today(), d: GetFitDB = db): Promise<void> {
   const current = await ensurePlan(date, d);
   await rebuildFrom(current, date > current.startDate ? date : current.startDate, d);
-  for (const later of (await liveBlocks(d)).filter((b) => b.startDate > blockEnd(current))) await rebuildFrom(later, later.startDate, d);
+  // A block planned ahead stays marked, so it's still refreshed from the latest logs on its first day.
+  for (const later of (await liveBlocks(d)).filter((b) => b.startDate > blockEnd(current))) await rebuildFrom(later, later.startDate, d, true);
 }
 
 // ---------- sessions and logging ----------
@@ -162,7 +171,11 @@ export async function startSession(plannedWorkoutId: string, date = today(), d: 
 
 export async function updateSession(id: string, patch: Partial<Session>, d: GetFitDB = db): Promise<void> {
   const s = await d.sessions.get(id);
-  if (s) await put('sessions', { ...s, ...patch }, d);
+  if (!s) return;
+  const t = nowIso();
+  const fieldAt = { ...(s.fieldAt ?? {}) };
+  for (const k of changedFields(s, patch)) fieldAt[k] = t;
+  await put('sessions', { ...s, ...patch, fieldAt }, d);
 }
 
 export type SetInput = Pick<LoggedSet, 'weight' | 'reps' | 'seconds' | 'bandId' | 'stanceSteps'> & { effort?: LoggedSet['effort'] };
@@ -186,9 +199,12 @@ export async function logSet(
     if (s && (s.date !== date || !s.startedAt)) await put('sessions', { ...s, date, startedAt: t }, d);
   }
   // Merge into the stored record so a partial update (e.g. just the effort tap) never reverts other fields.
+  // A planned set's id comes from its session, slot, movement and index, so the same set logged on two
+  // devices before they sync is one record (the later write wins) rather than a doubled count.
+  const id = plannedExerciseId ? `${session.id}|${plannedExerciseId}|${exerciseId}|${setIndex}` : uuid();
   const rec: LoggedSet = existing
     ? { ...existing, ...values }
-    : { id: uuid(), createdAt: t, updatedAt: t, deletedAt: null, sessionId: session.id, exerciseId, plannedExerciseId, setIndex, date, loggedAt: t, ...values };
+    : { id, createdAt: t, updatedAt: t, deletedAt: null, sessionId: session.id, exerciseId, plannedExerciseId, setIndex, date, loggedAt: t, ...values };
   return put('loggedSets', rec, d);
 }
 
@@ -246,31 +262,53 @@ export async function exportSetsCsv(d: GetFitDB = db): Promise<string> {
 }
 
 /**
- * Restore a backup made by exportAll. Records merge by id and only replace older copies, so logged
- * sets already on this device are never removed. Throws on a file that isn't a get-fit backup.
+ * Restore a backup made by exportAll, in one transaction. Rows merge by id and only replace older
+ * copies, so logged sets already on this device are never removed; rows missing required fields are
+ * skipped. On a device with no logged sets yet, the backup's profile and plan replace the ones this
+ * device made for itself: they're re-stamped so they win everywhere, and the device's own blocks and
+ * workouts are deleted through sync (not just locally), so other devices don't keep both plans.
+ * Throws on a file that isn't a get-fit backup.
  */
-export async function importAll(data: { app?: string; tables: Record<string, { id: string; updatedAt: string }[]> }, d: GetFitDB = db) {
-  const tables = ['profile', 'blocks', 'plannedWorkouts', 'sessions', 'loggedSets', 'exerciseFlags', 'customExercises'];
-  if (!data || typeof data.tables !== 'object' || (data.app !== undefined && data.app !== 'get-fit')) throw new Error('Not a get-fit backup.');
-  // On a fresh device, the backup replaces the default profile and generated plan rather than sitting beside them.
-  if (!(await d.loggedSets.count())) {
-    await d.transaction('rw', [d.profile, d.blocks, d.plannedWorkouts, d.sessions], async () => {
-      await Promise.all([d.profile.clear(), d.blocks.clear(), d.plannedWorkouts.clear(), d.sessions.clear()]);
-    });
-  }
-  for (const [t, rows] of Object.entries(data.tables)) {
-    if (!tables.includes(t)) continue;
-    const table = d.table(t);
-    for (const r of rows) {
-      const local = (await table.get(r.id)) as { updatedAt: string } | undefined;
-      if (!local || r.updatedAt > local.updatedAt) await table.put(r);
+export async function importAll(data: { app?: string; tables: Record<string, unknown> }, d: GetFitDB = db): Promise<{ imported: number; skipped: number }> {
+  if (!data || typeof data.tables !== 'object' || data.tables === null || (data.app !== undefined && data.app !== 'get-fit')) throw new Error('Not a get-fit backup.');
+  const t = nowIso();
+  let imported = 0;
+  let skipped = 0;
+  await d.transaction('rw', [...SYNC_TABLES.map((name) => d.table(name)), d.meta], async () => {
+    const replacePlan = !(await d.loggedSets.filter((s) => !s.deletedAt).count());
+    const PLAN: SyncTable[] = ['profile', 'blocks', 'plannedWorkouts'];
+    for (const name of SYNC_TABLES) {
+      const rows = data.tables[name];
+      if (rows === undefined) continue;
+      if (!Array.isArray(rows)) throw new Error('Not a get-fit backup.');
+      const table = d.table(name);
+      const force = replacePlan && PLAN.includes(name);
+      const kept = new Set<string>();
+      for (const r of rows) {
+        if (!validRow(name, r)) {
+          skipped++;
+          continue;
+        }
+        const row = r as { id: string; updatedAt: string };
+        kept.add(row.id);
+        const local = (await table.get(row.id)) as { updatedAt: string } | undefined;
+        if (force) await table.put({ ...row, updatedAt: t });
+        else if (!local || Date.parse(row.updatedAt) > Date.parse(local.updatedAt)) await table.put(row);
+        else continue;
+        imported++;
+      }
+      if (force && name !== 'profile') {
+        const mine = (await table.toArray()) as { id: string; deletedAt?: string | null }[];
+        for (const m of mine) if (!kept.has(m.id) && !m.deletedAt) await table.put({ ...m, deletedAt: t, updatedAt: t });
+      }
     }
-  }
-  // Imported rows keep their old timestamps: reset the push watermark so the next sync sends them all.
-  await d.meta.delete('lastPushedAt');
+    // Imported rows keep their old timestamps: reset the push watermark so the next sync sends them all.
+    await d.meta.delete('lastPushedAt');
+  });
   await getProfile(d);
   await ensurePlan(today(), d);
   scheduleSync();
+  return { imported, skipped };
 }
 
 export function daysSince(dateStr: string, ref = today()) {

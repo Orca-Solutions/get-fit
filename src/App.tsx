@@ -14,16 +14,19 @@ import Settings from './features/settings/Settings';
 import PlanPreview from './features/plan/PlanPreview';
 import { Icon } from './ui/Icon';
 
+const PLAN_SYNC_WAIT_MS = 4_000;
+
 export default function App() {
   const { pathname } = useLocation();
   const inWorkout = pathname.startsWith('/workout/');
   const today = useToday();
-  // An installed app can stay in memory for days: roll into the next block when the date moves on,
-  // after pulling what other devices logged.
+  // On open, and when the date moves on (an installed app can stay in memory for days): pull what other
+  // devices logged, then make sure the current and next block exist. Weak signal only delays planning
+  // by a few seconds; a block generated before the pull lands has the same ids, so they merge.
   useEffect(() => {
-    syncNow()
+    Promise.race([syncNow(), new Promise((r) => setTimeout(r, PLAN_SYNC_WAIT_MS))])
       .then(() => ensurePlan(today))
-      .catch(() => {});
+      .catch((err) => console.error('Planning failed', err));
   }, [today]);
   return (
     <>

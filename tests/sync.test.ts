@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GetFitDB } from '../src/db/db';
-import { ensurePlan, liveBlocks, logSet, startSession } from '../src/db/repo';
+import { ensurePlan, getProfile, liveBlocks, logSet, regenerateUpcoming, setFlagIn, startSession, updateSession } from '../src/db/repo';
+import { movementFor } from '../src/lib/session';
 import { getSyncStatus, setSyncToken, syncNow } from '../src/lib/sync';
 import { createApp } from '../server/app';
 import { openStore } from '../server/store';
@@ -128,6 +129,93 @@ describe('syncNow', () => {
     expect((await phone.db.loggedSets.get('l1'))?.reps).toBe(10);
     await laptop.sync();
     expect((await laptop.db.loggedSets.orderBy('id').toArray()).map((s) => [s.id, s.reps])).toEqual([['l1', 10], ['l2', 9], ['l3', 8]]);
+  });
+
+  it("never lets a plan rebuilt on another device hide sets logged here", async () => {
+    const server = makeServer();
+    let online = true;
+    const flaky = ((input: RequestInfo | URL, init?: RequestInit) => (online ? server.fetch(input, init) : Promise.reject(new TypeError('Failed to fetch')))) as typeof fetch;
+    const phone = await makeDevice(flaky);
+    const laptop = await makeDevice(server.fetch);
+    const block = await ensurePlan('2026-10-14', phone.db);
+    await phone.sync();
+    await laptop.sync();
+    const legs = (await phone.db.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((w) => w.sessionType === 'legs')!;
+    const squat = legs.exercises[0];
+
+    // Phone at the gym, offline: logs a squat set. Laptop flags the squat and regenerates.
+    online = false;
+    const s = await startSession(legs.id, legs.date, phone.db);
+    await logSet(s, squat.exerciseId, squat.id, 0, { weight: 95, reps: 8 }, phone.db);
+    await setFlagIn(laptop.db, squat.exerciseId, { avoid: true });
+    await regenerateUpcoming(legs.date, laptop.db);
+    await laptop.sync();
+    const rebuilt = (await laptop.db.plannedWorkouts.get(legs.id))!;
+    expect(rebuilt.exercises[0].exerciseId).not.toBe(squat.exerciseId);
+
+    // Phone back online: its workout in progress keeps its plan, and the laptop shows the squat set in slot 1.
+    online = true;
+    await phone.sync();
+    await laptop.sync();
+    expect((await phone.db.plannedWorkouts.get(legs.id))!.exercises[0].exerciseId).toBe(squat.exerciseId);
+    const laptopSets = await laptop.db.loggedSets.toArray();
+    const laptopSession = await laptop.db.sessions.get(s.id);
+    expect(movementFor(rebuilt.exercises[0], laptopSession, laptopSets)).toBe(squat.exerciseId);
+  });
+
+  it('merges a swap made on one device with a note written on another', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    const block = await ensurePlan('2026-10-14', phone.db);
+    const w = (await phone.db.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((x) => x.sessionType === 'legs')!;
+    const s = await startSession(w.id, w.date, phone.db);
+    await phone.sync();
+    await laptop.sync();
+
+    await updateSession(s.id, { swaps: { [w.exercises[1].id]: 'leg-press' } }, phone.db);
+    await new Promise((r) => setTimeout(r, 5));
+    await updateSession(s.id, { notes: 'knee felt fine' }, laptop.db);
+    await laptop.sync();
+    await phone.sync();
+    await laptop.sync();
+    for (const d of [phone.db, laptop.db]) {
+      const merged = (await d.sessions.get(s.id))!;
+      expect(merged.swaps).toEqual({ [w.exercises[1].id]: 'leg-press' });
+      expect(merged.notes).toBe('knee felt fine');
+    }
+  });
+
+  it('counts the same set logged on two devices before syncing once', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    const block = await ensurePlan('2026-10-14', phone.db);
+    await phone.sync();
+    await laptop.sync();
+    const w = (await laptop.db.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((x) => x.sessionType === 'legs')!;
+    const pe = w.exercises[0];
+    await logSet(await startSession(w.id, w.date, phone.db), pe.exerciseId, pe.id, 0, { weight: 95, reps: 8 }, phone.db);
+    await new Promise((r) => setTimeout(r, 5));
+    await logSet(await startSession(w.id, w.date, laptop.db), pe.exerciseId, pe.id, 0, { weight: 95, reps: 9 }, laptop.db);
+    await phone.sync();
+    await laptop.sync();
+    await phone.sync();
+    for (const d of [phone.db, laptop.db]) {
+      const sets = (await d.loggedSets.toArray()).filter((x) => !x.deletedAt);
+      expect(sets.map((x) => x.reps)).toEqual([9]);
+    }
+  });
+
+  it('agrees on when tracking started, so missed days match across devices', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    await phone.db.profile.put({ ...(await getProfile(phone.db)), createdAt: '2026-10-07T08:00:00.000Z' });
+    await getProfile(laptop.db); // set up later, with its own (later) createdAt and an untouched profile
+    await phone.sync();
+    await laptop.sync();
+    expect((await getProfile(laptop.db)).createdAt).toBe('2026-10-07T08:00:00.000Z');
   });
 
   it('resolves conflicts by last write wins', async () => {

@@ -39,7 +39,7 @@ npm run dev          # app on http://localhost:5173 (proxies /api to :3000)
 npm test             # unit tests: generator, progression, sync, server, catalog
 npm run typecheck
 npm run sample       # print a generated block as Markdown
-npm run build && SYNC_TOKEN=dev npm start   # production build on http://localhost:3000
+npm run build && SYNC_TOKEN=$(openssl rand -hex 32) npm start   # production build on http://localhost:3000
 npm run test:e2e     # Playwright at iPhone size against the production build
 ```
 
@@ -50,7 +50,7 @@ The exercise catalog is generated: edit `scripts/curation.ts`, then `npm run bui
 One service from this repo. Build command `npm run build`, start command `npm start`. Add a volume mounted at `/data` and set:
 
 - `DATA_DIR=/data`
-- `SYNC_TOKEN=<a long random string>`; paste the same token into the app's Settings › Sync on each device.
+- `SYNC_TOKEN`: at least 32 random characters, e.g. from `openssl rand -hex 32`. It is the only protection on the API (there's no rate limiting), so never use a short or memorable one. Paste the same token into the app's Settings › Sync on each device.
 
 Then open the site on the iPhone in Safari, Share › Add to Home Screen. Domain, Cloudflare, backups, rollout and updates: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 

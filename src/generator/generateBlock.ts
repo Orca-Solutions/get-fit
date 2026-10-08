@@ -16,7 +16,7 @@ import { BANDS, GROUP_LABEL, coverageReport, creditOf, weeklySets, type Coverage
 export const GENERATOR_VERSION = '1.1.0';
 export const BLOCK_WEEKS = 4;
 
-export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; favourite?: boolean }>;
+export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
 
 export type GeneratorInput = {
   profile: Profile;
@@ -50,6 +50,8 @@ type Ctx = {
   now: string;
   baseSlots: Record<string, string>;
   rotated: string[];
+  /** Slots whose whole pool was flagged, and what filled them (shown in the block rationale). */
+  notices: string[];
   stalled: Set<string>;
   known: Set<string>;
 };
@@ -66,6 +68,7 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
     now: input.now ?? new Date().toISOString(),
     baseSlots: {},
     rotated: [],
+    notices: [],
     stalled: new Set(input.stalled ?? []),
     known: new Set(input.known ?? []),
   };
@@ -113,7 +116,8 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
       `Block ${blockIndex}: 3 loading weeks and a deload. Each day rotates heavy, moderate and light, so every muscle gets all three. ` +
       `Every loading week aims for the same sets per muscle, so everything grows at about the same rate` +
       (shortNames.length ? `; ${listNames(shortNames)} get the extra sets because the base movements leave them short.` : '.') +
-      (rotatedNames.length ? ` New this block: ${rotatedNames.join(', ')}; core variants rotate too.` : ''),
+      (rotatedNames.length ? ` New this block: ${rotatedNames.join(', ')}; core variants rotate too.` : '') +
+      (ctx.notices.length ? ` ${ctx.notices.join(' ')}` : ''),
   };
   return { block, workouts, coverage };
 }
@@ -159,9 +163,13 @@ function listNames(names: string[]): string {
 
 // ---------- exercise selection ----------
 
-function usable(ctx: Ctx, ex: Exercise, location: Location): boolean {
-  const flags = ctx.input.flags?.[ex.id];
-  if (flags?.avoid || flags?.unavailable) return false;
+/** Flags count where they were set: "can't do here" at the gym leaves the movement available at home. */
+export function flaggedOut(flags: ExerciseFlags[string] | undefined, location: Location): boolean {
+  return !!(flags?.avoid || flags?.unavailable || flags?.unavailableAt?.includes(location));
+}
+
+function usable(ctx: Ctx, ex: Exercise, location: Location, ignoreFlags = false): boolean {
+  if (!ignoreFlags && flaggedOut(ctx.input.flags?.[ex.id], location)) return false;
   if (ex.level === 'advanced') return false;
   const have = ctx.input.profile.equipmentByLocation[location];
   if (ex.loadType === 'kettlebell' && ex.weightConvention === 'per-hand' && !ctx.input.profile.kettlebells.some((k) => k.count >= 2)) return false;
@@ -170,6 +178,34 @@ function usable(ctx: Ctx, ex: Exercise, location: Location): boolean {
 
 function candidates(ctx: Ctx, slot: SlotKey, location: Location): Exercise[] {
   return ctx.input.exercises.filter((e) => e.slots.includes(slot) && usable(ctx, e, location));
+}
+
+/**
+ * A slot whose every candidate is flagged (pools can be as small as 2) never stops the plan: it takes a
+ * related movement for the same main muscle, or failing that keeps a flagged one, and says so.
+ */
+function fillEmptySlot(ctx: Ctx, slot: SlotKey, location: Location, taken: Exercise[]): Exercise {
+  const label = slot.split(':').pop()!.replace(/-/g, ' ');
+  const counts = new Map<Exercise['primaryMuscles'][number], number>();
+  for (const e of ctx.input.exercises) if (e.slots.includes(slot)) counts.set(e.primaryMuscles[0], (counts.get(e.primaryMuscles[0]) ?? 0) + 1);
+  const muscle = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const pattern = ctx.input.exercises.find((e) => e.slots.includes(slot))?.movementPattern;
+  const core = slot.startsWith('core:');
+  const sameKind = (e: Exercise) => e.slots.some((k) => (core ? k.startsWith('core:') : !k.startsWith('core:') && !k.startsWith('grip:')));
+  const free = (e: Exercise) => !taken.some((t) => t.id === e.id);
+  const related = best(
+    ctx.input.exercises.filter((e) => free(e) && sameKind(e) && !!muscle && e.primaryMuscles.includes(muscle) && usable(ctx, e, location)),
+    // Prefer the same pattern, a family the day doesn't already have, and a lighter movement.
+    (e) => jitter(ctx, e.id, slot) + (e.movementPattern === pattern ? 1 : 0) - (taken.some((t) => t.family === e.family) ? 3 : 0) - e.fatigueCost * 0.5,
+  );
+  if (related) {
+    ctx.notices.push(`Every ${label} movement is flagged, so ${related.name} fills that slot.`);
+    return related;
+  }
+  const flagged = best(ctx.input.exercises.filter((e) => free(e) && e.slots.includes(slot) && usable(ctx, e, location, true)), (e) => jitter(ctx, e.id, slot));
+  if (!flagged) throw new Error(`No exercise exists for slot ${slot}`);
+  ctx.notices.push(`Every ${label} movement is flagged and nothing similar is left, so ${flagged.name} stays in; swap it during the workout or unflag one in the Library.`);
+  return flagged;
 }
 
 /** Stable pseudo-random tie-break that changes from block to block. */
@@ -199,8 +235,7 @@ function pickBase(ctx: Ctx, type: Exclude<SessionType, 'core'>): Exercise[] {
       if (fresh.length) pool = fresh;
     }
     const keep = prevId && !rotate.has(i) && !ctx.stalled.has(prevId) && pool.find((e) => e.id === prevId);
-    let pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen));
-    if (!pick) throw new Error(`No exercise available for slot ${slot.key}`);
+    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen)) || fillEmptySlot(ctx, slot.key, 'gym', chosen);
     if (prevId && pick.id !== prevId) ctx.rotated.push(pick.id);
     ctx.baseSlots[key] = pick.id;
     chosen.push(pick);
@@ -579,9 +614,9 @@ function pickCoreBase(ctx: Ctx): Record<CoreDynamic, Exercise> {
         if (ctx.input.flags?.[e.id]?.favourite) s += 2;
         return s;
       });
-      if (!pick) throw new Error(`No home exercise for core dynamic ${dyn}`);
-      ctx.baseSlots[key] = pick.id;
-      out[dyn] = pick;
+      const chosen = pick ?? fillEmptySlot(ctx, `core:${dyn}`, location, Object.values(out));
+      ctx.baseSlots[key] = chosen.id;
+      out[dyn] = chosen;
     }
   }
   return out;

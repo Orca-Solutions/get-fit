@@ -7,9 +7,10 @@ import { lastTimeHint, summarizeHistory, fmtNum } from '../../generator/progress
 import { prescription } from '../../lib/format';
 import { useExercises, useProfile, useToday, useWakeLock } from '../../lib/hooks';
 import { Photo } from '../../ui/Photo';
-import type { Exercise, LoggedSet, PlannedExercise } from '../../types';
+import type { Exercise, LoggedSet, PlannedExercise, Session } from '../../types';
 import { HistoryPanel } from './HistoryPanel';
 import { SetRow, type Carry } from './SetRow';
+import { movementFor } from '../../lib/session';
 import { FinishSheet, InfoSheet, SwapSheet } from './WorkoutSheets';
 
 export default function Workout() {
@@ -48,7 +49,7 @@ export default function Workout() {
   if (!workout) return <p className="muted">Workout not found.</p>;
 
   const pe = workout.exercises[index];
-  const actualId = session.swaps?.[pe.id] ?? pe.exerciseId;
+  const actualId = movementFor(pe, session, sessionSets);
   const ex = exercises.get(actualId);
   const plannedTotal = workout.exercises.filter((e) => !session.skipped?.includes(e.id)).reduce((n, e) => n + e.sets.length, 0);
   const isLast = index === workout.exercises.length - 1;
@@ -95,7 +96,7 @@ export default function Workout() {
           {isLast ? (
             <button className="btn primary grow" onClick={() => setSheet('finish')}>Finish</button>
           ) : (
-            <NextButton pe={pe} next={workout.exercises[index + 1]} sets={sessionSets} names={exercises} swaps={session.swaps} onClick={() => go(index + 1)} />
+            <NextButton pe={pe} next={workout.exercises[index + 1]} sets={sessionSets} names={exercises} session={session} onClick={() => go(index + 1)} />
           )}
         </div>
       </div>
@@ -110,9 +111,9 @@ export default function Workout() {
   );
 }
 
-function NextButton({ pe, next, sets, names, swaps, onClick }: { pe: PlannedExercise; next: PlannedExercise; sets: LoggedSet[]; names: Map<string, Exercise>; swaps?: Record<string, string>; onClick: () => void }) {
+function NextButton({ pe, next, sets, names, session, onClick }: { pe: PlannedExercise; next: PlannedExercise; sets: LoggedSet[]; names: Map<string, Exercise>; session: Session; onClick: () => void }) {
   const done = sets.filter((s) => s.plannedExerciseId === pe.id).length >= pe.sets.length;
-  const nextName = names.get(swaps?.[next.id] ?? next.exerciseId)?.name ?? 'next';
+  const nextName = names.get(movementFor(next, session, sets))?.name ?? 'next';
   return (
     <button className={`btn grow ${done ? 'primary' : ''}`} onClick={onClick}>
       {done ? <span className="ellipsis">Next: {nextName} ›</span> : 'Next ›'}

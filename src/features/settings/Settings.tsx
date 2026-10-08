@@ -91,8 +91,8 @@ export default function Settings() {
               const f = e.target.files?.[0];
               if (!f) return;
               try {
-                await importAll(JSON.parse(await f.text()));
-                flash('Backup restored');
+                const { skipped } = await importAll(JSON.parse(await f.text()));
+                flash(skipped ? `Backup restored; skipped ${skipped} damaged ${skipped === 1 ? 'entry' : 'entries'}` : 'Backup restored');
               } catch {
                 flash("That file isn't a get-fit backup");
               }
@@ -168,11 +168,19 @@ function SyncCard({ flash }: { flash: (m: string) => void }) {
   );
 }
 
-/**
- * On a fresh device (nothing logged yet), drop the default profile and generated plan before the
- * first sync so the server's copies come down instead of two plans existing side by side.
- */
-function download(filename: string, text: string, type: string) {
+async function download(filename: string, text: string, type: string) {
+  // An installed iPhone app opens a download link in place with no way back, so use the share sheet
+  // (Save to Files, AirDrop, Mail) there; browsers get a normal download.
+  const installed = matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+  const file = new File([text], filename, { type });
+  if (installed && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      return;
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return;
+    }
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type }));
   a.download = filename;

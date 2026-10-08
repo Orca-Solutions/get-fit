@@ -20,6 +20,17 @@ export default function Today() {
   const overdue = plan.views.filter((v) => v.state === 'missed' && v.workout.date >= weekStart && v !== main);
   const next = plan.views.find((v) => v.workout.date > today && v.logged === 0);
 
+  // On first open the plan is built a moment after the screen appears (after a quick sync).
+  if (!block)
+    return (
+      <>
+        <div className="topbar">
+          <h1>{formatShort(today)}</h1>
+        </div>
+        <div className="card muted">Setting up your plan…</div>
+      </>
+    );
+
   const open = async (v: WorkoutView) => {
     await startSession(v.workout.id, today);
     nav(`/workout/${v.workout.id}`);

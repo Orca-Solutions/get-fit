@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { GetFitDB } from '../src/db/db';
-import { ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, logSet, startSession, workoutsWithLogs } from '../src/db/repo';
+import { ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/db/repo';
 import { addDays, mondayOf, today } from '../src/lib/dates';
 
 let n = 0;
@@ -119,6 +119,44 @@ describe('repo', () => {
 
     await expect(importAll(JSON.parse('{"hello":1}'), phone)).rejects.toThrow('get-fit backup');
     await expect(importAll({ app: 'other', tables: {} }, phone)).rejects.toThrow('get-fit backup');
+  });
+
+  it('keeps the next block marked as planned ahead after a manual regenerate', async () => {
+    const d = await fresh();
+    const first = await ensurePlan(today(), d);
+    await regenerateUpcoming(today(), d);
+    expect((await d.blocks.get(`block-${addDays(first.startDate, 28)}`))!.plannedAhead).toBe(true);
+  });
+
+  it('skips backup rows that would crash a screen, and applies the rest', async () => {
+    const source = await fresh();
+    await ensurePlan(today(), source);
+    const backup = JSON.parse(JSON.stringify(await exportAll(source)));
+    const broken = { ...backup.tables.plannedWorkouts[0], id: 'w-broken', exercises: undefined };
+    backup.tables.plannedWorkouts.push(broken, { id: 'w-junk' }, 'nonsense');
+
+    const phone = await fresh();
+    const { skipped } = await importAll(backup, phone);
+    expect(skipped).toBe(3);
+    expect(await phone.plannedWorkouts.get('w-broken')).toBeUndefined();
+    expect(await phone.plannedWorkouts.count()).toBe(backup.tables.plannedWorkouts.length - 3);
+    await expect(importAll({ app: 'get-fit', tables: { loggedSets: 'oops' } }, phone)).rejects.toThrow('get-fit backup');
+  });
+
+  it("restoring on a new device retires the plan it made for itself, through sync", async () => {
+    const source = await fresh();
+    await ensurePlan('2026-10-14', source);
+    const backup = JSON.parse(JSON.stringify(await exportAll(source)));
+
+    // This device was opened weeks later and planned its own blocks (possibly already pushed).
+    const phone = await fresh();
+    await ensurePlan('2026-11-25', phone);
+    await importAll(backup, phone);
+    const own = (await phone.blocks.toArray()).filter((b) => !backup.tables.blocks.some((x: { id: string }) => x.id === b.id));
+    expect(own.length).toBeGreaterThan(0);
+    // Deleted with a fresh timestamp, so the deletion reaches the server and other devices.
+    expect(own.every((b) => b.deletedAt && Date.parse(b.updatedAt) > Date.parse(backup.exportedAt))).toBe(true);
+    expect((await liveBlocks(phone)).some((b) => b.id === 'block-2026-10-12')).toBe(true);
   });
 
   it('keeps default profile timestamps at the epoch so real settings always win', async () => {

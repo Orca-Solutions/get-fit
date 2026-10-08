@@ -47,7 +47,7 @@ Hosting the front end on Pages would split it from the API. That would need code
    | Variable | Value | Notes |
    |---|---|---|
    | `DATA_DIR` | `/data` | Where the SQLite file lives. Must be on the volume. |
-   | `SYNC_TOKEN` | a long random secret (for example, 32+ random bytes, base64) | The only auth. Never commit it. Each device enters it once in Settings › Sync. |
+   | `SYNC_TOKEN` | at least 32 random characters, e.g. `openssl rand -hex 32` | The only auth, and there's no rate limiting, so its length is the brute-force defence. Never commit it, never reuse a short or memorable one. Each device enters it once in Settings › Sync. |
    | `PORT` | set by Railway | The server listens on it. |
    | `STATIC_DIR` | leave unset | Defaults to `./dist`. |
 
@@ -79,7 +79,7 @@ The server holds the only off-device copy of the workout logs, which can't be re
 
 - **Railway volume backups:** turn on scheduled backups for the `/data` volume. Daily is plenty.
 - **Off-site export (optional):** a scheduled job can run `curl -H "Authorization: Bearer $SYNC_TOKEN" https://getfit.orcasolutions.dev/api/export` and store the JSON somewhere private. It contains personal data, so treat it as such.
-- **In the app:** Settings › Export my data saves a JSON backup, which can be restored from the same screen and never removes sets, or the logged sets as CSV.
+- **In the app:** Settings › Export my data saves a JSON backup, which can be restored from the same screen and never removes sets, or the logged sets as CSV. On an installed iPhone app it opens the share sheet (Save to Files).
 - **If the volume is ever lost:** the server starts with a new database id (epoch). Each device notices on its next sync and re-uploads everything it has, so restoring from the devices works too.
 
 ## Rollout
@@ -105,6 +105,8 @@ The server holds the only off-device copy of the workout logs, which can't be re
 ## Security notes
 
 - The repo is public, so **all secrets live in Railway variables only**. Never commit them.
-- One bearer token protects `/api/*`. The server compares tokens in constant time, caps request bodies at 5 MB and 5,000 changes, and validates every record.
+- One bearer token protects `/api/*`. The server compares tokens in constant time, caps request bodies at 5 MB and 5,000 changes, and validates every record (malformed ones are skipped and logged without their contents).
+- There's no rate limiting in the app, so the token's length is the defence: at least 32 random characters (`openssl rand -hex 32`).
+- Every response carries HSTS, `X-Content-Type-Options: nosniff`, frame and referrer headers.
 - **Rotating the token:** change `SYNC_TOKEN` in Railway, then re-enter it on each device. Devices with the old token fail to sync, but keep all their data and upload it once updated.
 - **Optional:** Cloudflare rate limiting on `/api/*` and bot protection. These need the proxy on (see step 6).

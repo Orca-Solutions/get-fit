@@ -3,8 +3,11 @@
 // stored since our cursor. Last write wins per record, by updatedAt. Never throws into the UI.
 // A device's first sync joins the server's plan instead of pushing its own (see joinServer).
 import { db as defaultDb, SYNC_TABLES, type GetFitDB, type SyncTable } from '../db/db';
+import type { Session } from '../types';
+import { mergeSession } from './session';
+import { validRow } from './validate';
 
-type SyncRecord = { id: string; updatedAt: string; deletedAt?: string | null };
+type SyncRecord = { id: string; createdAt?: string; updatedAt: string; deletedAt?: string | null };
 type Change = { table: SyncTable; record: SyncRecord };
 type SyncResponse = { cursor: number; epoch?: string; more?: boolean; reset?: boolean; accepted?: number; changes: Change[] };
 
@@ -117,7 +120,9 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
       }
       if (data.epoch && data.epoch !== knownEpoch) await setMeta(db, 'serverEpoch', data.epoch);
       pushed += data.accepted ?? 0;
-      pulled += await applyPulled(db, data.changes, data.cursor);
+      const merged: Change[] = [];
+      pulled += await applyPulled(db, data.changes, data.cursor, [], merged);
+      outbox.push(...merged);
       cursor = data.cursor;
       if (data.reset && !resetDone) {
         // The server lost its data (e.g. a fresh volume): send it everything we have.
@@ -190,20 +195,64 @@ async function collectChanges(db: GetFitDB, since: string): Promise<Change[]> {
 }
 
 /** Stores pulled records that are newer than ours (or any server record for `serverWins` tables), and the new cursor, in one transaction. */
-async function applyPulled(db: GetFitDB, changes: Change[], cursor: number, serverWins: SyncTable[] = []): Promise<number> {
+/**
+ * Stores pulled records that are newer than ours (or any server record for `serverWins` tables), and
+ * the new cursor, in one transaction. Two exceptions to last write wins:
+ * - a planned workout this device has logged sets in keeps its local copy, so a plan rebuilt on
+ *   another device never reshuffles a workout in progress here;
+ * - sessions merge field by field (lib/session.ts); merged results go into `repush`.
+ */
+async function applyPulled(db: GetFitDB, changes: Change[], cursor: number, serverWins: SyncTable[] = [], repush: Change[] = []): Promise<number> {
   const tables = [...SYNC_TABLES.map((t) => db.table(t)), db.meta];
   return db.transaction('rw', tables, async () => {
     let applied = 0;
+    let logged: Set<string> | undefined;
     for (const { table, record } of changes) {
-      if (!SYNC_TABLES.includes(table) || !record?.id || !record.updatedAt) continue;
+      // A row that would crash a screen (e.g. a workout with no exercises) is never stored.
+      if (!SYNC_TABLES.includes(table) || !validRow(table, record)) continue;
       const local = (await db.table(table).get(record.id)) as SyncRecord | undefined;
+      if (local && table === 'sessions') {
+        const { session, changed } = mergeSession(local as Session, record as Session);
+        if (changed) {
+          const stamped = { ...session, updatedAt: laterThan(local.updatedAt, record.updatedAt) };
+          await db.sessions.put(stamped);
+          repush.push({ table, record: stamped });
+          applied++;
+          continue;
+        }
+      }
+      if (local?.createdAt && record.createdAt && table === 'profile') {
+        // Keep the earliest createdAt: the calendar tracks missed days from it, and a device set up
+        // later must agree with the first one even when neither profile has been edited.
+        const first = [record.createdAt, local.createdAt].sort()[0];
+        if (!newer(record.updatedAt, local.updatedAt)) {
+          if (first !== local.createdAt) await db.profile.update(record.id, { createdAt: first });
+          continue;
+        }
+        record.createdAt = first;
+      }
       if (local && !serverWins.includes(table) && !newer(record.updatedAt, local.updatedAt)) continue;
+      if (local && table === 'plannedWorkouts' && !serverWins.includes(table)) {
+        logged ??= await loggedWorkoutIds(db);
+        if (logged.has(record.id)) continue;
+      }
       await db.table(table).put(record);
       applied++;
     }
     await setMeta(db, 'syncCursor', cursor);
     return applied;
   });
+}
+
+/** Now, or just after the later of two timestamps if a clock is ahead. */
+function laterThan(a: string, b: string): string {
+  const t = Math.max(Date.now(), Date.parse(a) + 1, Date.parse(b) + 1);
+  return new Date(t).toISOString();
+}
+
+async function loggedWorkoutIds(db: GetFitDB): Promise<Set<string>> {
+  const withSets = new Set((await db.loggedSets.toArray()).filter((s) => !s.deletedAt).map((s) => s.sessionId));
+  return new Set((await db.sessions.toArray()).filter((s) => !s.deletedAt && s.plannedWorkoutId && withSets.has(s.id)).map((s) => s.plannedWorkoutId!));
 }
 
 async function describeHttpError(res: Response): Promise<string> {
