@@ -12,20 +12,45 @@ async function fresh() {
 }
 
 describe('repo', () => {
-  it('creates one block covering today, and never stacks blocks when one starts later', async () => {
+  it('plans the current block plus the next one, and never stacks blocks when one starts later', async () => {
     const d = await fresh();
     const b = await ensurePlan(today(), d);
     expect(b.startDate).toBe(mondayOf(today()));
     expect(b.id).toBe(`block-${b.startDate}`);
+    const starts = async () => (await d.blocks.orderBy('startDate').toArray()).map((x) => x.startDate);
+    expect(await starts()).toEqual([b.startDate, addDays(b.startDate, 28)]);
+    expect(await d.plannedWorkouts.where('blockId').equals(`block-${addDays(b.startDate, 28)}`).count()).toBeGreaterThan(0);
     await ensurePlan(today(), d);
-    expect(await d.blocks.count()).toBe(1);
-    // Clock moved backwards a week: the existing (later) block is reused.
+    expect(await d.blocks.count()).toBe(2);
+    // Clock moved backwards a week: the existing (later) blocks are reused.
     await ensurePlan(addDays(b.startDate, -7), d);
-    expect(await d.blocks.count()).toBe(1);
-    // After the block ends, the next one starts the following Monday.
+    expect(await d.blocks.count()).toBe(2);
+    // On the next block's first day it becomes current and the one after it is planned.
     const next = await ensurePlan(addDays(b.startDate, 28), d);
     expect(next.startDate).toBe(addDays(b.startDate, 28));
     expect(next.index).toBe(2);
+    expect(await starts()).toEqual([b.startDate, addDays(b.startDate, 28), addDays(b.startDate, 56)]);
+  });
+
+  it('rebuilds a block planned ahead from the latest logs when it starts, once', async () => {
+    const d = await fresh();
+    const first = await ensurePlan(today(), d);
+    const nextStart = addDays(first.startDate, 28);
+    expect((await d.blocks.get(`block-${nextStart}`))!.plannedAhead).toBe(true);
+    // A movement in the next block gets logged in this block, so it is no longer new when the next block starts.
+    const nextWorkouts = await d.plannedWorkouts.where('blockId').equals(`block-${nextStart}`).toArray();
+    const firstTimer = nextWorkouts.flatMap((w) => w.exercises).find((e) => e.note?.includes('First time'))!;
+    const w = (await d.plannedWorkouts.where('blockId').equals(first.id).toArray())[0];
+    const s = await startSession(w.id, today(), d);
+    await logSet(s, firstTimer.exerciseId, null, 0, { weight: 20, reps: 10 }, d);
+    await ensurePlan(nextStart, d);
+    const rebuilt = await d.blocks.get(`block-${nextStart}`);
+    expect(rebuilt!.plannedAhead).toBe(false);
+    const after = (await d.plannedWorkouts.where('blockId').equals(`block-${nextStart}`).toArray()).flatMap((x) => x.exercises);
+    expect(after.filter((e) => e.exerciseId === firstTimer.exerciseId).every((e) => !e.note?.includes('First time'))).toBe(true);
+    const stamp = rebuilt!.updatedAt;
+    await ensurePlan(nextStart, d);
+    expect((await d.blocks.get(`block-${nextStart}`))!.updatedAt).toBe(stamp);
   });
 
   it('dates an opened-but-empty session from its first logged set', async () => {
@@ -68,7 +93,7 @@ describe('repo', () => {
     await phone.meta.put({ key: 'lastPushedAt', value: new Date().toISOString() });
     await importAll({ tables }, phone);
     expect((await getProfile(phone)).bodyweightLb).toBe(181);
-    expect(await phone.blocks.count()).toBe(1);
+    expect(await phone.blocks.count()).toBe(2); // the backup's current and next block, no duplicates
     expect(await phone.meta.get('lastPushedAt')).toBeUndefined();
   });
 

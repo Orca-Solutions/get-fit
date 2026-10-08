@@ -56,14 +56,29 @@ export function blockEnd(b: Block): string {
 }
 
 /**
- * Make sure a block covers `date`. The first block starts on this week's Monday; when a block
- * runs out, the next one starts on the Monday after it (or this Monday, after a long gap).
+ * Make sure a block covers `date`, and that the block after it is already planned, so the calendar
+ * always shows the current block plus the next one. The first block starts on this week's Monday;
+ * each later block starts the Monday after the previous one ends (or this Monday, after a long gap).
+ *
+ * A block planned ahead is built before its predecessor's logs exist, so on the day it becomes
+ * current its unlogged workouts are rebuilt once from the latest logs, then the next block is planned.
  */
 export async function ensurePlan(date = today(), d: GetFitDB = db): Promise<Block> {
+  const current = await blockCovering(date, d);
+  // A block that starts later (clock or timezone change) means the plan is already ahead: don't stack another.
+  if (current.startDate > date) return current;
+  const following = (await liveBlocks(d)).find((b) => b.startDate > blockEnd(current));
+  if (!following) {
+    if (current.plannedAhead) await rebuildFrom(current, date, d);
+    await createBlock(addDays(blockEnd(current), 1), current, d, true);
+  }
+  return current;
+}
+
+async function blockCovering(date: string, d: GetFitDB): Promise<Block> {
   const blocks = await liveBlocks(d);
   const current = blocks.find((b) => b.startDate <= date && date <= blockEnd(b));
   if (current) return current;
-  // A block that starts later (clock or timezone change) means the plan is already ahead: don't stack another.
   const ahead = blocks.find((b) => b.startDate > date);
   if (ahead) return ahead;
   const last = blocks[blocks.length - 1];
@@ -85,40 +100,40 @@ async function generatorInput(startDate: string, previousBlock: Block | undefine
   return { profile, exercises, flags, startDate, previousBlock, stalled, known, recoveryOk };
 }
 
-async function createBlock(startDate: string, previousBlock: Block | undefined, d: GetFitDB): Promise<Block> {
+async function createBlock(startDate: string, previousBlock: Block | undefined, d: GetFitDB, plannedAhead = false): Promise<Block> {
   const { block, workouts } = generateBlock(await generatorInput(startDate, previousBlock, d));
+  const stored = plannedAhead ? { ...block, plannedAhead: true } : block;
   await d.transaction('rw', d.blocks, d.plannedWorkouts, async () => {
-    await d.blocks.put(block);
+    await d.blocks.put(stored);
     await d.plannedWorkouts.bulkPut(workouts);
   });
   scheduleSync();
-  return block;
+  return stored;
 }
 
-/**
- * Re-run the generator for the current block's future days. Logged or started days are never touched.
- */
-export async function regenerateUpcoming(date = today(), d: GetFitDB = db): Promise<void> {
-  const blocks = await liveBlocks(d);
-  const current = blocks.find((b) => b.startDate <= date && date <= blockEnd(b));
-  if (!current) {
-    await ensurePlan(date, d);
-    return;
-  }
-  const previous = blocks.filter((b) => b.startDate < current.startDate).pop();
-  const { block, workouts } = generateBlock(await generatorInput(current.startDate, previous, d));
-  const existing = (await d.plannedWorkouts.where('blockId').equals(current.id).toArray()).filter((w) => !w.deletedAt);
+/** Re-run the generator for `block`'s workouts from `from` on. Logged or started days are never touched. */
+async function rebuildFrom(block: Block, from: string, d: GetFitDB): Promise<void> {
+  const previous = (await liveBlocks(d)).filter((b) => b.startDate < block.startDate).pop();
+  const { block: fresh, workouts } = generateBlock(await generatorInput(block.startDate, previous, d));
+  const existing = (await d.plannedWorkouts.where('blockId').equals(block.id).toArray()).filter((w) => !w.deletedAt);
   const started = await workoutsWithLogs(d);
   const t = nowIso();
   await d.transaction('rw', d.blocks, d.plannedWorkouts, async () => {
-    await d.blocks.put({ ...current, baseSlots: block.baseSlots, rationale: block.rationale, generatorVersion: block.generatorVersion, updatedAt: t });
+    await d.blocks.put({ ...block, focusMuscle: fresh.focusMuscle, baseSlots: fresh.baseSlots, rationale: fresh.rationale, generatorVersion: fresh.generatorVersion, plannedAhead: false, updatedAt: t });
     for (const old of existing) {
-      if (old.date < date || started.has(old.id)) continue;
-      const fresh = workouts.find((w) => w.date === old.date && w.sessionType === old.sessionType);
-      if (fresh) await d.plannedWorkouts.put({ ...fresh, id: old.id, blockId: current.id, createdAt: old.createdAt, updatedAt: t });
+      if (old.date < from || started.has(old.id)) continue;
+      const w = workouts.find((x) => x.date === old.date && x.sessionType === old.sessionType);
+      if (w) await d.plannedWorkouts.put({ ...w, id: old.id, blockId: block.id, createdAt: old.createdAt, updatedAt: t });
     }
   });
   scheduleSync();
+}
+
+/** Rebuild the rest of the current block from `date`, and the block planned after it. Logged workouts are kept. */
+export async function regenerateUpcoming(date = today(), d: GetFitDB = db): Promise<void> {
+  const current = await ensurePlan(date, d);
+  await rebuildFrom(current, date > current.startDate ? date : current.startDate, d);
+  for (const later of (await liveBlocks(d)).filter((b) => b.startDate > blockEnd(current))) await rebuildFrom(later, later.startDate, d);
 }
 
 // ---------- sessions and logging ----------

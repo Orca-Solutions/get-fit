@@ -174,6 +174,8 @@ export type Block = SyncFields & {
   rationale: string;
   /** exerciseId chosen per base slot, by session type. Used to rotate next block. */
   baseSlots: Record<string, string>;
+  /** Built before it started; its unlogged workouts are rebuilt from the latest logs when it becomes current. */
+  plannedAhead?: boolean;
 };
 
 export type FocusMuscle = 'side-delts' | 'chest' | 'arms' | 'upper-back' | 'glutes-hamstrings';

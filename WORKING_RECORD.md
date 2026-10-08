@@ -18,4 +18,3 @@
 - Supersets shown as one screen with alternating rows (core day currently steps through each movement in order).
 - Early deload trigger within a block; 10-day-gap load drop in the weight hint.
 - Progression tuning on real logs.
-- Pre-generate the next block during the deload week so the calendar shows it ahead of time.
