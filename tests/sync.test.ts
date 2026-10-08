@@ -104,6 +104,32 @@ describe('syncNow', () => {
     }
   });
 
+  it('keeps sets logged offline mid-workout and uploads them once back online', async () => {
+    const server = makeServer();
+    let online = false;
+    const flaky = ((input: RequestInfo | URL, init?: RequestInit) => (online ? server.fetch(input, init) : Promise.reject(new TypeError('Failed to fetch')))) as typeof fetch;
+    const phone = await makeDevice(flaky);
+    const laptop = await makeDevice(server.fetch);
+    // An older copy of set l1 already sits on the server (e.g. logged on the laptop earlier).
+    await laptop.db.loggedSets.put(loggedSet('l1', 6, at(-60_000)));
+    await laptop.sync();
+
+    // At the gym with no signal: the phone edits l1 and logs two new sets; every sync attempt fails.
+    await phone.db.loggedSets.bulkPut([loggedSet('l1', 10, at(-1_000)), loggedSet('l2', 9), loggedSet('l3', 8)]);
+    expect(await phone.sync()).toEqual({ ok: false, error: 'Failed to fetch' });
+    vi.stubGlobal('navigator', { onLine: false });
+    expect(await phone.sync()).toMatchObject({ ok: false, skipped: 'offline' });
+    vi.unstubAllGlobals();
+    expect((await phone.db.loggedSets.toArray()).map((s) => s.reps).sort()).toEqual([10, 8, 9].sort());
+
+    // Back online: the queued sets upload, and pulling the server's older l1 doesn't overwrite the phone's edit.
+    online = true;
+    expect(await phone.sync()).toMatchObject({ ok: true, pushed: 3 });
+    expect((await phone.db.loggedSets.get('l1'))?.reps).toBe(10);
+    await laptop.sync();
+    expect((await laptop.db.loggedSets.orderBy('id').toArray()).map((s) => [s.id, s.reps])).toEqual([['l1', 10], ['l2', 9], ['l3', 8]]);
+  });
+
   it('resolves conflicts by last write wins', async () => {
     const server = makeServer();
     const phone = await makeDevice(server.fetch);
