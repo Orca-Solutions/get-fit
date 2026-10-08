@@ -50,6 +50,21 @@ export function syncNow(opts: SyncOptions = {}): Promise<SyncResult> {
   return p;
 }
 
+/** While the app is open and visible, pull at least this often so another device's logs show up. */
+const POLL_MS = 60_000;
+
+/**
+ * Keeps an open app current: syncs when the app comes back into view or focus, when the network
+ * returns, and every minute while it is visible. Plain polling is plenty for one person's devices.
+ */
+export function startAutoSync(opts: SyncOptions = {}) {
+  const visible = () => document.visibilityState === 'visible';
+  window.addEventListener('online', () => syncNow(opts));
+  window.addEventListener('focus', () => syncNow(opts));
+  document.addEventListener('visibilitychange', () => visible() && syncNow(opts));
+  setInterval(() => visible() && syncNow(opts), POLL_MS);
+}
+
 let timer: ReturnType<typeof setTimeout> | undefined;
 
 /** Debounced background sync, e.g. after each logged set. Waits for a running sync, then syncs again. */

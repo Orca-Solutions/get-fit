@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { ensurePlan } from './db/repo';
+import { syncNow } from './lib/sync';
 import { useToday } from './lib/hooks';
 import Today from './features/today/Today';
 import Workout from './features/workout/Workout';
@@ -17,9 +18,12 @@ export default function App() {
   const { pathname } = useLocation();
   const inWorkout = pathname.startsWith('/workout/');
   const today = useToday();
-  // An installed app can stay in memory for days: roll into the next block when the date moves on.
+  // An installed app can stay in memory for days: roll into the next block when the date moves on,
+  // after pulling what other devices logged.
   useEffect(() => {
-    ensurePlan(today).catch(() => {});
+    syncNow()
+      .then(() => ensurePlan(today))
+      .catch(() => {});
   }, [today]);
   return (
     <>

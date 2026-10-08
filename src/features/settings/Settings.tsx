@@ -57,6 +57,7 @@ export default function Settings() {
           className="btn block"
           onClick={async () => {
             if (!confirm('Rebuild the rest of this block from today, and the next block? Logged workouts are kept.')) return;
+            await syncNow();
             await regenerateUpcoming(today());
             flash('Upcoming workouts regenerated');
           }}
