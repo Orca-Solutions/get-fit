@@ -4,6 +4,7 @@ import { BANDS, groupOf, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
 import { e1rm, effectiveLoad, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
+import { STRANGE_PERIODIZATION } from '../src/program';
 import { addDays } from '../src/dates';
 import { parseKettlebells } from '../src/kettlebells';
 import type { Equipment, Exercise, LoggedSet, PlannedWorkout, Profile } from '../src/types';
@@ -343,6 +344,20 @@ describe('generateBlock: thin equipment never stops the plan', () => {
     expect(block.rationale).toContain('No squat movement fits your equipment, so this block leaves that slot out');
     expect(block.baseSlots['legs|legs:squat']).toBeUndefined();
     expect(workouts.flatMap((w) => w.exercises).every((e) => byId.get(e.exerciseId)!.equipment.length === 0)).toBe(true);
+  });
+
+  it('lists the slots it leaves out, so a product can say it cannot plan them', () => {
+    const empty = gen({ profile: kit([]) });
+    expect(empty.unfilledSlots).toContainEqual({ dayType: 'legs', slot: 'legs:squat', reason: 'equipment' });
+    // One entry per day and slot, and exactly the base slots the block has no movement for.
+    const keys = empty.unfilledSlots.map((u) => `${u.dayType}|${u.slot}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    const days = Object.entries(STRANGE_PERIODIZATION.days).filter(([type]) => profile.schedule.some((s) => s.type === type));
+    const baseKeys = days.flatMap(([type, d]) => (d.kind === 'lift' ? d.base.map((b) => `${type}|${b.key}`) : d.supersets.flatMap(([, a, b]) => [`${type}|core:${a}`, `${type}|core:${b}`])));
+    expect(keys.sort()).toEqual(baseKeys.filter((k) => !empty.block.baseSlots[k]).sort());
+    // A full gym and the thin kits that still fill every slot report nothing.
+    expect(gen().unfilledSlots).toEqual([]);
+    expect(gen({ profile: kit([...profile.equipmentByLocation.gym, 'barbell', 'rack']) }).unfilledSlots).toEqual([]);
   });
 });
 

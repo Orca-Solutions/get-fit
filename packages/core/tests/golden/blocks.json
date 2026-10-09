@@ -1,7 +1,7 @@
 {
  "reference profile, blocks 1-8": [
   {
-   "digest": "e6096b1ee43448958d4d6d13040aee7b99ccfec31b8420417427d98bef10da81",
+   "digest": "f3f0ac9dadecdac85dcafb8a930b5646f887e0e6569ba5cf62b67bda02e944bb",
    "summary": [
     "2026-10-12 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -136,7 +136,7 @@
    ]
   },
   {
-   "digest": "d782c1401a079ff4e651c981f8229cfb2bffcdc43229efeebab0e7b03b4ab1fa",
+   "digest": "95c656a396754e755bac4690e21a9215ecf9eaec1589eeae390b027bb2412fca",
    "summary": [
     "2026-11-09 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -271,7 +271,7 @@
    ]
   },
   {
-   "digest": "09ba672275ec7cde34974a1ee03c8790b29e9bd065dad4bade6c4d44ce531314",
+   "digest": "4d32b7d32c23924d9652d0aea9646d83923bf85d5ece15ec3256bede2c97cdff",
    "summary": [
     "2026-12-07 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -406,7 +406,7 @@
    ]
   },
   {
-   "digest": "0cb7eee994a0004dd1b01921993c7f176859e63bfdeb575ad67ff7452dc4c595",
+   "digest": "28a60c3b048e42a2b21257bef880dba41c164fb7f3940e3209d7bfc9d3f0f33d",
    "summary": [
     "2027-01-04 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -541,7 +541,7 @@
    ]
   },
   {
-   "digest": "64496db0857eb923556d4b78895056eb491fa87a11bf762bed08e81c8fb5772f",
+   "digest": "9df374dda20347cd5a5f6c2bfd1ccf6243a3ad9468a9e8b5c4148df127177747",
    "summary": [
     "2027-02-01 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -676,7 +676,7 @@
    ]
   },
   {
-   "digest": "b7efaa2b70f0d9c074962de819d279469f570671986193b1d014a5f02cf0a519",
+   "digest": "b2737d90c01a4f80787f002f967999f47acf3d74d3a87736fc9228997f0553e1",
    "summary": [
     "2027-03-01 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -811,7 +811,7 @@
    ]
   },
   {
-   "digest": "38de56a0e7aa12b3933fb5c2823ae4095d36e71faaee829e99d7ef31936ffa41",
+   "digest": "4d913d9510a2629da2a38f7d87467d52735425dccd4e904cb3f921ba7faf2be9",
    "summary": [
     "2027-03-29 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -946,7 +946,7 @@
    ]
   },
   {
-   "digest": "c55bc7b9f1204f7097c93c3e88701b784930f6164fa13a218b6183f85ad2616e",
+   "digest": "83ed2bae45dfd8dec32dd607d7419a8553bc21797dc81622f0bd9c8415717d7e",
    "summary": [
     "2027-04-26 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -1083,7 +1083,7 @@
  ],
  "reference profile, blocks 1-8, lived in": [
   {
-   "digest": "e6096b1ee43448958d4d6d13040aee7b99ccfec31b8420417427d98bef10da81",
+   "digest": "f3f0ac9dadecdac85dcafb8a930b5646f887e0e6569ba5cf62b67bda02e944bb",
    "summary": [
     "2026-10-12 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -1218,7 +1218,7 @@
    ]
   },
   {
-   "digest": "b71a8e985fd25b2269946497b8039ef7ac2aa88657fc415e90e3822997498037",
+   "digest": "1595506de6fc4a04a2bdcadc83a77898d23a9d15753fbc87bba17fc7d8088f5f",
    "summary": [
     "2026-11-09 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -1353,7 +1353,7 @@
    ]
   },
   {
-   "digest": "375c8a6e00f05395b03659fee018e6e3c131afa1c2568df13d8c25371b7f19bb",
+   "digest": "40f9aa3eda90eae1c74f0a34c4c91cf48803467c9289eac64b95feae5e427691",
    "summary": [
     "2026-12-07 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -1488,7 +1488,7 @@
    ]
   },
   {
-   "digest": "5ee312ba5acde957040221833c96c9544ca1a46eb78979343407f3ebeb2cac52",
+   "digest": "d5e5d4d471c77ba86a54503670d4d6a6d3d3021aee1d7f289e362822067e8117",
    "summary": [
     "2027-01-04 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -1623,7 +1623,7 @@
    ]
   },
   {
-   "digest": "5153256187f16e19d00906dcaac7593fedf0d5472d436f6ee377dd7e89486f87",
+   "digest": "5940b90f8b4550255e497a84d331401aa403df7b4d5543a424e2a99bb8c83385",
    "summary": [
     "2027-02-01 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -1758,7 +1758,7 @@
    ]
   },
   {
-   "digest": "30f25b91fe24ed136d1ca09f9acb4bb034aca5cc092e8ed5c7694e3775eac776",
+   "digest": "04d99d1bd39e56d253c748740022bf5c487adddc5674f9c0f7ff9cc1ef1e1f9c",
    "summary": [
     "2027-03-01 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -1893,7 +1893,7 @@
    ]
   },
   {
-   "digest": "8a98b04ded010d5625df76c7e4d68fea96bdee73b885cee48b7d732e2cd2fccc",
+   "digest": "1accfc1df3b978729d1f0f3e2b81468481cf96bc147961d54c76c5c688da0225",
    "summary": [
     "2027-03-29 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -2028,7 +2028,7 @@
    ]
   },
   {
-   "digest": "35bc29c25616748b1394ead280b8522f46b43804affdb6ad62c70e832bff27a7",
+   "digest": "c3fa2da1aa545cbde6f3dacb9fdbea465502972a158a073294b180b2e0b31451",
    "summary": [
     "2027-04-26 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -2165,7 +2165,7 @@
  ],
  "reference profile, flat core": [
   {
-   "digest": "d6a567caff09c6979646eaaaa0f3cfb4d7bb40762331a4fb9302a91e0c69ca42",
+   "digest": "6bec0240ba3dbb7d9798f81108755a2d05790087dacceb7d8b1fb5486d3e65c2",
    "summary": [
     "2026-10-12 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -2300,7 +2300,7 @@
    ]
   },
   {
-   "digest": "c69bc895d838a297f9c4dc6ae74f7605eae4f8a1b76ab5d199efa003ff61fada",
+   "digest": "fca2dbd57de329407891f343be10ef2be7d069ff90b6228d80df37b0c12911f2",
    "summary": [
     "2026-11-09 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -2437,7 +2437,7 @@
  ],
  "reference profile, a whole slot avoided": [
   {
-   "digest": "575d683a7c2bad52c01c7b1d1e0da81421db3603287526bae19fd394ae81cc16",
+   "digest": "b10df127fa105b6d680d7d4240405ea3a5b2cda2e44171ea0251673c3f4eb98f",
    "summary": [
     "2026-10-12 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -2572,7 +2572,7 @@
    ]
   },
   {
-   "digest": "8c19bc30b4b5caf748e413ad870d580952cbe624994de0f5601ccf4eb4373cf9",
+   "digest": "391cba260b3137c957b1e55331fb7212d281ce96869e7c0923e448b2634fde0a",
    "summary": [
     "2026-11-09 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -2709,7 +2709,7 @@
  ],
  "dumbbells only, no step or plate": [
   {
-   "digest": "507eaa725002724034cbe5eaccfdd5e5d505ed8ea806b082066929759af42374",
+   "digest": "102dc76bf16886a40e0a2582c7a5ae3a557c2ddf39fd385e52b74f62da9de3ee",
    "summary": [
     "2026-10-12 chest-biceps M gym",
     "  P dumbbell-bench-press 3x8-12 rir 3 rest 105",
@@ -2844,7 +2844,7 @@
    ]
   },
   {
-   "digest": "b13feda80f1b087c5cc13d2261250d43f77b12165ac298458acd8cf49bc9e186",
+   "digest": "3a11370d7ea68b543e10c19b96236d6f8abb1b32318a7d058276891258cce92d",
    "summary": [
     "2026-11-09 chest-biceps M gym",
     "  P dumbbell-bench-press 3x8-12 rir 3 rest 105",
@@ -2981,7 +2981,7 @@
  ],
  "reference gym plus a barbell and rack": [
   {
-   "digest": "23ae27edc85b80dcffbfe8227d0769516ba48fd2f1de62f42efc7cf1888704c1",
+   "digest": "f327b7a706c14f44e5bca607e855513c9cec25adff14bd18e7b3654f57cb4d3e",
    "summary": [
     "2026-10-12 chest-biceps M gym",
     "  P barbell-bench-press 3x8-12 rir 3 rest 105",
@@ -3116,7 +3116,7 @@
    ]
   },
   {
-   "digest": "6ef39a457725104a4084023517310eddc42e5ce11ccb84ffc259dc4cbd011d1f",
+   "digest": "f55dd000e5707d77168409c719a7935237ead5dd3fb0f3dab12f5c68cdbeb2fc",
    "summary": [
     "2026-11-09 chest-biceps M gym",
     "  P barbell-bench-press 3x8-12 rir 3 rest 105",
@@ -3251,7 +3251,7 @@
    ]
   },
   {
-   "digest": "3395e8848b737c83655ea3444b89b2aabc08e5c452a93268c5402adc6fe0235e",
+   "digest": "e00724b9f976e1752501f499ebf9f2fa18d15539500b472f1d325aa3f392a0a8",
    "summary": [
     "2026-12-07 chest-biceps M gym",
     "  P barbell-bench-press 3x8-12 rir 3 rest 105",
@@ -3386,7 +3386,7 @@
    ]
   },
   {
-   "digest": "929beaeb50ff89d241e1c4b540adecfdf3fd7942f183826abb50c7b154636c94",
+   "digest": "2c7e7b1b404ec04e2f7eec0b98d2599e867985a60d6f1e9c048eff6117ab17c7",
    "summary": [
     "2027-01-04 chest-biceps M gym",
     "  P barbell-bench-press 3x8-12 rir 3 rest 105",
@@ -3521,7 +3521,7 @@
    ]
   },
   {
-   "digest": "98f156447b0e0396ececf2ed82ac7725d71bbac7305214f740bb66339857bde6",
+   "digest": "8ebad86466e143ee51cf6de39a1eac784a4ce30b05dad0b6e2fd195fdb0f00ad",
    "summary": [
     "2027-02-01 chest-biceps M gym",
     "  P barbell-bench-press 3x8-12 rir 3 rest 105",
@@ -3656,7 +3656,7 @@
    ]
   },
   {
-   "digest": "fb24d1795dff9bcde29fde69bb09fa2ed837695b1f31a5df19de53f8d80ef9ba",
+   "digest": "00f65565fadc1f8a45d7ee3bc8674e7a0680e2a560b15d0cfccc4b6b0c50cbf7",
    "summary": [
     "2027-03-01 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -3791,7 +3791,7 @@
    ]
   },
   {
-   "digest": "80ef420454a1fa6d76097792ce4f6247fb37bf9250c3f30670275f3362bce743",
+   "digest": "d8f1be6736e0ca66de9698b44b53e6901c4fcf5d812e1c4afb2dba0127959162",
    "summary": [
     "2027-03-29 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -3926,7 +3926,7 @@
    ]
   },
   {
-   "digest": "89449453097893bf6a03492f2f3798300726dba010c963798d29fc836c88fa92",
+   "digest": "5170ad42148c12649648941786f69b26b8954a82094c4bf2591151c304d776a7",
    "summary": [
     "2027-04-26 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -4063,7 +4063,7 @@
  ],
  "home kit only (bands, kettlebells, bodyweight)": [
   {
-   "digest": "ccf36dbf9c563057e6cd0dbe2fe8c0261ea3e83dc2756a468623f05c2d7482f0",
+   "digest": "e9ba82171380c4110b6feb8bc040e746345dae7c8a974cb4c81a00fefece5e4d",
    "summary": [
     "2026-10-12 chest-biceps M gym",
     "  P push-up 3x8-12 rir 3 rest 105",
@@ -4148,7 +4148,7 @@
    ]
   },
   {
-   "digest": "64cab2e8bf3d7c46895c9fc66e39b04e552a7b132633f7ff52ce831b52cb1c8b",
+   "digest": "903ff41475532edab044719e018c987f762b38c493a30821e5dddc649459e353",
    "summary": [
     "2026-11-09 chest-biceps M gym",
     "  P push-up 3x8-12 rir 3 rest 105",
