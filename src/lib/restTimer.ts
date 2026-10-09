@@ -14,7 +14,8 @@ const KEY = 'restTimer';
 const PREFS_KEY = 'restTimerPrefs';
 
 export type RestPrefs = { enabled: boolean; sound: boolean };
-const DEFAULT_PREFS: RestPrefs = { enabled: true, sound: true };
+// v2 design: one buzz at the end where the phone allows; a tone only if you turn sound on.
+const DEFAULT_PREFS: RestPrefs = { enabled: true, sound: false };
 
 // ---- pure helpers (tested) ----
 
@@ -145,7 +146,7 @@ export function useNow(active: boolean): number {
   return now;
 }
 
-// ---- end-of-rest cue: a short soft tone and a buzz where the platform allows ----
+// ---- end-of-rest cue: one buzz where the platform allows, and a short soft tone if sound is on ----
 
 let audio: AudioContext | null = null;
 
@@ -163,13 +164,12 @@ function unlockAudio() {
 }
 
 function cue() {
-  if (!prefs.sound) return;
   try {
-    navigator.vibrate?.([120, 80, 120]);
+    navigator.vibrate?.(200);
   } catch {
-    // Not supported (iPhone): the sound and the bar carry it.
+    // Not supported (iPhone): the bar, and the tone if it's on, carry it.
   }
-  if (!audio || audio.state !== 'running') return;
+  if (!prefs.sound || !audio || audio.state !== 'running') return;
   const t = audio.currentTime;
   for (const [i, freq] of [660, 880].entries()) {
     const osc = audio.createOscillator();

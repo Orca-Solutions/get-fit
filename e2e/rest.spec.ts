@@ -10,7 +10,7 @@ test('logging a set starts a rest timer that keeps time through a locked screen'
   await page.getByRole('button', { name: 'Log set 1' }).click();
 
   const bar = page.getByRole('timer');
-  await expect(bar).toContainText(/Rest \d:\d\d/);
+  await expect(bar).toContainText(/Rest\s*\d:\d\d/);
   const secs = async () => {
     const [, m, s] = (await bar.innerText()).match(/(\d+):(\d\d)/)!;
     return Number(m) * 60 + Number(s);
@@ -26,12 +26,12 @@ test('logging a set starts a rest timer that keeps time through a locked screen'
   await expect(bar).toContainText("Rest's up");
   await expect(bar).toContainText(/0:(1\d|2\d) ago/);
 
-  // Hide clears it; logging the next set starts a new one.
-  await page.getByRole('button', { name: 'Hide' }).click();
+  // Tapping it dismisses it; logging the next set starts a new one.
+  await page.getByRole('button', { name: 'Dismiss rest timer' }).click();
   await expect(bar).toBeHidden();
   await page.getByRole('button', { name: 'Log set 2' }).click();
-  await expect(bar).toContainText(/Rest \d:\d\d/);
-  await page.getByRole('button', { name: 'Skip' }).click();
+  await expect(bar).toContainText(/Rest\s*\d:\d\d/);
+  await page.getByRole('button', { name: 'Dismiss rest timer' }).click();
   await expect(bar).toBeHidden();
 });
 

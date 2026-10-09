@@ -124,10 +124,10 @@ function RestCard() {
         </div>
         {prefs.enabled && (
           <>
-            <label className="field-label">When rest is up</label>
+            <label className="field-label">When rest is up (phones that can buzz always buzz once)</label>
             <div className="seg">
-              <button className={prefs.sound ? 'on' : ''} onClick={() => setPrefs({ sound: true })}>Chime and buzz</button>
-              <button className={!prefs.sound ? 'on' : ''} onClick={() => setPrefs({ sound: false })}>Silent</button>
+              <button className={!prefs.sound ? 'on' : ''} onClick={() => setPrefs({ sound: false })}>No sound</button>
+              <button className={prefs.sound ? 'on' : ''} onClick={() => setPrefs({ sound: true })}>Soft chime</button>
             </div>
           </>
         )}

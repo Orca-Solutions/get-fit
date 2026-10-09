@@ -1,6 +1,9 @@
 import { formatRest, progress, restTimer, secondsLeft, STEP_SEC, useNow, useRestTimer } from '../../lib/restTimer';
 
-/** A slim countdown above the workout's Prev / Next buttons. Calm by design: no pop-ups, no alarms. */
+/**
+ * Rest between sets, in the thumb zone above Prev / Next (v2 design: a small label, a large count, a
+ * thin bar, ±30 s, tap to dismiss). Calm by design: no pop-ups, no alarms.
+ */
 export function RestBar() {
   const rest = useRestTimer();
   const now = useNow(!!rest);
@@ -9,21 +12,17 @@ export function RestBar() {
   const over = left <= 0;
   return (
     <div className={`rest-bar ${over ? 'over' : ''}`} role="timer" aria-live="off">
-      <div className="rest-fill" style={{ transform: `scaleX(${progress(rest, now)})` }} />
-      <span className="rest-time">
-        {over ? (
-          <>Rest's up{left < 0 && <span className="muted"> · {formatRest(left)} ago</span>}</>
-        ) : (
-          <>Rest <b>{formatRest(left)}</b></>
-        )}
-      </span>
+      <button className="rest-main" onClick={() => restTimer.stop()} aria-label="Dismiss rest timer">
+        <span className="rest-label">{over ? (left < 0 ? `Rest's up · ${formatRest(left)} ago` : "Rest's up") : 'Rest'}</span>
+        <span className="rest-time">{formatRest(Math.max(0, left))}</span>
+        <span className="rest-track"><span className="rest-fill" style={{ transform: `scaleX(${progress(rest, now)})` }} /></span>
+      </button>
       {!over && (
         <>
-          <button className="chip" onClick={() => restTimer.adjust(-STEP_SEC)} aria-label="30 seconds less">−30</button>
-          <button className="chip" onClick={() => restTimer.adjust(STEP_SEC)} aria-label="30 seconds more">+30</button>
+          <button className="btn rest-step" onClick={() => restTimer.adjust(-STEP_SEC)} aria-label="30 seconds less">−30</button>
+          <button className="btn rest-step" onClick={() => restTimer.adjust(STEP_SEC)} aria-label="30 seconds more">+30</button>
         </>
       )}
-      <button className="chip" onClick={() => restTimer.stop()}>{over ? 'Hide' : 'Skip'}</button>
     </div>
   );
 }
