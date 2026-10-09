@@ -96,10 +96,18 @@ export type Exercise = {
   gripType?: GripType;
   tags: string[];
   cues: string[];
+  /** Our own step-by-step text for every entry. */
   instructions: string[];
   images: string[];
+  /** Where the photos come from: free-exercise-db for entries with photos, get-fit for entries without. */
   source: { name: 'free-exercise-db' | 'get-fit'; sourceId?: string };
-  license: 'Unlicense' | 'FSL-1.1-MIT';
+  /** The entry's text and tags (the project's own work). */
+  license: 'FSL-1.1-MIT';
+  /**
+   * Set on entries with photos. free-exercise-db's upstream says its photos were scraped and advises against
+   * commercial use, so their rights are unverified: show them only where that risk is acceptable.
+   */
+  imageLicense?: 'unverified';
 };
 
 export type Location = 'gym' | 'home';

@@ -17,6 +17,7 @@ import type {
   CoreDynamic, Equipment, Exercise, GripType, LoadType, MovementPattern, Muscle, CatalogSlot, WeightConvention,
 } from '../src/types.js';
 import type { CuratedEntry } from './curation';
+import { INSTRUCTIONS } from './instructions';
 
 // ───────────────────────────── constants ─────────────────────────────
 
@@ -210,7 +211,7 @@ export function validateCatalog(exercises: readonly Exercise[]): string[] {
       if (gripSlots.length > 0 && !usableWith(ex, GYM_EQUIPMENT)) err(id, 'grip slot but not usable with gym equipment');
     }
     const liftingSlots = (ex.slots ?? []).filter((s) => !s.startsWith('core:'));
-    if (liftingSlots.length > 0 && !usableWith(ex, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT])) err(id, 'gym slot but not usable with gym equipment');
+    if (liftingSlots.length > 0 && !usableWith(ex, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT, ...HOME_EQUIPMENT])) err(id, 'lifting slot but not usable with gym, barbell or home equipment');
     if ((ex.loadType === 'barbell' || ex.loadType === 'ez-bar') && !ex.equipment.includes(ex.loadType)) err(id, `${ex.loadType} load needs ${ex.loadType} equipment`);
     if (ex.starter && !(ex.slots ?? []).some((s) => (BASE_SLOTS as readonly string[]).includes(s) || s.startsWith('core:'))) {
       err(id, 'starter must fill a base slot or a core slot');
@@ -222,15 +223,16 @@ export function validateCatalog(exercises: readonly Exercise[]): string[] {
     if (ex.instructions?.some((c) => !c.trim())) err(id, 'empty instruction step');
     if (!Array.isArray(ex.aliases)) err(id, 'aliases must be an array');
     if (!Array.isArray(ex.tags)) err(id, 'tags must be an array');
+    if (ex.license !== 'FSL-1.1-MIT') err(id, 'entries are FSL-1.1-MIT');
 
     if (ex.source?.name === 'free-exercise-db') {
       if (!ex.source.sourceId) err(id, 'free-exercise-db source without sourceId');
-      if (ex.license !== 'Unlicense') err(id, 'sourced entries are Unlicense');
+      if (ex.imageLicense !== 'unverified') err(id, 'entries with free-exercise-db photos mark them unverified');
       const expected = [`exercises/${id}/0.jpg`, `exercises/${id}/1.jpg`];
       if (JSON.stringify(ex.images) !== JSON.stringify(expected)) err(id, `images must be ${expected.join(', ')}`);
     } else if (ex.source?.name === 'get-fit') {
-      if (ex.license !== 'FSL-1.1-MIT') err(id, 'own entries are FSL-1.1-MIT');
       if (ex.images?.length !== 0) err(id, 'own entries have no images');
+      if (ex.imageLicense !== undefined) err(id, 'entries without photos have no imageLicense');
     } else {
       err(id, 'unknown source');
     }
@@ -308,8 +310,9 @@ async function cached(relPath: string, url: string): Promise<Buffer> {
 }
 
 /** Turn a curated entry plus its (optional) source into a full Exercise with a fixed key order. */
-export function toExercise(c: CuratedEntry, src: SourceExercise | undefined): Exercise {
-  const instructions = (c.instructions ?? src?.instructions ?? []).map((s) => s.trim()).filter(Boolean);
+export function toExercise(c: CuratedEntry): Exercise {
+  // Always our own text: free-exercise-db's instructions are copied from a commercial site, so they're never used.
+  const instructions = (c.instructions ?? INSTRUCTIONS[c.id] ?? []).map((s) => s.trim()).filter(Boolean);
   const ex: Exercise = {
     id: c.id,
     name: c.name,
@@ -348,7 +351,8 @@ export function toExercise(c: CuratedEntry, src: SourceExercise | undefined): Ex
     instructions,
     images: c.sourceId ? [`exercises/${c.id}/0.jpg`, `exercises/${c.id}/1.jpg`] : [],
     source: c.sourceId ? { name: 'free-exercise-db', sourceId: c.sourceId } : { name: 'get-fit' },
-    license: c.sourceId ? 'Unlicense' : 'FSL-1.1-MIT',
+    license: 'FSL-1.1-MIT',
+    imageLicense: c.sourceId ? 'unverified' : undefined,
   };
   // Drop undefined optional keys so the JSON stays tidy.
   for (const k of Object.keys(ex) as (keyof Exercise)[]) if (ex[k] === undefined) delete ex[k];
@@ -365,20 +369,22 @@ async function main(): Promise<void> {
   );
   console.log(`free-exercise-db @ ${FREE_EXERCISE_DB_COMMIT.slice(0, 7)}: ${sources.size} entries`);
 
+  // free-exercise-db's sentences, normalised, so a copied step can't slip back in.
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const sourceSentences = new Set([...sources.values()].flatMap((s) => s.instructions.map(norm)).filter((t) => t.length > 20));
+  for (const id of Object.keys(INSTRUCTIONS)) if (!curation.some((c) => c.id === id)) errors.push(`instructions.ts: ${id} is not in the curation`);
   for (const c of curation) {
-    if (!c.sourceId) {
-      if (!c.instructions?.length) errors.push(`${c.id}: no sourceId, so it needs its own instructions`);
-      continue;
-    }
+    const own = c.instructions ?? INSTRUCTIONS[c.id];
+    if (!own?.length) errors.push(`${c.id}: needs its own instructions (curation.ts or instructions.ts)`);
+    if (c.instructions && INSTRUCTIONS[c.id]) errors.push(`${c.id}: instructions in both curation.ts and instructions.ts`);
+    for (const step of own ?? []) if (sourceSentences.has(norm(step))) errors.push(`${c.id}: an instruction step matches free-exercise-db text`);
+    if (!c.sourceId) continue;
     const src = sources.get(c.sourceId);
     if (!src) errors.push(`${c.id}: sourceId "${c.sourceId}" not found in free-exercise-db`);
     else if (src.images.length < 2) errors.push(`${c.id}: sourceId "${c.sourceId}" has ${src.images.length} image(s), need 2`);
-    else if (!c.instructions?.length && !src.instructions.some((s) => s.trim())) {
-      errors.push(`${c.id}: sourceId "${c.sourceId}" has no instructions; supply our own`);
-    }
   }
 
-  const exercises = curation.map((c) => toExercise(c, c.sourceId ? sources.get(c.sourceId) : undefined));
+  const exercises = curation.map((c) => toExercise(c));
   errors.push(...validateCatalog(exercises));
 
   if (errors.length > 0) {

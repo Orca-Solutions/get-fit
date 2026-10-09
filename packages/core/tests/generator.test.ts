@@ -272,7 +272,7 @@ describe('generateBlock: thin equipment never stops the plan', () => {
     kettlebells,
   });
   const dumbbellsOnly = kit(['dumbbell', 'bench', 'mat', 'none']);
-  const homeOnly = kit(['band', 'kettlebell', 'mat', 'none'], [{ lb: 25, count: 2 }, { lb: 35, count: 1 }]);
+  const homeOnly = kit(['band', 'kettlebell', 'ab-wheel', 'mat', 'none'], [{ lb: 25, count: 2 }, { lb: 35, count: 1 }]);
   const chain = (p: Profile, count: number) => {
     const out: ReturnType<typeof generateBlock>[] = [];
     for (let i = 0; i < count; i++) {
@@ -287,11 +287,20 @@ describe('generateBlock: thin equipment never stops the plan', () => {
     expect(block.baseSlots['legs|legs:calf']).toBe('single-leg-calf-raise');
   });
 
-  it('does split squats on bodyweight with bands and kettlebells only', () => {
+  it('fills every slot with bands, kettlebells and bodyweight only, from the home pack', () => {
+    for (const g of chain(homeOnly, 8)) expect(g.unfilledSlots).toEqual([]);
     const { block } = gen({ profile: homeOnly });
-    expect(Object.values(block.baseSlots)).toContain('bodyweight-split-squat');
-    expect(block.baseSlots['legs|legs:single-leg']).toBeDefined();
+    expect(block.baseSlots['legs|legs:squat']).toBe('kettlebell-goblet-squat');
+    expect(block.baseSlots['chest-biceps|chest:flat-press']).toBe('kettlebell-floor-press');
+    expect(byId.get(block.baseSlots['back-tri-shoulders|back:vertical-pull'])!.equipment).toContain('band');
     expect(block.rationale).not.toContain('flagged');
+  });
+
+  it('keeps the home pack out of a gym plan that has machines, cables or dumbbells for the slot', () => {
+    const home = (id: string) => byId.get(id)!.tags.includes('home-pack');
+    for (const g of chain(profile, 8)) {
+      for (const w of g.workouts) for (const e of w.exercises) expect(home(e.exerciseId), e.exerciseId).toBe(false);
+    }
   });
 
   it('plans 8 blocks on thin kits using only the equipment there is', () => {

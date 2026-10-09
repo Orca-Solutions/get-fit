@@ -10,7 +10,7 @@ import { ZONE_NAME, compoundReps, coreTargets, isolationReps, restFor, rirFor, s
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.2.0';
+export const GENERATOR_VERSION = '1.3.0';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -207,7 +207,13 @@ function usable(ctx: Ctx, ex: Exercise, location: Location, ignoreFlags = false)
 }
 
 function candidates(ctx: Ctx, slot: SlotKey, location: Location): Exercise[] {
-  return ctx.input.exercises.filter((e) => e.slots.includes(slot) && usable(ctx, e, location));
+  const pool = ctx.input.exercises.filter((e) => e.slots.includes(slot) && usable(ctx, e, location));
+  // Home-pack stand-ins only where the slot has nothing that needs gym equipment.
+  const home = ctx.program.selection.homePack;
+  if (!home) return pool;
+  const isHome = (e: Exercise) => e.tags.includes(home.tag);
+  const gym = pool.some((e) => !isHome(e) && e.equipment.some((q) => !home.homeEquipment.includes(q)));
+  return gym ? pool.filter((e) => !isHome(e)) : pool;
 }
 
 /**

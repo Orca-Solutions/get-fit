@@ -56,7 +56,7 @@ export default function ExerciseDetail() {
           <ol className="small" style={{ margin: '6px 0 0', paddingLeft: 18 }}>{ex.instructions.map((c) => <li key={c}>{c}</li>)}</ol>
         </div>
       )}
-      <p className="small faint">Source: {ex.source.name === 'free-exercise-db' ? 'free-exercise-db (public domain)' : 'get-fit'}</p>
+      <p className="small faint">Source: {ex.source.name === 'free-exercise-db' ? 'get-fit, photos from free-exercise-db' : 'get-fit'}</p>
     </>
   );
 }
