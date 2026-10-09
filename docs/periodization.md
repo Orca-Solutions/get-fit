@@ -1,6 +1,6 @@
 # Training logic: "strange periodization", made explicit
 
-The rules get-fit's plan generator follows, with the research behind them. The numbers live in `STRANGE_PERIODIZATION` (version 1.1.0) in [`packages/core/src/program.ts`](../packages/core/src/program.ts); the method (rotation, balancing, fallbacks) lives in [`packages/core/src/generator/`](../packages/core/src/generator). Code comments cite this document by section number, so keep the numbering stable.
+The rules get-fit's plan generator follows, with the research behind them. The numbers live in `STRANGE_PERIODIZATION` (version 1.2.0) in [`packages/core/src/program.ts`](../packages/core/src/program.ts); the method (rotation, balancing, fallbacks) lives in [`packages/core/src/generator/`](../packages/core/src/generator). Code comments cite this document by section number, so keep the numbering stable.
 
 Each rule below is implemented unless it is marked **Not yet implemented**. Those are collected in [§4.8](#48-not-yet-implemented).
 
@@ -79,7 +79,7 @@ The default schedule comes from `neutralProfile()` and `referenceProfile()` in [
 
 **Other defaults:**
 - **Goal:** muscle first, strength second.
-- **Gym:** the reference profile's gym is a Planet Fitness: no free barbell, trap bar or deadlift platform. Squats, deadlifts and presses are done on the **Smith machine**, from block 1. The gym also has dumbbells, cables, a leg press, a hack squat, hip adduction and abduction, and assisted pull-up and dip machines. Equipment per location is part of the profile, and the generator only picks what a day's location has. A gym that lists a free barbell (and a rack for the racked lifts) also gets the catalog's barbell pack: the Smith lifts still lead block 1, and the barbell versions take over the primary slot when it next rotates.
+- **Gym:** the reference profile's gym is a Planet Fitness: no free barbell, trap bar or deadlift platform. Squats, deadlifts and presses are done on the **Smith machine**, from block 1. The gym also has dumbbells, cables, a leg press, a hack squat, hip adduction and abduction, and assisted pull-up and dip machines. Equipment per location is part of the profile, and the generator only picks what a day's location has. A gym that lists a free barbell (and a rack for the racked lifts) also gets the catalog's barbell pack. With a barbell and rack, the barbell squat, bench, overhead press and row are the main lifts from block 1. The hinge stays a dumbbell Romanian deadlift: a barbell deadlift on squat day would stack two of the most fatiguing lifts in one session, which §4.3 and §4.6 avoid for a daily runner.
 - **Home:** resistance bands with a door anchor, an ab wheel, and kettlebells (the reference profile has two 25 lb and one 35 lb).
 - **Units:** lb.
 
@@ -94,13 +94,13 @@ The default schedule comes from `neutralProfile()` and `referenceProfile()` in [
   - **I** (isolation)
   - **V** (variety: an extra movement that appears only on lighter days)
   - **G** (grip finisher) and **K** (core) for the finishers and the core day
-- **Zone:** each lifting day has a zone for that week. The zone sets the reps and, following Anatoly's two kinds of periods, the session's shape. Heavy days have fewer movements and more sets each; light days have more movements and fewer sets each, so variety widens as load drops [17].
+- **Zone:** each lifting day has a zone for that week. The zone sets the reps and, following Anatoly's two kinds of periods, the session's shape. Heavy days have fewer movements and more sets each; moderate and light days add a variety movement and a grip finisher, so variety widens as load drops [17]. The main lifts keep at least 3 sets on every loading day, so they get steady practice whatever the zone.
 
 | Zone | Compound reps | Rest (compound / other) | Movements | Typical sets |
 |---|---|---|---|---|
 | **H** (heavy) | 5–8 (block 1: 6–8) | 2.5 min / 1.5 min | 6 base slots | 18–22 |
-| **M** (moderate) | 8–12 | 1.75 min / 1.25 min | 6 base slots + 1 V + grip | about 17 |
-| **L** (light) | 12–20 (block 1: 12–15) | 1.25 min / 1.25 min | 6 base slots + 2 V + grip | about 16–19 |
+| **M** (moderate) | 8–12 | 1.75 min / 1.25 min | 6 base slots + 1 V + grip | about 17–21 |
+| **L** (light) | 12–20 (block 1: 12–15) | 1.25 min / 1.25 min | 6 base slots + 1 V + grip | about 17–21 |
 | Deload | the moderate ranges, at reduced load | 1.25 min | 6 base slots | 12 |
 
 Grip finishers rest 1 minute and core sets 45 seconds.
@@ -109,10 +109,10 @@ Sets per slot:
 
 | Role | H | M | L | Deload |
 |---|---|---|---|---|
-| P | 4 (block 1: 3) | 3 | 2 | 2 |
-| C | 3 | 3 | 2 | 2 |
+| P | 4 (block 1: 3) | 3 | 3 | 2 |
+| C | 3 | 3 | 3 | 2 |
 | I | 3 | 2 | 2 | 2 |
-| V | — | 2 | 2 each | — |
+| V | — | 2 | 2 | — |
 | G | — | 2 | 2 | — |
 
 - **Isolation and variety slots ignore the zone's compound rep range.** They run 10–15 reps on H and M days and 12–20 on L days.
@@ -182,13 +182,13 @@ Monday runs P, C, I, I, I, C: slot 3 is a fly and slot 6 a third press, so chest
 
 | Muscle | Sets per week |
 |---|---|
-| Quads | 9–11 |
+| Quads | 9–12 |
 | Glutes/hamstrings | 10–12 |
-| Chest | 9–11 |
+| Chest | 9–12 |
 | Back | 9–11 |
 | Side delts | 6–8 |
 | Biceps | 7–9 |
-| Triceps | 7–9 |
+| Triceps | 7–10 |
 | Calves, rear delts | 3–5 |
 
 **How a week reaches its targets.** Sets count 1 for a main muscle and 0.5 for a secondary one. The generator first adds up what the base movements alone give each muscle that week. Then:
@@ -197,7 +197,7 @@ Monday runs P, C, I, I, I, C: slot 3 is a fly and slot 6 a third press, so chest
 - **Grip finishers** skip movements, such as reverse curls, that would push biceps over.
 
 **Coverage check:** after laying out the weeks, the generator checks every loading week against the targets:
-- **Over:** a set comes off an isolation or variety slot above 2 sets, then a secondary compound. Otherwise a variety movement whose main muscles are all over goes. The primary lift is never trimmed, and base movements keep at least 2 sets.
+- **Over:** a set comes off an isolation slot above 2 sets first, then a variety movement above 2 sets (the third chest press and second back compound count as variety here). Otherwise a variety movement whose main muscles are all over goes. The primary lift and the other base compounds are never trimmed, so a muscle that only they carry can stay over its target. Quads, chest and triceps have one set more room than the other big muscles because 3-set squats and presses credit them more.
 - **Under:** a set is added to an isolation or variety slot, then a compound, in a session with room under 22 sets, as long as it pushes no other muscle over. Failing that, a 2-set variety movement is added on a moderate or light day with room.
 - **Floors:** major muscles should not drop below 4 sets in any week, and calves, rear delts and forearms below 2. A week under a floor is reported as a warning.
 
@@ -211,7 +211,7 @@ The highest-scoring candidate wins. Scoring:
 - \+ in block 1, a movement marked as a starter
 - \+ beginner level; − intermediate (used when nothing beginner-friendly offers variety)
 - \+ marked Favourite
-- \+ on a P slot, a Smith machine lift, and a little more for a free-barbell lift (so the Smith squat, deadlift, bench and press lead from block 1, because barbell movements are never starters, and with a barbell kit the barbell versions win the primary slot once it rotates)
+- \+ on a P slot, a Smith machine lift, and a little more for a free-barbell lift; + on a secondary compound slot, a free-barbell lift (so the Smith squat, bench and press lead from block 1 at a gym without a barbell, and the barbell squat, bench, overhead press and row lead with a barbell and rack)
 - − a second high-fatigue compound in the same session (keeps leg day recoverable for a daily runner)
 - − a high impact on running
 - − for a variety slot, a movement already used as variety this block, or one from the same family as the day's base movements
@@ -325,18 +325,17 @@ during a session:
 | I | Seated Leg Curl | 3 × 10–15 |
 | I | Seated Calf Raise | 3 × 10–15 |
 
-**Fri · Back, triceps & shoulders · Light** (9 movements, 19 sets)
+**Fri · Back, triceps & shoulders · Light** (8 movements, 21 sets)
 
 | Slot | Movement | Sets × reps |
 |---|---|---|
-| P | Assisted Pull-Up Machine | 2 × 10–12 |
-| C | One-Arm Dumbbell Row | 2 × 12–15/side |
-| C | Smith Machine Overhead Press | 2 × 10–12 |
+| P | Assisted Pull-Up Machine | 3 × 10–12 |
+| C | One-Arm Dumbbell Row | 3 × 12–15/side |
+| C | Smith Machine Overhead Press | 3 × 10–12 |
 | I | Dumbbell Lateral Raise | 3 × 12–20 (extra side-delt set) |
 | I | Seated Dumbbell Overhead Extension | 2 × 12–15 |
-| C | Seated Row Machine | 2 × 12–15 |
+| C | Seated Row Machine | 3 × 12–15 |
 | V | Incline Side-Lying Lateral Raise | 2 × 12–20/side (extra side-delt sets) |
-| V | Inverted Row (Smith Bar) | 2 × 12–15 (extra back sets) |
 | G | Dumbbell Finger Curl | 2 × 12–25 |
 
 **Sat · Core · Moderate** (8 movements, 16 sets, 4 supersets)
@@ -358,18 +357,18 @@ Weeks 2 and 3 shift the zones (Monday light, Wednesday moderate, Friday heavy; t
 
 | Muscle | Week 1 | Week 2 | Week 3 | Target |
 |---|---|---|---|---|
-| Quads | 9 | 10 | 10 | 9–11 |
-| Glutes/hamstrings | 12 | 12 | 11 | 10–12 |
-| Chest | 11 | 10 | 11 | 9–11 |
-| Back | 9 | 9 | 9 | 9–11 |
-| Side delts | 6 | 6 | 6.5 | 6–8 |
-| Biceps | 8 | 8.5 | 8.5 | 7–9 |
-| Triceps | 7.5 | 9 | 8 | 7–9 |
+| Quads | 9 | 10 | 10 | 9–12 |
+| Glutes/hamstrings | 12 | 12 | 12 | 10–12 |
+| Chest | 11 | 11 | 12 | 9–12 |
+| Back | 10 | 9 | 9 | 9–11 |
+| Side delts | 6.5 | 6 | 6.5 | 6–8 |
+| Biceps | 8.5 | 8.5 | 8.5 | 7–9 |
+| Triceps | 8 | 9.5 | 8 | 7–10 |
 | Calves | 4.5 | 3 | 3 | 3–5 |
-| Rear delts | 4 | 4.5 | 4.5 | 3–5 |
-| Forearms | 9.5 | 10 | 8.5 | no target |
+| Rear delts | 4.5 | 4.5 | 4.5 | 3–5 |
+| Forearms | 10 | 10 | 8.5 | no target |
 
-The golden test (`packages/core/tests/golden.test.ts`) pins blocks 1 to 8 of this profile exactly. From block 6 on, Friday runs out of room for every target: back can dip to 8 sets in one week, triceps reach 10.5 in one week, and from block 8 rear delts sit at 1.5–2. Blocks 1 to 5 stay inside every target.
+The golden test (`packages/core/tests/golden.test.ts`) pins blocks 1 to 8 of this profile exactly. From block 6 on, Friday runs out of room for every target: triceps reach 10.5 in one week, and from block 8 rear delts sit at 1.5–2. Blocks 1 to 5 stay inside every target.
 
 ## 7. Design choices
 
