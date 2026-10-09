@@ -4,11 +4,13 @@ The training engine behind [get-fit](https://github.com/Orca-Solutions/get-fit):
 
 ## Install
 
-From a GitHub release (each `core-v<version>` release carries the package):
+Each `core-v<version>` GitHub release carries the package as a tarball. Install it by URL:
 
 ```sh
 npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.1.0/orca-solutions-get-fit-core-0.1.0.tgz
 ```
+
+Requires Node 22 or later. `dexie` (for `/client`) and `better-sqlite3` (for `/sqlite`) are optional peer dependencies: install the one the entry point you use needs.
 
 ## Entry points
 
@@ -44,6 +46,12 @@ await ensurePlan();
 ```
 
 Without `headers`, sync sends the bearer token stored with `setSyncToken`.
+
+## Documentation
+
+- [API reference](https://github.com/Orca-Solutions/get-fit/blob/main/docs/api/core.md): every entry point, type and function.
+- [Sync server HTTP API](https://github.com/Orca-Solutions/get-fit/blob/main/docs/api/sync-server.md): the protocol `/client` speaks.
+- [Training rules](https://github.com/Orca-Solutions/get-fit/blob/main/docs/periodization.md) and the [exercise catalog](https://github.com/Orca-Solutions/get-fit/blob/main/docs/exercise-database.md).
 
 ## Stability
 

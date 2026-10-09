@@ -1,43 +1,51 @@
 # get-fit
 
-A personal workout planner and logger. One user (me), one phone, no accounts, no meal plans.
+A workout planner and logger for the gym. It generates a training plan in 4-week blocks, logs what was actually lifted set by set, and shows the history of the movement in hand. It works offline on a phone and syncs between devices through a small self-hosted server.
 
-## Why this exists
+get-fit is a single-user app: one person, any number of their own devices, no accounts. Meal planning, running and social features are out of scope.
 
-I liked AnatolyFit. Specifically, I liked its "strange periodization": the idea that you don't hit the same muscles the same way every week, but keep changing the angle, the rep range and the load so your body never settles into a rut. It made training feel less like a spreadsheet and more like a plan with a point of view.
+## Background
 
-What I didn't like was losing workouts to bugs. After enough sessions where the app got in the way of the training, I decided to build my own version that does the one thing I need, reliably: tell me what to do today, let me log what I actually did (which is often not what the plan said), and show me how that movement has gone before.
+get-fit began as a replacement for AnatolyFit, a subscription workout app whose "strange periodization" was worth keeping but whose bugs kept losing workouts. The project writes that training method down as explicit, tested rules and wraps it in an app that does three things reliably: say what to do today, record what was actually done (which is often not what the plan said), and show how that movement has gone before.
 
-This project is not affiliated with AnatolyFit. It's an independent, from-scratch take on the training ideas that drew me to it, built for an audience of one.
+get-fit is independent and not affiliated with AnatolyFit. The training rules, with their sources, are in [docs/periodization.md](docs/periodization.md).
 
 ## Principles
 
-- Never lose a logged set. Everything saves the moment you tap it.
-- Works offline. The gym's Wi-Fi is not a dependency.
+- Never lose a logged set. Every tap saves on the device immediately.
+- Work offline. The gym's Wi-Fi is not a dependency.
 - The plan is a suggestion; the log is the truth.
 - Small, tested, and boring in the best way.
-- Your data is plain JSON you can take anywhere.
+- The data belongs to the user: plain JSON that can be exported and restored at any time.
 
-## What it does
+## Features
 
-- **Today:** the day's generated workout with a one-line reason for its shape, progress, and a jump into logging.
-- **Logging:** one screen per movement. Reps show the plan in grey and typing replaces them; weight starts blank with "last time at this rep count" above it, and carries forward to later sets. ✓ logs whatever is grey. Band movements log band and steps from the anchor; holds log seconds. History for the movement sits right below.
-- **Plan generator:** 4-week blocks (3 loading weeks and a deload), always planned one block ahead; a block planned ahead is refreshed from your latest logs on its first day. Mon chest and biceps, Wed legs, Fri back, triceps and shoulders, weekend core at home. Each lifting day rotates heavy, moderate and light; lighter days add variety movements and a grip finisher. The rules are written down in [docs/periodization.md](docs/periodization.md) and implemented in [packages/core](packages/core).
-- **Calendar:** month and week views with done, partial, missed and done-late states, deload weeks shaded.
-- **History and library:** per-movement history with an estimated-1RM trend; about 130 curated movements with start/end photos.
-- **Sync:** each device keeps a full offline copy and syncs to a small server when it has signal, so the phone and a desktop browser share one plan and history. Settings › Export my data saves a full JSON backup (restorable, never removes sets) or your logged sets as CSV.
+- **Today:** the day's generated workout with a one-line reason for its shape, set progress, and a jump into logging. Rest days show the next session; missed sessions from the current week can be made up with **Do it today**.
+- **Logging:** one screen per movement. Reps show the plan in grey and typing replaces them; weight starts blank, with "last time at this rep count" above it, and carries forward to later sets. ✓ logs whatever is grey. Band movements log the band and steps from the anchor; holds log seconds. An optional Easy / Right / Hard tap per movement feeds progression. The movement's history sits right below.
+- **Rest timer:** logging a set starts a countdown sized to that set (longer after heavy compounds, shorter for isolation, grip and core work), with −30 / +30 and tap to dismiss.
+- **Swap and skip:** replace a movement with one that fills the same slot or trains the same muscles with the equipment where that day happens, or skip it. Logs record what was actually done.
+- **Plan generator:** 4-week blocks (3 loading weeks and a deload), always planned one block ahead; a block planned ahead is refreshed from the latest logs on its first day. The default week is Monday chest and biceps, Wednesday legs, Friday back, triceps and shoulders, and a weekend core day at home. Each lifting day rotates heavy, moderate and light; lighter days add variety movements and a grip finisher; weekly sets per muscle are balanced against target bands. The rules are in [docs/periodization.md](docs/periodization.md) and the code in [packages/core](packages/core).
+- **Calendar:** month and week views with done, partial, missed and done-late states, and deload weeks shaded.
+- **History and library:** per-movement history with an estimated-1RM trend, and a library of 156 curated movements, most with start and end photos. Movements can be marked Favourite, Avoid, or Can't do at the gym or at home, and the generator respects those marks.
+- **Sync and backup:** each device keeps a full offline copy and syncs with the server whenever it has signal, so a phone and a desktop browser share one plan and history. Settings › Export my data saves a full JSON backup (restorable, and a restore never removes sets) or the logged sets as CSV.
+- **Updates:** a new release installs in the background and takes over on the next launch, or straight away with the **Update** button. The app never reloads a screen mid-workout.
 
 ## Stack
 
-Vite, React and TypeScript as an installable PWA; Dexie (IndexedDB) on the phone; a Hono + SQLite server that serves the app and `/api/sync`. One Railway service runs it all.
+Vite, React and TypeScript as an installable PWA; Dexie (IndexedDB) for the on-device copy; a Hono and SQLite server that serves the app and the sync API. One Node process runs it all.
 
 The repo is an npm workspace:
 
-- `packages/core`: the engine, published as [`@orca-solutions/get-fit-core`](packages/core/README.md). Exercise library, plan generator and the `Program` it follows, progression, the device database and sync engine, and the SQLite sync store.
-- `apps/web`: the app.
-- `server`: the sync server, which also serves the built app.
+| Path | What it is |
+|---|---|
+| [`packages/core`](packages/core) | The engine, `@orca-solutions/get-fit-core`: the exercise catalog, the plan generator and the `Program` it follows, progression, the on-device database and sync engine, and the SQLite sync store. Usable by other apps; see its [README](packages/core/README.md). |
+| `apps/web` | The PWA. |
+| `server` | The sync server, which also serves the built app. |
+| `e2e` | Playwright tests against the production build. |
 
 ## Develop
+
+Requires Node 22.
 
 ```sh
 npm install
@@ -49,26 +57,36 @@ npm run build && SYNC_TOKEN=$(openssl rand -hex 32) npm start   # production bui
 npm run test:e2e     # Playwright at iPhone size against the production build
 ```
 
-The exercise catalog is generated: edit `packages/core/scripts/curation.ts`, then `npm run build:exercises` rebuilds `packages/core/src/data/exercises.json` and the photos in `apps/web/public/exercises/`.
+The exercise catalog is generated: edit `packages/core/scripts/curation.ts`, then `npm run build:exercises` rebuilds `packages/core/src/data/exercises.json` and the photos in `apps/web/public/exercises/`. See [docs/exercise-database.md](docs/exercise-database.md).
 
-`packages/core/tests/golden.test.ts` pins the exact plans for blocks 1 to 8. A change to the training rules fails it on purpose: if the change is intended, bump the program's `version` and refresh the pins with `GOLDEN_UPDATE=1 npx vitest run packages/core/tests/golden.test.ts`.
+`packages/core/tests/golden.test.ts` pins the exact plans for blocks 1 to 8 of the reference profile. A change to the training rules fails it on purpose: if the change is intended, bump the program's `version` and refresh the pins with `GOLDEN_UPDATE=1 npx vitest run packages/core/tests/golden.test.ts`.
 
-Releasing the engine: bump `version` in `packages/core/package.json`, merge, then run the **Release core** workflow on main from the Actions tab (or push a tag `core-v<version>`). It tests the workspace and creates the GitHub release `core-v<version>` with the package attached, which other projects install by URL:
+CI (`.github/workflows/ci.yml`) runs typecheck, unit tests, the build and the Playwright suite on every push and pull request.
+
+## Using the core package
+
+The engine is released as a tarball attached to a GitHub release named `core-v<version>`, and installs by URL:
 
 ```sh
 npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.1.0/orca-solutions-get-fit-core-0.1.0.tgz
 ```
 
-Once an `NPM_TOKEN` repository secret exists, the same run also publishes to npm as `@orca-solutions/get-fit-core`.
+To cut a release: bump `version` in `packages/core/package.json`, merge, then run the **Release core** workflow on `main` from the Actions tab (or push a tag `core-v<version>`). The workflow tests the workspace, packs the package and creates the release.
 
-## Deploy (Railway)
+API reference: [docs/api/core.md](docs/api/core.md).
 
-One service from this repo. Build command `npm run build`, start command `npm start`. Add a volume mounted at `/data` and set:
+## Deploy
 
-- `DATA_DIR=/data`
-- `SYNC_TOKEN`: at least 32 random characters, e.g. from `openssl rand -hex 32`. It is the only protection on the API (there's no rate limiting), so never use a short or memorable one. Paste the same token into the app's Settings › Sync on each device.
+One service from this repo: build with `npm run build`, start with `npm start`, give it a persistent volume, and set:
 
-Then open the site on the iPhone in Safari, Share › Add to Home Screen. Domain, Cloudflare, backups, rollout and updates: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- `DATA_DIR`: a directory on the volume, for example `/data`.
+- `SYNC_TOKEN`: at least 32 random characters, for example from `openssl rand -hex 32`. It is the only protection on the API (there is no rate limiting), so never use a short or memorable one. The same token goes into Settings › Sync on each device.
+
+`railway.json` configures this for Railway, but any host that runs Node 22 with a persistent disk works. On an iPhone, open the site in Safari and use Share › Add to Home Screen. Domains, backups, rollout and updates are covered in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), and the server's HTTP API in [docs/api/sync-server.md](docs/api/sync-server.md).
+
+## Documentation
+
+See [docs/README.md](docs/README.md) for the full index: the product spec, the training rules, the exercise catalog, deployment and the API reference.
 
 ## Credits
 
@@ -76,4 +94,4 @@ Exercise instructions and photos come from [free-exercise-db](https://github.com
 
 ## License
 
-MIT.
+[MIT](LICENSE).
