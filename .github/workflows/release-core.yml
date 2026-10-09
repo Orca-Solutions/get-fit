@@ -47,7 +47,10 @@ jobs:
       - name: GitHub release with the tarball
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$TAG" orca-solutions-get-fit-core-*.tgz --target "$GITHUB_SHA" --title "$TAG" --notes "Install: npm install https://github.com/${{ github.repository }}/releases/download/$TAG/$(ls orca-solutions-get-fit-core-*.tgz)"
+        run: |
+          file=$(ls orca-solutions-get-fit-core-*.tgz)
+          gh release create "$TAG" "$file" --target "$GITHUB_SHA" --title "$TAG" \
+            --notes "Install with npm install https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$file"
       - name: Publish to npm
         if: env.NPM_TOKEN != ''
         run: npm publish orca-solutions-get-fit-core-*.tgz --provenance --access public
