@@ -4,7 +4,7 @@
 
 - The app is complete for a single user: planning, logging, swap and skip, history, calendar, library, settings, export and restore, multi-device sync, the rest timer, in-app updates and a responsive desktop layout.
 - The repo is an npm workspace: `packages/core` (the engine), `apps/web` (the PWA) and `server` (the sync server).
-- `@orca-solutions/get-fit-core` 0.1.0 is released as the GitHub release `core-v0.1.0`.
+- `@orca-solutions/get-fit-core` 0.2.0 is released as the GitHub release `core-v0.2.0` (0.1.0, the first release, stays MIT; 0.2.0 is FSL-1.1-MIT).
 - Docs: [docs/SPEC.md](docs/SPEC.md), [docs/periodization.md](docs/periodization.md), [docs/exercise-database.md](docs/exercise-database.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and the [API reference](docs/api/README.md).
 
 ## Verification

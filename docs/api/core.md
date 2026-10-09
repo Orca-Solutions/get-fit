@@ -26,7 +26,7 @@ Version documented: `0.2.0` (the version on `main`; the latest release may be ol
 The package is distributed as a tarball attached to each `core-v<version>` GitHub release. It is not published to the npm registry.
 
 ```sh
-npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.1.0/orca-solutions-get-fit-core-0.1.0.tgz
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.2.0/orca-solutions-get-fit-core-0.2.0.tgz
 ```
 
 | Requirement | Needed for |
