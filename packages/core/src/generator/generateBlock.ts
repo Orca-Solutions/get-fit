@@ -281,6 +281,19 @@ function lowestRungs(ctx: Ctx, pool: Exercise[]): Exercise[] {
   return rungs.length ? rungs : pool;
 }
 
+/**
+ * A main lift rotating with no other family to go to moves on through its own family in catalog order, e.g.
+ * Smith overhead press, then seated DB press, then machine press (§4.3, rev 3.7): each step further along
+ * costs 1.5, enough to beat the random tie-break but not a load-type bonus such as a barbell kit's.
+ */
+function familyOrder(ctx: Ctx, slot: BaseSlot, pool: Exercise[], prevId: string | undefined): Map<string, number> {
+  const prev = prevId ? ctx.byId.get(prevId) : undefined;
+  if (slot.role === 'I' || !prev || pool.some((e) => e.family !== prev.family)) return new Map();
+  const order = ctx.input.exercises.filter((e) => e.family === prev.family).map((e) => e.id);
+  const at = order.indexOf(prev.id);
+  return new Map([...order.slice(at + 1), ...order.slice(0, at)].map((id, rank) => [id, rank]));
+}
+
 /** Blocks where slots with `alternateLaterality` take their bilateral movements (§4.8). */
 function bilateralBlock(ctx: Ctx): boolean {
   return ctx.blockIndex % 2 === 0;
@@ -308,13 +321,19 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefi
       const turn = pool.filter((e) => (e.laterality === 'bilateral') === bilateralBlock(ctx));
       if (turn.length) pool = turn;
       if (slot.alternateLaterality.stepUp && bilateralBlock(ctx)) pool = lowestRungs(ctx, pool);
+    } else {
+      // Main lifts stay two-sided: no free-standing one-arm variants in P and C slots. Supported or machine
+      // one-arm versions (one-arm DB row, single-arm cable pulldown) still count (§4.3, rev 3.7).
+      const twoSided = pool.filter((e) => !(e.laterality === 'unilateral' && e.stability === 'free'));
+      if (twoSided.length) pool = twoSided;
     }
     if (slot.distinctFamily) {
       const fresh = pool.filter((e) => !chosen.some((c) => c.family === e.family));
       if (fresh.length) pool = fresh;
     }
     const keep = prevId && !rotate.has(i) && !ctx.stalled.has(prevId) && pool.find((e) => e.id === prevId);
-    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen)) || fillEmptySlot(ctx, type, slot.key, 'gym', chosen);
+    const order = familyOrder(ctx, slot, pool, prevId);
+    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen) - 1.5 * (order.get(e.id) ?? 0)) || fillEmptySlot(ctx, type, slot.key, 'gym', chosen);
     out.push(pick);
     if (!pick) return;
     if (prevId && pick.id !== prevId) ctx.rotated.push(pick.id);

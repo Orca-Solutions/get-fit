@@ -208,6 +208,26 @@ describe('generateBlock: later blocks', () => {
     expect(sumo.sets[0].targetReps).toEqual({ min: 8, max: 10 });
   });
 
+  it('keeps main lifts two-sided: the press rotates to the seated DB press, never a one-arm free press (§4.3, rev 3.7)', () => {
+    const blocks = [b1];
+    for (let i = 1; i < 8; i++) blocks.push(gen({ previousBlock: blocks[i - 1].block, startDate: addDays(blocks[i - 1].block.startDate, 28) }));
+    const press = blocks.map((g) => g.block.baseSlots['back-tri-shoulders|shoulders:vertical-press']);
+    expect(press.slice(0, 3)).toEqual(['smith-overhead-press', 'smith-overhead-press', 'smith-overhead-press']);
+    expect(press.slice(3)).toEqual(Array(5).fill('seated-dumbbell-shoulder-press'));
+    const tpl = STRANGE_PERIODIZATION.days;
+    for (const g of blocks) {
+      for (const [key, id] of Object.entries(g.block.baseSlots)) {
+        const [type, slot] = key.split('|');
+        const base = (tpl[type] as LiftDay).base?.find((s) => s.key === slot);
+        if (!base || base.alternateLaterality) continue;
+        const e = byId.get(id)!;
+        expect(e.laterality === 'unilateral' && e.stability === 'free', `${key}: ${id}`).toBe(false);
+      }
+    }
+    // Supported one-arm main lifts still count.
+    expect(b1.block.baseSlots['back-tri-shoulders|back:horizontal-pull']).toBe('one-arm-dumbbell-row');
+  });
+
   it('starts sumo blocks on the dumbbell sumo squat and steps up to the Smith one once it is outgrown (§4.8)', () => {
     expect(b2.block.baseSlots['legs|legs:single-leg']).toBe('dumbbell-sumo-squat');
     const stepped = gen({ previousBlock: b1.block, startDate: '2026-11-09', outgrown: ['dumbbell-sumo-squat'] });
