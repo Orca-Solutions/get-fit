@@ -2,7 +2,7 @@
 
 The get-fit training engine as a library: domain types, the curated exercise catalog, training programs as data, the block generator, progression and coverage helpers, the sync protocol, an IndexedDB client and a SQLite sync store.
 
-Version documented: `0.4.0` (the version on `main`; the latest release may be older). See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
+Version documented: `0.4.0` (the version on `main` and the latest release, `core-v0.4.0`). See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
 
 - [Install](#install)
 - [Entry points](#entry-points)
@@ -26,7 +26,7 @@ Version documented: `0.4.0` (the version on `main`; the latest release may be ol
 The package is distributed as a tarball attached to each `core-v<version>` GitHub release. It is not published to the npm registry.
 
 ```sh
-npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.2.0/orca-solutions-get-fit-core-0.2.0.tgz
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.4.0/orca-solutions-get-fit-core-0.4.0.tgz
 ```
 
 | Requirement | Needed for |
