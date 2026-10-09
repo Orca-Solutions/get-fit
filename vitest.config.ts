@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitest/config';
 
+// One run across the workspace: the engine, the web app and the server.
 export default defineConfig({
   test: {
-    include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
-    environment: 'node',
+    projects: ['packages/core', 'apps/web', 'server'],
   },
 });

@@ -7,38 +7,26 @@
   "engines": {
     "node": "22.x"
   },
+  "workspaces": [
+    "packages/core",
+    "apps/web",
+    "server"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build && tsc -p server/tsconfig.json",
+    "dev": "npm run dev -w @get-fit/web",
+    "build": "npm run build -w @orca-solutions/get-fit-core && npm run build -w @get-fit/web && npm run build -w @get-fit/server",
     "start": "node dist-server/server/index.js",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "typecheck": "tsc -p tsconfig.json && tsc -p server/tsconfig.json --noEmit",
-    "build:exercises": "tsx scripts/build-exercises.ts",
-    "sample": "tsx scripts/sample-plan.ts"
-  },
-  "dependencies": {
-    "@hono/node-server": "^2.1.3",
-    "better-sqlite3": "^13.0.3",
-    "dexie": "^4.4.6",
-    "dexie-react-hooks": "^4.4.0",
-    "hono": "^4.13.13",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "react-router-dom": "^7.18.4"
+    "typecheck": "tsc -p tsconfig.json && tsc -p packages/core && tsc -p apps/web && tsc -p server",
+    "build:exercises": "npm run build:exercises -w @orca-solutions/get-fit-core",
+    "sample": "npm run sample -w @orca-solutions/get-fit-core --"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
-    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.4",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
-    "fake-indexeddb": "^6.2.5",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vite": "^8.3.3",
-    "vite-plugin-pwa": "^2.0.0",
     "vitest": "^5.0.3"
   }
 }

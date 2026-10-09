@@ -3,13 +3,13 @@ import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { secureHeaders } from 'hono/secure-headers';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { TABLES, type Change, type CursorKey, type Store } from './store.js';
+import { TABLES, type Change, type CursorKey, type SqliteStore } from '@orca-solutions/get-fit-core/sqlite';
 
 export const MAX_BODY_BYTES = 5 * 1024 * 1024;
 export const MAX_CHANGES = 5000;
 
 export type AppOptions = {
-  db: Store;
+  db: SqliteStore;
   /** Shared secret; when missing, the API answers 503 but the app is still served. */
   token?: string;
   /** Built PWA to serve (e.g. "dist"). Omit to serve the API only. */

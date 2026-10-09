@@ -1,0 +1,24 @@
+{
+  "name": "@get-fit/server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "rm -rf ../dist-server && tsc -p tsconfig.build.json",
+    "start": "node ../dist-server/server/index.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.3",
+    "@orca-solutions/get-fit-core": "0.1.0",
+    "better-sqlite3": "^13.0.3",
+    "hono": "^4.13.13"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "dexie": "^4.4.6",
+    "fake-indexeddb": "^6.2.5"
+  }
+}

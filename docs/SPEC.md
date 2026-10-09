@@ -285,20 +285,23 @@ jason chose a small backend, on Railway like his personal treasury app. The phon
 - **Backend: Hono** (a small Node web framework) + **better-sqlite3**, in the same repo under `server/`. One Railway service builds the app, serves it, and handles `/api/sync`, so the app and API share one address and need no cross-origin setup.
 - **Hosting: Railway**, deploying automatically from the public GitHub repo on every merge to main. Workout data is never in the repo; it lives on the phone and on the Railway volume.
 
-### 4.4 Code layout (proposed)
+### 4.4 Code layout
+
+An npm workspace. The engine is a package of its own, so other apps can build on it.
 
 ```
 get-fit/
   README.md  LICENSE (MIT)  docs/ (this spec, periodization, exercise DB notes)
-  data/exercises.json            ← built by the exercise DB thread's script
-  scripts/build-exercises.ts     ← fetch/clean/categorize source data → data/exercises.json
-  src/
-    generator/                   ← pure TS, no UI, no DB: the periodization engine
-    db/                          ← Dexie schema, queries (getExerciseHistory, etc.)
-    features/today | logging | history | library | settings
-    lib/ (units, e1RM, ids, sync)
-  server/                        ← Hono API + SQLite, serves the built app
-  tests/ (unit + e2e)
+  packages/core/                 ← @orca-solutions/get-fit-core
+    scripts/                     ← curation.ts and build-exercises.ts → src/data/exercises.json
+    src/program.ts               ← the training program as data (STRANGE_PERIODIZATION)
+    src/generator/               ← pure TS, no UI, no DB: the periodization engine
+    src/client/                  ← Dexie schema, plan horizon, logging, sync engine ("/client")
+    src/server/sqlite.ts         ← SQLite sync store ("/sqlite")
+    tests/                       ← golden plans, property tests, generator, catalog, client
+  apps/web/                      ← the PWA: features/today | workout | plan | calendar | history | library | settings
+  server/                        ← Hono API, serves the built app; tests for the server and sync round trips
+  e2e/                           ← Playwright against the production build
 ```
 
 ---
