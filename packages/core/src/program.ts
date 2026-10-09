@@ -109,7 +109,7 @@ export type Program = {
 
 export const STRANGE_PERIODIZATION: Program = {
   id: 'strange-periodization',
-  version: '1.1.0',
+  version: '1.2.0',
   days: {
     legs: {
       kind: 'lift',
@@ -175,8 +175,8 @@ export const STRANGE_PERIODIZATION: Program = {
     },
     sets: {
       byRole: {
-        P: { H: 4, M: 3, L: 2 },
-        C: { H: 3, M: 3, L: 2 },
+        P: { H: 4, M: 3, L: 3 },
+        C: { H: 3, M: 3, L: 3 },
         I: { H: 3, M: 2, L: 2 },
         V: { H: 2, M: 2, L: 2 },
         G: { H: 2, M: 2, L: 2 },
@@ -192,8 +192,9 @@ export const STRANGE_PERIODIZATION: Program = {
       grip: 60,
       core: 45,
     },
-    // Anatoly's "wider variety when the bar gets lighter".
-    varietySlots: { H: 0, M: 1, L: 2 },
+    // Anatoly's "wider variety when the bar gets lighter", trimmed to one variety slot on light days so
+    // the main lifts keep 3 sets every session (more practice on the lifts that drive progress).
+    varietySlots: { H: 0, M: 1, L: 1 },
     // The same every loading week, so every muscle grows at about the same rate. Forearms have no band:
     // the grip finishers and the pulling work cover them.
     bands: {
@@ -203,7 +204,8 @@ export const STRANGE_PERIODIZATION: Program = {
       back: [9, 11],
       'side-delts': [6, 8],
       biceps: [7, 9],
-      triceps: [7, 9],
+      // One more for triceps: every press credits them, and 3-set presses on light days fill the old 9.
+      triceps: [7, 10],
       calves: [3, 5],
       'rear-delts': [3, 5],
     },

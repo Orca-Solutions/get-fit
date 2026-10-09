@@ -57,14 +57,26 @@ describe('generateBlock: block 1', () => {
   it('shapes heavy, moderate and light days differently', () => {
     const legs = workouts.filter((w) => w.sessionType === 'legs');
     const [h, m, l, d] = legs;
-    // Variety slots: none on heavy days, up to 1 on moderate and 2 on light days, filled by need.
+    // Variety slots: none on heavy days, up to 1 on moderate and light days, filled by need.
     expect(h.exercises.filter((e) => e.role === 'V')).toHaveLength(0);
     expect(m.exercises.filter((e) => e.role === 'V').length).toBeLessThanOrEqual(1);
-    expect(l.exercises.filter((e) => e.role === 'V').length).toBeLessThanOrEqual(2);
+    expect(l.exercises.filter((e) => e.role === 'V').length).toBeLessThanOrEqual(1);
     expect(h.exercises[0].sets[0].targetReps).toEqual({ min: 6, max: 8 });
     expect(m.exercises[0].sets[0].targetReps).toEqual({ min: 8, max: 12 });
     expect(d.exercises).toHaveLength(6);
     expect(d.exercises.every((e) => e.sets.length === 2 && e.sets[0].rir === 4)).toBe(true);
+  });
+
+  it('gives the main lifts 3 sets or more on every loading day, light days included', () => {
+    const light = lifts(workouts).filter((w) => w.zone === 'L');
+    expect(light).toHaveLength(3);
+    for (const w of lifts(workouts).filter((w) => !w.isDeload)) {
+      // The third chest press and second back compound (":v:" slots) can give a set back for balance.
+      for (const e of w.exercises.filter((e) => (e.role === 'P' || e.role === 'C') && !e.slot.includes(':v:'))) {
+        expect(e.sets.length, `${w.date} ${e.exerciseId}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+    for (const w of light) expect(w.exercises.filter((e) => e.role !== 'G').length, w.date).toBeLessThanOrEqual(7);
   });
 
   it('adds a grip finisher, last, only on moderate and light days', () => {
