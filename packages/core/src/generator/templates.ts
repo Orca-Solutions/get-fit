@@ -1,0 +1,138 @@
+// Day templates, zone tables and rotations from docs/periodization.md §4.
+import type { CoreDynamic, GripType, SessionType, SlotKey, SlotRole, Zone } from '../types.js';
+import type { CoverageGroup } from './coverage.js';
+
+export type BaseSlot = {
+  key: SlotKey;
+  role: Exclude<SlotRole, 'V' | 'G' | 'K'>;
+  /** Pick from a different movement family than the day's other base slots (a second row, a second press). */
+  distinctFamily?: boolean;
+};
+
+export const LIFT_TEMPLATES: Record<Exclude<SessionType, 'core'>, { base: BaseSlot[]; vPool: SlotKey[]; label: string }> = {
+  legs: {
+    label: 'Legs',
+    base: [
+      { key: 'legs:squat', role: 'P' },
+      { key: 'legs:hinge', role: 'C' },
+      { key: 'legs:single-leg', role: 'C' },
+      { key: 'legs:knee-extension', role: 'I' },
+      { key: 'legs:knee-flexion', role: 'I' },
+      { key: 'legs:calf', role: 'I' },
+    ],
+    vPool: ['legs:v:hip-extension', 'legs:v:squat-machine', 'legs:v:adduction', 'legs:v:abduction', 'legs:v:hinge-variant'],
+  },
+  'chest-biceps': {
+    label: 'Chest & biceps',
+    base: [
+      { key: 'chest:flat-press', role: 'P' },
+      { key: 'chest:incline-press', role: 'C' },
+      { key: 'chest:fly', role: 'I' },
+      { key: 'biceps:supinated', role: 'I' },
+      { key: 'biceps:neutral', role: 'I' },
+      // A third chest press (machine press or assisted dip) keeps chest level with biceps (§4.2).
+      { key: 'chest:v:press-variant', role: 'C', distinctFamily: true },
+    ],
+    vPool: ['biceps:stretch', 'biceps:v:curl-variant', 'chest:v:press-variant'],
+  },
+  'back-tri-shoulders': {
+    label: 'Back, triceps & shoulders',
+    base: [
+      { key: 'back:vertical-pull', role: 'P' },
+      { key: 'back:horizontal-pull', role: 'C' },
+      { key: 'shoulders:vertical-press', role: 'C' },
+      { key: 'shoulders:side-delt', role: 'I' },
+      { key: 'triceps:overhead', role: 'I' },
+      // A second row or pullover: back is the biggest upper-body muscle and was the least trained (§4.2).
+      { key: 'back:v:row-variant', role: 'C', distinctFamily: true },
+    ],
+    vPool: ['triceps:pushdown', 'shoulders:side-delt', 'back:v:row-variant', 'shoulders:v:rear-delt', 'back:v:shrug'],
+  },
+};
+
+export const SESSION_LABEL: Record<SessionType, string> = {
+  legs: 'Legs',
+  'chest-biceps': 'Chest & biceps',
+  'back-tri-shoulders': 'Back, triceps & shoulders',
+  core: 'Core (home)',
+};
+
+/** Zone per lifting day for weeks 1–3; week 4 is the deload (§4.2 zone rotation). */
+export const ZONE_ROTATION: Record<Exclude<SessionType, 'core'>, Zone[]> = {
+  legs: ['H', 'M', 'L'],
+  'chest-biceps': ['M', 'L', 'H'],
+  'back-tri-shoulders': ['L', 'H', 'M'],
+};
+
+export const ZONE_NAME: Record<Zone | 'deload', string> = { H: 'Heavy', M: 'Moderate', L: 'Light', deload: 'Deload' };
+
+/** Compound rep range per zone. Block 1 is narrower at both ends. */
+export function compoundReps(zone: Zone, blockIndex: number): { min: number; max: number } {
+  if (zone === 'H') return blockIndex === 1 ? { min: 6, max: 8 } : { min: 5, max: 8 };
+  if (zone === 'M') return { min: 8, max: 12 };
+  return blockIndex === 1 ? { min: 12, max: 15 } : { min: 12, max: 20 };
+}
+
+/** Isolation and variety slots ignore the zone's compound range. */
+export function isolationReps(zone: Zone): { min: number; max: number } {
+  return zone === 'L' ? { min: 12, max: 20 } : { min: 10, max: 15 };
+}
+
+export function setsFor(role: SlotRole, zone: Zone | 'deload', blockIndex: number): number {
+  if (zone === 'deload') return 2;
+  if (role === 'P') return zone === 'H' ? (blockIndex === 1 ? 3 : 4) : zone === 'M' ? 3 : 2;
+  if (role === 'C') return zone === 'H' || zone === 'M' ? 3 : 2;
+  if (role === 'I') return zone === 'H' ? 3 : 2;
+  return 2; // V and grip
+}
+
+/** Effort ramp across the block: RIR per week, compounds never below 1. */
+export function rirFor(weekIndex: number, role: SlotRole): number {
+  if (weekIndex >= 3) return 4;
+  if (weekIndex === 0) return 3;
+  if (weekIndex === 1) return 2;
+  return role === 'P' || role === 'C' ? 2 : 1;
+}
+
+export function restFor(role: SlotRole, zone: Zone | 'deload'): number {
+  if (role === 'P' || role === 'C') return zone === 'H' ? 150 : zone === 'M' ? 105 : 75;
+  if (role === 'G') return 60;
+  return zone === 'H' ? 90 : 75;
+}
+
+/** Variety slots per zone (Anatoly's "wider variety when the bar gets lighter"). */
+export const V_SLOTS: Record<Zone, number> = { H: 0, M: 1, L: 2 };
+
+/**
+ * Where a muscle under its weekly band gets its extra set on a heavy day (§4.2 balance targets).
+ * On moderate and light days it claims the variety slots instead.
+ */
+export const HEAVY_EXTRA: Partial<Record<CoverageGroup, SlotKey>> = {
+  quads: 'legs:knee-extension',
+  'glutes-hamstrings': 'legs:knee-flexion',
+  calves: 'legs:calf',
+  chest: 'chest:fly',
+  biceps: 'biceps:supinated',
+  back: 'back:v:row-variant',
+  'side-delts': 'shoulders:side-delt',
+  triceps: 'triceps:overhead',
+};
+
+export const GRIP_ROTATION: GripType[] = ['support', 'crush', 'pinch', 'wrist-flexion', 'wrist-extension', 'rotation', 'reverse-curl'];
+
+/** Core day: 4 supersets pairing opposing dynamics (§4.2 core day). */
+export const CORE_SUPERSETS: [string, CoreDynamic, CoreDynamic][] = [
+  ['A', 'anti-extension', 'hip-extension'],
+  ['B', 'trunk-flexion', 'anti-rotation'],
+  ['C', 'rotation', 'anti-lateral-flexion'],
+  ['D', 'hip-flexion', 'lateral-flexion'],
+];
+
+/** Core wave: week 1 Moderate, week 2 Heavy, week 3 Light, week 4 deload. */
+export const CORE_WAVE: Zone[] = ['M', 'H', 'L'];
+
+export function coreTargets(zone: Zone): { reps: { min: number; max: number }; seconds: { min: number; max: number } } {
+  if (zone === 'H') return { reps: { min: 6, max: 10 }, seconds: { min: 15, max: 25 } };
+  if (zone === 'L') return { reps: { min: 15, max: 25 }, seconds: { min: 45, max: 60 } };
+  return { reps: { min: 10, max: 15 }, seconds: { min: 30, max: 40 } };
+}

@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { createApp } from './app.js';
-import { openStore } from './store.js';
+import { openSqliteStore } from '@orca-solutions/get-fit-core/sqlite';
 
 const port = Number(process.env.PORT ?? 3000);
 const dataDir = resolve(process.env.DATA_DIR ?? './data');
@@ -10,7 +10,7 @@ const staticDir = resolve(process.env.STATIC_DIR ?? './dist');
 const token = process.env.SYNC_TOKEN?.trim() || undefined;
 
 mkdirSync(dataDir, { recursive: true });
-const db = openStore(join(dataDir, 'get-fit.sqlite'));
+const db = openSqliteStore(join(dataDir, 'get-fit.sqlite'));
 // After restoring the volume from a backup, set SYNC_EPOCH_RESET to a new value (e.g. the date) so
 // every device pulls everything and re-uploads what the backup is missing.
 if (db.resetEpochOnce(process.env.SYNC_EPOCH_RESET?.trim() || undefined)) console.log('SYNC_EPOCH_RESET changed: started a new sync epoch.');

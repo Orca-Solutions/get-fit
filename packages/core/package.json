@@ -1,0 +1,38 @@
+{
+  "name": "@orca-solutions/get-fit-core",
+  "version": "0.1.0",
+  "description": "The get-fit training engine: exercise library, plan generator, progression and sync.",
+  "license": "MIT",
+  "type": "module",
+  "repository": { "type": "git", "url": "git+https://github.com/Orca-Solutions/get-fit.git", "directory": "packages/core" },
+  "sideEffects": false,
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "source": "./src/index.ts", "default": "./dist/index.js" },
+    "./client": { "types": "./dist/client/index.d.ts", "source": "./src/client/index.ts", "default": "./dist/client/index.js" },
+    "./sqlite": { "types": "./dist/server/sqlite.d.ts", "source": "./src/server/sqlite.ts", "default": "./dist/server/sqlite.js" }
+  },
+  "files": ["dist", "src", "!src/**/*.test.ts"],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "build:exercises": "tsx scripts/build-exercises.ts",
+    "sample": "tsx scripts/sample-plan.ts"
+  },
+  "peerDependencies": {
+    "better-sqlite3": ">=11",
+    "dexie": "^4"
+  },
+  "peerDependenciesMeta": {
+    "better-sqlite3": { "optional": true },
+    "dexie": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "better-sqlite3": "^13.0.3",
+    "dexie": "^4.4.6",
+    "fake-indexeddb": "^6.2.5"
+  },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=22" }
+}
