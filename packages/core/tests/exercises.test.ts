@@ -102,7 +102,7 @@ describe('exercise catalog', () => {
         expect(e.license).toBe('Unlicense');
       } else {
         expect(e.images).toEqual([]);
-        expect(e.license).toBe('MIT');
+        expect(e.license).toBe('FSL-1.1-MIT');
       }
     }
   });

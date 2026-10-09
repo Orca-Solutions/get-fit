@@ -99,7 +99,7 @@ export default function Settings() {
           />
         </label>
       </div>
-      <p className="small faint center">get-fit · MIT · exercise photos from free-exercise-db (public domain)</p>
+      <p className="small faint center">get-fit · FSL-1.1-MIT · exercise photos from free-exercise-db (public domain)</p>
       {msg && <div className="toast">{msg}</div>}
     </>
   );

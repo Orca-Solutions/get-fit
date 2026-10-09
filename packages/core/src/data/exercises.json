@@ -622,7 +622,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "single-leg-dumbbell-romanian-deadlift",
@@ -1030,7 +1030,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "smith-split-squat",
@@ -1092,7 +1092,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "dumbbell-bulgarian-split-squat",
@@ -1160,7 +1160,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "dumbbell-reverse-lunge",
@@ -1361,7 +1361,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "dumbbell-step-up",
@@ -1611,7 +1611,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "seated-leg-curl",
@@ -2142,7 +2142,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "back-extension",
@@ -2621,7 +2621,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "hip-abduction-machine",
@@ -2748,7 +2748,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "side-lying-hip-abduction",
@@ -2805,7 +2805,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "smith-bench-press",
@@ -3351,7 +3351,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "incline-push-up",
@@ -4342,7 +4342,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "hammer-curl",
@@ -5154,7 +5154,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "chin-up",
@@ -6379,7 +6379,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "dumbbell-lateral-raise",
@@ -7292,7 +7292,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "dumbbell-kickback",
@@ -7624,7 +7624,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "dead-hang",
@@ -7687,7 +7687,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "towel-grip-dumbbell-hold",
@@ -7749,7 +7749,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "dumbbell-finger-curl",
@@ -7810,7 +7810,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "kettlebell-bottoms-up-hold",
@@ -7874,7 +7874,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "plate-pinch",
@@ -8213,7 +8213,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "plank",
@@ -8420,7 +8420,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "body-saw",
@@ -8482,7 +8482,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "dead-bug",
@@ -8614,7 +8614,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "hollow-hold",
@@ -8677,7 +8677,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "bird-dog",
@@ -8737,7 +8737,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "superman-hold",
@@ -8865,7 +8865,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "crunch",
@@ -8992,7 +8992,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "jackknife-sit-up",
@@ -9180,7 +9180,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "lying-leg-raise",
@@ -9239,7 +9239,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "band-pallof-press",
@@ -9298,7 +9298,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "half-kneeling-band-pallof-press",
@@ -9360,7 +9360,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "plank-shoulder-tap",
@@ -9421,7 +9421,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "kettlebell-plank-pull-through",
@@ -9484,7 +9484,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "band-woodchop-high-to-low",
@@ -9544,7 +9544,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "band-lift-low-to-high",
@@ -9605,7 +9605,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "russian-twist",
@@ -9733,7 +9733,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "kettlebell-halo",
@@ -9797,7 +9797,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "side-plank",
@@ -9930,7 +9930,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "kettlebell-suitcase-hold",
@@ -9996,7 +9996,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "kettlebell-suitcase-carry",
@@ -10067,7 +10067,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "double-kettlebell-front-rack-carry",
@@ -10135,7 +10135,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "overhead-kettlebell-carry",
@@ -10201,7 +10201,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "kettlebell-side-bend",
@@ -10262,7 +10262,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "band-side-bend",
@@ -10321,7 +10321,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "side-plank-hip-dip",
@@ -10382,7 +10382,7 @@
     "source": {
       "name": "get-fit"
     },
-    "license": "MIT"
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "kettlebell-windmill",
