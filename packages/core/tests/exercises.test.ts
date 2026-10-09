@@ -30,9 +30,9 @@ describe('exercise catalog', () => {
     expect(exercises.map((e) => e.id)).toEqual(curation.map((c) => c.id));
   });
 
-  it('has about 170 curated movements (130 core plus the barbell pack)', () => {
+  it('has about 215 curated movements (core plus the barbell and home packs)', () => {
     expect(exercises.length).toBeGreaterThanOrEqual(110);
-    expect(exercises.length).toBeLessThanOrEqual(200);
+    expect(exercises.length).toBeLessThanOrEqual(230);
   });
 
   it('has unique kebab-case ids', () => {
@@ -108,11 +108,19 @@ describe('exercise catalog', () => {
       if (e.source.name === 'free-exercise-db') {
         expect(e.images).toEqual([`exercises/${e.id}/0.jpg`, `exercises/${e.id}/1.jpg`]);
         for (const img of e.images) expect(existsSync(join(PHOTOS, img)), img).toBe(true);
-        expect(e.license).toBe('Unlicense');
+        expect(e.imageLicense, e.id).toBe('unverified');
       } else {
         expect(e.images).toEqual([]);
-        expect(e.license).toBe('FSL-1.1-MIT');
+        expect(e.imageLicense, e.id).toBeUndefined();
       }
+      expect(e.license, e.id).toBe('FSL-1.1-MIT');
+    }
+  });
+
+  it('has our own instructions for every entry', () => {
+    for (const e of exercises) {
+      expect(e.instructions.length, e.id).toBeGreaterThanOrEqual(2);
+      for (const step of e.instructions) expect(step, e.id).toMatch(/^[A-Z].*[.!]$/);
     }
   });
 });
@@ -152,13 +160,25 @@ describe('slot coverage', () => {
     }
   });
 
-  it('only offers gym-usable movements (or barbell-pack ones) in lifting and grip slots, with a matching gripType', () => {
+  it('only offers gym-usable movements (or barbell- or home-pack ones) in lifting and grip slots, with a matching gripType', () => {
     for (const e of exercises) {
-      if (e.slots.some((s) => !s.startsWith('core:'))) expect(usableWith(e, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT]), e.id).toBe(true);
+      if (e.slots.some((s) => !s.startsWith('core:'))) expect(usableWith(e, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT, ...HOME_EQUIPMENT]), e.id).toBe(true);
       if (e.slots.some((s) => s.startsWith('grip:'))) expect(usableWith(e, GYM_EQUIPMENT), e.id).toBe(true);
       const grip = e.slots.filter((s) => s.startsWith('grip:'));
       if (grip.length === 0) expect(e.gripType, e.id).toBeUndefined();
       else expect(grip, e.id).toEqual([`grip:${e.gripType}`]);
+    }
+  });
+
+  it.each(BASE_SLOTS.filter((s) => !s.startsWith('core:')))('base slot %s has a home-kit candidate', (slot) => {
+    expect(candidates(slot, HOME_EQUIPMENT).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('tags only own, photo-free movements as the home pack', () => {
+    for (const e of exercises.filter((x) => x.tags.includes('home-pack'))) {
+      expect(e.source.name, e.id).toBe('get-fit');
+      expect(usableWith(e, HOME_EQUIPMENT), e.id).toBe(true);
+      expect(e.starter, e.id).toBe(false);
     }
   });
 

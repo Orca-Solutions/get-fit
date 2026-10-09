@@ -2,7 +2,7 @@
 // to turn them into planned sets. The generator holds the method (rotation, balancing, fallbacks);
 // the program holds the choices. STRANGE_PERIODIZATION is the original program (docs/periodization.md §4).
 import type { CoverageGroup } from './generator/coverage.js';
-import type { CoreDynamic, Exercise, GripType, LoadType, SessionType, SlotKey, SlotRole, Zone } from './types.js';
+import type { CoreDynamic, Equipment, Exercise, GripType, LoadType, SessionType, SlotKey, SlotRole, Zone } from './types.js';
 
 export type RepRange = { min: number; max: number };
 export type LiftRole = Exclude<SlotRole, 'K'>;
@@ -97,6 +97,12 @@ export type SelectionRules = {
   fatigueStackPenalty: number;
   /** Penalty for movements with a high impact on running. */
   highRunImpactPenalty: number;
+  /**
+   * Movements tagged `tag` (stand-ins written for home kits) are picked for a slot only when no other movement
+   * that fits it needs equipment outside `homeEquipment`, so they fill home kits without pushing machines,
+   * cables, dumbbells and barbells out of a gym plan.
+   */
+  homePack?: { tag: string; homeEquipment: Equipment[] };
 };
 
 export type Program = {
@@ -111,7 +117,7 @@ export type Program = {
 
 export const STRANGE_PERIODIZATION: Program = {
   id: 'strange-periodization',
-  version: '1.2.0',
+  version: '1.3.0',
   days: {
     legs: {
       kind: 'lift',
@@ -262,6 +268,7 @@ export const STRANGE_PERIODIZATION: Program = {
     // Keeps heavy leg day recoverable for a daily run (§4.6).
     fatigueStackPenalty: 8,
     highRunImpactPenalty: 1,
+    homePack: { tag: 'home-pack', homeEquipment: ['band', 'kettlebell', 'ab-wheel', 'mat', 'none'] },
   },
 };
 
