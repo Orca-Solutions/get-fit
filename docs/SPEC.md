@@ -286,7 +286,7 @@ An npm workspace. The engine is a package of its own, so other apps can build on
 
 ```
 get-fit/
-  README.md  LICENSE (MIT)  docs/
+  README.md  LICENSE (FSL-1.1-MIT)  docs/
   packages/core/                 ← @orca-solutions/get-fit-core
     scripts/                     ← curation.ts and build-exercises.ts → src/data/exercises.json
     src/program.ts               ← the training program as data (STRANGE_PERIODIZATION)
@@ -337,7 +337,7 @@ Open:
 
 1. **Platform:** PWA (§4.1).
 2. **Data:** a full offline copy on each device, synced to one small self-hosted server (§4.2).
-3. **Repo:** public, MIT licensed.
+3. **Repo:** public source under FSL-1.1-MIT: no competing commercial use, and each release becomes MIT two years after it is published.
 4. **Placeholders:** reps show the planned reps; weight stays blank, with a weight hint and carry-forward instead (§2.2).
 5. **Runs:** outside the app.
 6. **Core day:** at home, with resistance bands, bodyweight and kettlebells only.

@@ -1,6 +1,6 @@
 # @orca-solutions/get-fit-core
 
-The training engine behind [get-fit](https://github.com/Orca-Solutions/get-fit): a curated exercise library, a block-periodization plan generator, progression from logged sets, and offline-first sync. MIT licensed.
+The training engine behind [get-fit](https://github.com/Orca-Solutions/get-fit): a curated exercise library, a block-periodization plan generator, progression from logged sets, and offline-first sync.
 
 ## Install
 
@@ -52,6 +52,10 @@ Without `headers`, sync sends the bearer token stored with `setSyncToken`.
 - [API reference](https://github.com/Orca-Solutions/get-fit/blob/main/docs/api/core.md): every entry point, type and function.
 - [Sync server HTTP API](https://github.com/Orca-Solutions/get-fit/blob/main/docs/api/sync-server.md): the protocol `/client` speaks.
 - [Training rules](https://github.com/Orca-Solutions/get-fit/blob/main/docs/periodization.md) and the [exercise catalog](https://github.com/Orca-Solutions/get-fit/blob/main/docs/exercise-database.md).
+
+## License
+
+[FSL-1.1-MIT](https://github.com/Orca-Solutions/get-fit/blob/main/LICENSE): use, modify and share for any purpose other than a competing commercial product or service; each release becomes available under MIT two years after it is published. Version 0.1.0 and earlier remain MIT.
 
 ## Stability
 
