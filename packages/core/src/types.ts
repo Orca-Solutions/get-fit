@@ -97,7 +97,7 @@ export type Exercise = {
   instructions: string[];
   images: string[];
   source: { name: 'free-exercise-db' | 'get-fit'; sourceId?: string };
-  license: 'Unlicense' | 'MIT';
+  license: 'Unlicense' | 'FSL-1.1-MIT';
 };
 
 export type Location = 'gym' | 'home';

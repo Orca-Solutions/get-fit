@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "license": "MIT",
+  "license": "FSL-1.1-MIT",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

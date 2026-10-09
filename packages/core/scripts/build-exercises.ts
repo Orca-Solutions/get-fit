@@ -224,7 +224,7 @@ export function validateCatalog(exercises: readonly Exercise[]): string[] {
       const expected = [`exercises/${id}/0.jpg`, `exercises/${id}/1.jpg`];
       if (JSON.stringify(ex.images) !== JSON.stringify(expected)) err(id, `images must be ${expected.join(', ')}`);
     } else if (ex.source?.name === 'get-fit') {
-      if (ex.license !== 'MIT') err(id, 'own entries are MIT');
+      if (ex.license !== 'FSL-1.1-MIT') err(id, 'own entries are FSL-1.1-MIT');
       if (ex.images?.length !== 0) err(id, 'own entries have no images');
     } else {
       err(id, 'unknown source');
@@ -343,7 +343,7 @@ export function toExercise(c: CuratedEntry, src: SourceExercise | undefined): Ex
     instructions,
     images: c.sourceId ? [`exercises/${c.id}/0.jpg`, `exercises/${c.id}/1.jpg`] : [],
     source: c.sourceId ? { name: 'free-exercise-db', sourceId: c.sourceId } : { name: 'get-fit' },
-    license: c.sourceId ? 'Unlicense' : 'MIT',
+    license: c.sourceId ? 'Unlicense' : 'FSL-1.1-MIT',
   };
   // Drop undefined optional keys so the JSON stays tidy.
   for (const k of Object.keys(ex) as (keyof Exercise)[]) if (ex[k] === undefined) delete ex[k];
