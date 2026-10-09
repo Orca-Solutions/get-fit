@@ -10,7 +10,7 @@ import { ZONE_NAME, compoundReps, coreTargets, isolationReps, restFor, rirFor, s
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, type BaseSlot, type CoreDay, type LiftDay, type Program, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.1.0';
+export const GENERATOR_VERSION = '1.2.0';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -82,7 +82,7 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
   const blockId = blockIdFor(input.startDate);
 
   // 1. Pick each day's base exercises once for the whole block (§4.3).
-  const base: Record<string, Exercise[]> = {};
+  const base: Record<string, (Exercise | undefined)[]> = {};
   for (const [type, day] of liftDays(program)) base[type] = pickBase(ctx, type, day);
   const coreBase = pickCoreBase(ctx);
 
@@ -135,7 +135,7 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
  * alone) the variety slots and heavy-day extra sets go to muscles under their band; without it the
  * lifting days get their base movements only.
  */
-function layOut(ctx: Ctx, base: Record<string, Exercise[]>, coreBase: Partial<Record<CoreDynamic, Exercise>>, projected: Record<CoverageGroup, number>[] | null): PlannedWorkout[] {
+function layOut(ctx: Ctx, base: Record<string, (Exercise | undefined)[]>, coreBase: Partial<Record<CoreDynamic, Exercise>>, projected: Record<CoverageGroup, number>[] | null): PlannedWorkout[] {
   const { input } = ctx;
   const blockId = blockIdFor(input.startDate);
   const workouts: PlannedWorkout[] = [];
@@ -191,10 +191,11 @@ function candidates(ctx: Ctx, slot: SlotKey, location: Location): Exercise[] {
 }
 
 /**
- * A slot whose every candidate is flagged (pools can be as small as 2) never stops the plan: it takes a
- * related movement for the same main muscle, or failing that keeps a flagged one, and says so.
+ * A slot with no usable candidate (every one flagged, or none fits the equipment) never stops the plan: it
+ * takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of
+ * the block. Each fallback is explained in the block rationale.
  */
-function fillEmptySlot(ctx: Ctx, slot: SlotKey, location: Location, taken: Exercise[]): Exercise {
+function fillEmptySlot(ctx: Ctx, slot: SlotKey, location: Location, taken: Exercise[]): Exercise | undefined {
   const label = slot.split(':').pop()!.replace(/-/g, ' ');
   const counts = new Map<Exercise['primaryMuscles'][number], number>();
   for (const e of ctx.input.exercises) if (e.slots.includes(slot)) counts.set(e.primaryMuscles[0], (counts.get(e.primaryMuscles[0]) ?? 0) + 1);
@@ -208,12 +209,17 @@ function fillEmptySlot(ctx: Ctx, slot: SlotKey, location: Location, taken: Exerc
     // Prefer the same pattern, a family the day doesn't already have, and a lighter movement.
     (e) => jitter(ctx, e.id, slot) + (e.movementPattern === pattern ? 1 : 0) - (taken.some((t) => t.family === e.family) ? 3 : 0) - e.fatigueCost * 0.5,
   );
+  // Flags emptied the slot if an unflagged copy of the day would still have had a movement for it.
+  const flaggedOnly = ctx.input.exercises.some((e) => free(e) && e.slots.includes(slot) && usable(ctx, e, location, true));
   if (related) {
-    ctx.notices.push(`Every ${label} movement is flagged, so ${related.name} fills that slot.`);
+    ctx.notices.push(flaggedOnly ? `Every ${label} movement is flagged, so ${related.name} fills that slot.` : `No ${label} movement fits your equipment, so ${related.name} fills that slot.`);
     return related;
   }
   const flagged = best(ctx.input.exercises.filter((e) => free(e) && e.slots.includes(slot) && usable(ctx, e, location, true)), (e) => jitter(ctx, e.id, slot));
-  if (!flagged) throw new Error(`No exercise exists for slot ${slot}`);
+  if (!flagged) {
+    ctx.notices.push(`No ${label} movement fits your equipment, so this block leaves that slot out; adding equipment brings it back.`);
+    return undefined;
+  }
   ctx.notices.push(`Every ${label} movement is flagged and nothing similar is left, so ${flagged.name} stays in; swap it during the workout or unflag one in the Library.`);
   return flagged;
 }
@@ -223,7 +229,8 @@ function jitter(ctx: Ctx, id: string, salt = ''): number {
   return (hash(`${id}|${ctx.blockIndex}|${salt}`) % 1000) / 1000;
 }
 
-function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): Exercise[] {
+/** One pick per base slot, in template order; undefined where nothing fits the equipment. */
+function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefined)[] {
   const prev = ctx.input.previousBlock?.baseSlots ?? {};
   // At each boundary rotate one isolation slot, and on even blocks one compound slot too (§4.3).
   const rotate = new Set<number>();
@@ -235,6 +242,7 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): Exercise[] {
     if (ctx.blockIndex % 2 === 0) rotate.add(comp[(ctx.blockIndex / 2 - 1) % comp.length]);
   }
   const chosen: Exercise[] = [];
+  const out: (Exercise | undefined)[] = [];
   tpl.base.forEach((slot, i) => {
     const key = `${type}|${slot.key}`;
     const prevId = prev[key];
@@ -245,11 +253,13 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): Exercise[] {
     }
     const keep = prevId && !rotate.has(i) && !ctx.stalled.has(prevId) && pool.find((e) => e.id === prevId);
     const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen)) || fillEmptySlot(ctx, slot.key, 'gym', chosen);
+    out.push(pick);
+    if (!pick) return;
     if (prevId && pick.id !== prevId) ctx.rotated.push(pick.id);
     ctx.baseSlots[key] = pick.id;
     chosen.push(pick);
   });
-  return chosen;
+  return out;
 }
 
 function scoreBase(ctx: Ctx, e: Exercise, slot: BaseSlot, prevId: string | undefined, chosen: Exercise[]): number {
@@ -320,7 +330,7 @@ function buildLift(
   common: Common,
   type: SessionType,
   zone: Zone | 'deload',
-  base: Exercise[],
+  base: (Exercise | undefined)[],
   usedV: Set<string>,
   gripCounter: number,
   /** Sets per muscle so far this week; extras and variety picks add to it. Null lays out base movements only. */
@@ -350,12 +360,13 @@ function buildLift(
 
   tpl.base.forEach((slot, i) => {
     let ex = base[i];
+    if (!ex) return;
     const want = slot.role === 'I' ? isolationReps(effZone, p) : compoundReps(effZone, ctx.blockIndex, p);
     let note: string | undefined;
     if (!fitsZone(ex, zone, want)) {
       // Weekly stand-in for this slot (e.g. back extension instead of an RDL on a light day).
       const pools: SlotKey[] = [slot.key, ...p.lightDayStandIns];
-      const alt = best(pools.flatMap((p) => candidates(ctx, p, 'gym')).filter((e) => !inSession.has(e.id) && !base.some((b) => b.id === e.id) && fitsZone(e, zone, want)), (e) => jitter(ctx, e.id, `alt${week}`) + (e.fatigueCost === 1 ? 1 : 0));
+      const alt = best(pools.flatMap((p) => candidates(ctx, p, 'gym')).filter((e) => !inSession.has(e.id) && !base.some((b) => b?.id === e.id) && fitsZone(e, zone, want)), (e) => jitter(ctx, e.id, `alt${week}`) + (e.fatigueCost === 1 ? 1 : 0));
       if (alt) {
         note = `Stands in for ${ex.name} on the light day.`;
         ex = alt;
@@ -391,7 +402,7 @@ function buildLift(
   // banded muscles (shrugs, adductors, forearm curls), can take them; otherwise the slot stays empty (§4.2, §4.3).
   if (zone !== 'deload' && proj) {
     const nV = p.varietySlots[zone];
-    const baseFamilies = new Set(base.map((b) => b.family));
+    const baseFamilies = new Set(base.flatMap((b) => (b ? [b.family] : [])));
     for (let v = 0; v < nV; v++) {
       const pools = rotateList(tpl.varietyPool, week * 2 + v + ctx.blockIndex);
       let pick: Exercise | undefined;
@@ -633,6 +644,7 @@ function pickCoreBase(ctx: Ctx): Partial<Record<CoreDynamic, Exercise>> {
         return s;
       });
       const chosen = pick ?? fillEmptySlot(ctx, `core:${dyn}`, location, Object.values(out) as Exercise[]);
+      if (!chosen) continue;
       ctx.baseSlots[key] = chosen.id;
       out[dyn] = chosen;
     }
@@ -655,7 +667,8 @@ function buildCore(ctx: Ctx, common: Common, type: SessionType, day: CoreDay, ba
   const location = coreLocation(ctx);
   for (const [group, a, b] of day.supersets) {
     for (const dyn of [a, b]) {
-      let ex = base[dyn]!;
+      let ex = base[dyn];
+      if (!ex) continue;
       let note: string | undefined;
       if (!deload && zone === 'H') {
         // Heavy core week: one step up each movement's ladder (§4.2 core day).
