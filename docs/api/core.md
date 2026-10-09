@@ -2,7 +2,7 @@
 
 The get-fit training engine as a library: domain types, the curated exercise catalog, training programs as data, the block generator, progression and coverage helpers, the sync protocol, an IndexedDB client and a SQLite sync store.
 
-Version documented: `0.2.0` (the version on `main`; the latest release may be older). See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
+Version documented: `0.3.0` (the version on `main`; the latest release may be older). See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
 
 - [Install](#install)
 - [Entry points](#entry-points)
@@ -100,7 +100,7 @@ A catalog entry or a custom movement. The catalog schema and tagging rules are d
 | `coreDynamic`, `gripType` | optional | For core and grip movements. |
 | `tags`, `cues`, `instructions`, `images` | `string[]` | |
 | `source` | `{ name: 'free-exercise-db' \| 'get-fit'; sourceId?: string }` | |
-| `license` | `'Unlicense' \| 'FSL-1.1-MIT'` | `Unlicense` for entries drawn from free-exercise-db, `FSL-1.1-MIT` for the project's own. |
+| `license` | `'Unlicense' \| 'FSL-1.1-MIT'` | `Unlicense` for entries drawn from free-exercise-db (its stated license for its data; the photos and copied instructions have no known license, see [exercise-database.md §8](../exercise-database.md#8-licensing-notes)), `FSL-1.1-MIT` for the project's own. |
 
 Related enumerations: `MovementPattern`, `Muscle` (20 muscles), `Equipment` (16 values; `barbell`, `ez-bar` and `rack` gate the catalog's optional barbell pack), `LoadType`, `WeightConvention`, `CoreDynamic` (the 8 dynamics the core day covers), `GripType` (7 grip finishers), and `CatalogSlot`, the slot tags the curated catalog uses (`'legs:squat'`, `'chest:v:press-variant'`, `` `core:${CoreDynamic}` ``, `` `grip:${GripType}` ``, ...). `SlotKey` is `string`, so a custom program can define its own slots.
 
@@ -277,13 +277,13 @@ type DayTemplate = LiftDay | CoreDay;
 | `reps.compound` | Rep range per zone for P and C slots. | H 5–8, M 8–12, L 12–20 |
 | `reps.compoundBlock1` | Block 1 overrides while weights are found. | H 6–8, L 12–15 |
 | `reps.isolation` | Range per zone for I and V slots (grip finishers use the movement's own `repRange`). | H/M 10–15, L 12–20 |
-| `sets.byRole` | Sets per role (`P`, `C`, `I`, `V`, `G`) and zone. | P 4/3/2, C 3/3/2, I 3/2/2 (H/M/L) |
+| `sets.byRole` | Sets per role (`P`, `C`, `I`, `V`, `G`) and zone. | P 4/3/3, C 3/3/3, I 3/2/2 (H/M/L) |
 | `sets.block1` | Block 1 overrides. | P heavy: 3 |
 | `sets.deload` | Sets per movement in the deload. | 2 |
 | `rir` | `{ compound: number[3]; other: number[3]; deload }`: RIR for weeks 1 to 3, then deload. | compound 3, 2, 2; other 3, 2, 1; deload 4 |
 | `rest` | Seconds after each set: `compound` and `other` per zone and deload, `grip`, `core`. | compound H 150, M 105, L 75; other H 90, M/L 75; grip 60; core 45 |
-| `varietySlots` | Variety movements per session by zone. | H 0, M 1, L 2 |
-| `bands` | Target weekly sets `[min, max]` per `CoverageGroup`; groups without a band are not balanced. | e.g. quads 9–11, side delts 6–8 |
+| `varietySlots` | Variety movements per session by zone. | H 0, M 1, L 1 |
+| `bands` | Target weekly sets `[min, max]` per `CoverageGroup`; groups without a band are not balanced. | e.g. quads 9–12, side delts 6–8 |
 | `floors` | Below this a week gets a coverage warning. | 4 for major groups, 2 for calves, rear delts, forearms |
 | `heavyExtra` | Slot that takes an extra set on a heavy day when its group is under its band. | e.g. quads → `legs:knee-extension` |
 | `lightDayStandIns` | Slots searched for a stand-in when a base movement doesn't suit a light day. | hip extension, hinge variant |
@@ -302,6 +302,7 @@ type DayTemplate = LiftDay | CoreDay;
 | `levelBonus` | `Partial<Record<level, number>>` | Added per level; negative discourages. |
 | `favouriteBonus` | `number` | Added for movements flagged `favourite`. |
 | `primaryLoadTypeBonus` | `Partial<Record<LoadType, number>>` | Added on primary (P) slots by load type (original: `smith` 3, `barbell` 4). |
+| `compoundLoadTypeBonus` | `Partial<Record<LoadType, number>>`, optional | Added on secondary compound (C) slots by load type (original: `barbell` 4). |
 | `fatigueStackPenalty` | `number` | Subtracted for a second fatigue-3 compound in one session. |
 | `highRunImpactPenalty` | `number` | Subtracted for movements with `runImpact: 'high'`. |
 
@@ -309,7 +310,7 @@ type DayTemplate = LiftDay | CoreDay;
 
 | Export | Signature | Description |
 |---|---|---|
-| `STRANGE_PERIODIZATION` | `Program` | The original program: id `strange-periodization`, version `1.1.0`. |
+| `STRANGE_PERIODIZATION` | `Program` | The original program: id `strange-periodization`, version `1.2.0`. |
 | `liftDays` | `(p: Program) => [string, LiftDay][]` | The program's lifting days with their day types. |
 | `coreDayType` | `(p: Program) => string \| undefined` | The day type of its core day, if any. |
 | `validateProgram` | `(program: Program, catalog: Pick<Exercise, 'slots'>[], scheduleTypes?: string[]) => string[]` | Problems that would stop `program` planning against `catalog`. Empty when fine. |
@@ -357,7 +358,8 @@ A pure function from a profile, a catalog and the previous block to one four-wee
 ### `GeneratedBlock`
 
 ```ts
-type GeneratedBlock = { block: Block; workouts: PlannedWorkout[]; coverage: CoverageReport };
+type GeneratedBlock = { block: Block; workouts: PlannedWorkout[]; coverage: CoverageReport; unfilledSlots: UnfilledSlot[] };
+type UnfilledSlot = { dayType: SessionType; slot: SlotKey; reason: 'equipment' | 'already-used' };
 ```
 
 | Field | Description |
@@ -365,15 +367,16 @@ type GeneratedBlock = { block: Block; workouts: PlannedWorkout[]; coverage: Cove
 | `block` | The `Block`, with `id` `block-<startDate>`, `index`, `generatorVersion`, `programId`, `programVersion`, `baseSlots` and `rationale`. `plannedAhead` is not set. |
 | `workouts` | Every session of the four weeks, sorted by date: one per schedule entry per week, with ids `w-<date>-<sessionType>`. |
 | `coverage` | The `CoverageReport` of the final plan for the three loading weeks (see [Coverage](#coverage)). |
+| `unfilledSlots` | Every slot the block leaves out, once per day type and slot; empty when the plan is complete. `reason` is `'equipment'` when no movement for the slot fits the location's equipment, and `'already-used'` when the movements that fit are already on that day. |
 
-There is no separate notices field. When no candidate for a slot is usable (every one is flagged, none fits the equipment, or the ones that fit are already on that day), the slot takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of the block. Each fallback appends a sentence to `block.rationale`.
+When no candidate for a slot is usable (every one is flagged, none fits the equipment, or the ones that fit are already on that day), the slot takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of the block. Each fallback appends a sentence to `block.rationale`, and a slot left out is also listed in `unfilledSlots`, so code can tell a user the day couldn't be planned in full.
 
 ### What the generator does
 
 1. Picks each lifting day's base movements once for the block, from the slot pools filtered by flags, `allowedLevels` and the profile's **gym** equipment. A movement from `previousBlock.baseSlots` is kept unless its slot rotates this block (one isolation slot at each boundary, and one compound slot on even blocks, secondary compounds before the primary) or it is listed in `stalled`.
 2. Picks one core movement per dynamic for the block, using the equipment of the location the core day's schedule entry names, and steps variants along their family ladder from block to block.
 3. Lays out the weeks: zones follow each day's `zones` (week 4 is the deload), sets, reps, RIR and rest come from `params`, light days swap axial hinges for a stand-in, heavy days add an extra set where a group is under its band, moderate and light days get variety movements and a grip finisher, and sessions are trimmed to `sessionCap.sets`.
-4. Balances coverage week by week: removes sets from groups over their band, then adds sets (or a two-set variety movement) to groups under it.
+4. Balances coverage week by week: removes isolation and then variety sets (never below 2, and never from the primary lift or the other base compounds) from groups over their band, then adds sets (or a two-set variety movement) to groups under it.
 
 ### Errors
 

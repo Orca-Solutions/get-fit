@@ -6,7 +6,7 @@ Where the exercise catalog comes from, the schema each movement follows, what's 
 
 ## 1. Summary
 
-get-fit ships **its own curated catalog of 186 movements**. 139 are seeded from **free-exercise-db** (public domain, 876 entries, one static JSON file plus photos), keeping its names, instructions and start/end photos; 47 that it lacks (Bulgarian split squat, bird dog, suitcase carry, Pendlay row, band movements and others) are written for this project. Every entry carries a hand-written tag layer that no source provides: movement pattern, angle, grip, laterality, the generator slots it can fill, a sensible rep range, fatigue cost and running impact. Everything is vendored into the repo as static data: no live API, nothing that can break at the gym. wger was consulted only as a checklist of commonly done movements and is never copied, so the data carries no share-alike terms.
+get-fit ships **its own curated catalog of 186 movements**. 139 are seeded from **free-exercise-db** (876 entries, one static JSON file plus photos; see §8 for the license status of its photos and text), keeping its names, instructions and start/end photos; 47 that it lacks (Bulgarian split squat, bird dog, suitcase carry, Pendlay row, band movements and others) are written for this project. Every entry carries a hand-written tag layer that no source provides: movement pattern, angle, grip, laterality, the generator slots it can fill, a sensible rep range, fatigue cost and running impact. Everything is vendored into the repo as static data: no live API, nothing that can break at the gym. wger was consulted only as a checklist of commonly done movements and is never copied, so the data carries no share-alike terms.
 
 ---
 
@@ -16,7 +16,7 @@ All counts below come from downloading the data on 2026-10-07, except where note
 
 | Source | Size | What's tagged | License | Static? | Verdict |
 |---|---|---|---|---|---|
-| **[free-exercise-db](https://github.com/yuhonas/free-exercise-db)** (fork of [wrkout/exercises.json](https://github.com/wrkout/exercises.json)) | 876 (584 strength, 123 stretching, 61 plyo, 108 other) | primary + secondary muscles (17 names), equipment, compound/isolation, push/pull/static, level, step-by-step instructions, 2 photos each (~45 KB) | **Unlicense** (public domain) | One JSON file + JPGs | **Used as the seed.** |
+| **[free-exercise-db](https://github.com/yuhonas/free-exercise-db)** (fork of [wrkout/exercises.json](https://github.com/wrkout/exercises.json)) | 876 (584 strength, 123 stretching, 61 plyo, 108 other) | primary + secondary muscles (17 names), equipment, compound/isolation, push/pull/static, level, step-by-step instructions, 2 photos each (~45 KB) | **Unlicense** for the data; the photos and instruction text have no known license (§8) | One JSON file + JPGs | **Used as the seed.** |
 | **[wger](https://github.com/wger-project/wger)** | 872 | muscles (16 anatomical, front/back), equipment, 8 body-region categories, variation groups | Code **AGPL-3.0**. Exercise data per entry: 719 CC-BY-SA 4.0, 133 CC-BY-SA 3.0, 20 CC0 | JSON fixtures in the repo; also a REST API | **Reference only.** Share-alike would spread to the data file. |
 | [exercemus/exercises](https://github.com/exercemus/exercises) | 872 | muscles, muscle groups, equipment, category | Labelled MIT, but merged from wger (CC-BY-SA) and exercises.json | One JSON file | **Avoided.** The MIT label can't override wger's share-alike terms. |
 | [ExerciseDB / AscendAPI](https://exercisedb.dev/) | 1,500 free (v1), 11,000+ paid | body part, target, equipment, GIFs | Commercial API; the open-source server is AGPL; GIFs © Gym visual; caching and redistribution terms not published | Live API | **Avoided.** A live API is a failure mode at the gym, and the media isn't redistributable. |
@@ -229,18 +229,18 @@ The catalog's base targets a **Planet Fitness-style gym**: no free barbells, rac
 
 The grip-heavy curls (hammer, reverse, Zottman) also serve the reverse-curl grip finisher.
 
-**Barbell pack** (planned only where the profile lists `barbell`, `ez-bar` or `rack`; none are starters)
+**Barbell pack** (planned only where the profile lists `barbell`, `ez-bar` or `rack`; with a barbell and rack, the four ★ starters replace the Smith and dumbbell squat, bench, overhead press and row from block 1; the hinge stays a dumbbell Romanian deadlift)
 
 | Pattern | Movements |
 |---|---|
-| Squat | Barbell Back Squat, Barbell Front Squat (rack) |
+| Squat | Barbell Back Squat ★, Barbell Front Squat (rack) |
 | Lunge / single-leg | Barbell Walking Lunge, Barbell Step-Up (rack) |
 | Hinge | Barbell Deadlift, Barbell Romanian Deadlift, Sumo Deadlift, Barbell Good Morning (rack) |
 | Hip extension | Barbell Hip Thrust, Barbell Glute Bridge |
 | Calf | Barbell Calf Raise (rack) |
-| Push, horizontal | Barbell Bench Press, Incline Barbell Bench Press, Close-Grip Barbell Bench Press, Decline Barbell Bench Press (rack and bench) |
-| Push, vertical | Barbell Overhead Press (rack) |
-| Pull, horizontal | Barbell Bent-Over Row, Reverse-Grip Barbell Row, Pendlay Row + |
+| Push, horizontal | Barbell Bench Press ★, Incline Barbell Bench Press, Close-Grip Barbell Bench Press, Decline Barbell Bench Press (rack and bench) |
+| Push, vertical | Barbell Overhead Press ★ (rack) |
+| Pull, horizontal | Barbell Bent-Over Row ★, Reverse-Grip Barbell Row, Pendlay Row + |
 | Shrug | Barbell Shrug |
 | Side delt | Barbell Upright Row |
 | Rear delt | Barbell Rear Delt Row |
@@ -281,9 +281,10 @@ Ids are permanent: rename a movement's `name`, never its `id`, because logged se
 
 ## 8. Licensing notes
 
-- **The catalog's own work** (tags, cues and the 47 entries written here) is under the project license, FSL-1.1-MIT. Entries that copy free-exercise-db text or photos are public domain under the Unlicense, which can sit in the repo with no conditions. The README credits free-exercise-db as a courtesy.
-- The per-entry `license` field reads `Unlicense` for entries drawn from free-exercise-db and `FSL-1.1-MIT` for the project's own entries.
-- **Provenance caveat (inferred, not confirmed):** free-exercise-db's instructions and photos read as though they came from an older commercial site's exercise library, and the repo doesn't say where they came from. The Unlicense is the repo author's statement. Anyone who wants zero doubt can ship only the project's own cues and drop the photos.
+- **The catalog's own work** (tags, cues, the curated selection and the 47 entries written here) is under the project license, FSL-1.1-MIT.
+- **free-exercise-db's photos and instruction text have no known license.** free-exercise-db applies the Unlicense to its repository, but it is a restructured copy of [wrkout/exercises.json](https://github.com/wrkout/exercises.json), whose [CONTRIBUTING.md](https://github.com/wrkout/exercises.json/blob/master/CONTRIBUTING.md) says the images were scraped from the internet, that its author does not own their copyright, and advises against using them in commercial projects. The Unlicense can only cover what its author owns, which is the data structure, not the photos. The instruction text appears to come from a commercial fitness site: one entry checked matches that site's page word for word, and the rest are inferred to share its origin. Questions about the images' license and source are open upstream ([#305](https://github.com/wrkout/exercises.json/issues/305), [#308](https://github.com/wrkout/exercises.json/issues/308)).
+- The per-entry `license` field reads `Unlicense` for entries drawn from free-exercise-db and `FSL-1.1-MIT` for the project's own entries. `Unlicense` records free-exercise-db's stated license for its data; it does not cover the photos or the copied instruction text.
+- To reuse the catalog without this question, keep the project's own fields (tags, cues and its own entries) and movement names, which aren't copyrightable, and leave out the photos and the free-exercise-db instructions.
 - **wger** is never copied, only consulted for which movements are common. Exercise names aren't copyrightable, so writing entries for movements wger also lists is fine.
 - **Nothing in the app calls an exercise API at runtime.**
 
