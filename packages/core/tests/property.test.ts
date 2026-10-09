@@ -1,6 +1,6 @@
 // Property tests: the generator over a few hundred random setups (training days, gym and home kit,
 // kettlebells, core wave, flags), not just the reference profile. Lifting days are at the gym until
-// places arrive (v2 plan §7.1), so home-only lifting isn't covered yet.
+// a day can be set to train at home, so home-only lifting isn't covered here (see generator.test.ts for thin kits).
 import { describe, expect, it } from 'vitest';
 import { CATALOG } from '../src/catalog';
 import { addDays } from '../src/dates';

@@ -5,9 +5,8 @@ name: Release core
 # - Run it from the Actions tab ("Run workflow" on main), or push a tag core-v<version> that matches
 #   packages/core/package.json.
 # - It tests the workspace, packs the package and attaches the tarball to a GitHub release named
-#   core-v<version> (creating the tag when run by hand). Other projects install that tarball by URL.
-# - It also publishes to npm, but only once an NPM_TOKEN repository secret exists; until then that
-#   step is skipped.
+#   core-v<version> (creating the tag when run by hand). Other projects install that tarball by URL;
+#   the package isn't published to npm.
 on:
   workflow_dispatch:
   push:
@@ -15,20 +14,16 @@ on:
 
 permissions:
   contents: write # create the release and tag
-  id-token: write # npm provenance
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          registry-url: https://registry.npmjs.org
       - run: npm ci
       - name: Work out the tag
         run: |
@@ -51,8 +46,3 @@ jobs:
           file=$(ls orca-solutions-get-fit-core-*.tgz)
           gh release create "$TAG" "$file" --target "$GITHUB_SHA" --title "$TAG" \
             --notes "Install with npm install https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$file"
-      - name: Publish to npm
-        if: env.NPM_TOKEN != ''
-        run: npm publish orca-solutions-get-fit-core-*.tgz --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

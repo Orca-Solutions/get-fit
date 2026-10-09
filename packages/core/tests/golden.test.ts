@@ -53,6 +53,8 @@ const scenarios: Record<string, () => GeneratedBlock[]> = {
   'reference profile, blocks 1-8, lived in': () => chain(reference, 8, lived),
   'reference profile, flat core': () => chain({ ...reference, coreWave: 'flat' }, 2),
   'reference profile, a whole slot avoided': () => chain(reference, 2, () => ({ flags: Object.fromEntries(inSlot('legs:knee-flexion').map((id) => [id, { avoid: true }])) })),
+  'dumbbells only, no step or plate': () => chain({ ...reference, equipmentByLocation: { gym: ['dumbbell', 'bench', 'mat', 'none'], home: ['dumbbell', 'mat', 'none'] } }, 2),
+  'home kit only (bands, kettlebells, bodyweight)': () => chain({ ...reference, equipmentByLocation: { gym: ['band', 'kettlebell', 'mat', 'none'], home: ['band', 'kettlebell', 'ab-wheel', 'mat', 'none'] } }, 2),
 };
 
 const digest = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex');
@@ -70,8 +72,8 @@ function summary(g: GeneratedBlock): string[] {
 }
 
 type Pinned = { digest: string; summary: string[] };
-/** Which program planned a block is recorded alongside the plan, not part of it. */
-const plan = (g: GeneratedBlock) => ({ ...g, block: { ...g.block, programId: undefined, programVersion: undefined } });
+/** Which program and generator version planned a block is recorded alongside the plan, not part of it. */
+const plan = (g: GeneratedBlock) => ({ ...g, block: { ...g.block, programId: undefined, programVersion: undefined, generatorVersion: undefined } });
 const pin = (g: GeneratedBlock): Pinned => ({ digest: digest(plan(g)), summary: summary(g) });
 
 describe('golden plans', () => {

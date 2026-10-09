@@ -1,5 +1,5 @@
 // Hand-curated exercise catalog for get-fit (Planet Fitness gym + home core kit).
-// See plan/exercise-database.md §6 and plan/periodization.md §4.2.
+// See docs/exercise-database.md §6 and docs/periodization.md §4.2.
 //
 // Each entry carries our own tags. `sourceId` points at a free-exercise-db entry
 // (pinned commit, see build-exercises.ts) whose photos — and instructions, unless we
@@ -7,7 +7,7 @@
 // and must carry their own `instructions`.
 //
 // Run `npx tsx scripts/build-exercises.ts` after editing to regenerate
-// src/data/exercises.json and public/exercises/.
+// src/data/exercises.json and apps/web/public/exercises/.
 
 import type { Exercise } from '../src/types.js';
 
@@ -248,6 +248,20 @@ export const curation: CuratedEntry[] = [
     cues: ['Long stance, both feet pointing forward', 'Drop the back knee straight down', 'Push through the front heel'],
   }),
   x({
+    id: 'bodyweight-split-squat', name: 'Bodyweight Split Squat', aliases: ['Split squat'], family: 'split-squat',
+    instructions: [
+      'Take a long split stance, feet hip width apart and both pointing forward, hands on hips.',
+      'Lower straight down until the back knee nearly touches the floor, front shin close to vertical.',
+      'Drive through the front heel to stand back up. Finish the set, then switch legs.',
+    ],
+    movementPattern: 'lunge', primaryMuscles: ['quads', 'glutes'], secondaryMuscles: ['adductors', 'glute-med'],
+    mechanic: 'compound', laterality: 'unilateral', stance: 'split', equipment: ['none'], ...BW,
+    repRange: { min: 10, max: 20 }, perSide: true, fatigueCost: 1, runImpact: 'low',
+    progressions: ['dumbbell-split-squat'],
+    slots: ['legs:single-leg'], tags: ['runner-support'],
+    cues: ['Long stance, both feet pointing forward', 'Drop the back knee straight down', 'Slow down, quick up'],
+  }),
+  x({
     id: 'smith-split-squat', name: 'Smith Machine Split Squat', aliases: ['Smith split squat'], family: 'split-squat',
     instructions: [
       'Set the Smith bar at shoulder height and position it across your upper back.',
@@ -433,6 +447,20 @@ export const curation: CuratedEntry[] = [
     movementPattern: 'calf', primaryMuscles: ['calves'],
     mechanic: 'isolation', laterality: 'unilateral', stance: 'single-leg', lengthBias: 'lengthened', equipment: ['dumbbell', 'plate'], ...DB,
     repRange: { min: 8, max: 20 }, perSide: true, fatigueCost: 1,
+    slots: ['legs:calf'], tags: ['runner-support', 'balance'],
+    cues: ['Hold something for balance', 'Full range every rep', 'Slow on the way down'],
+  }),
+  x({
+    id: 'single-leg-calf-raise', name: 'Single-Leg Calf Raise', aliases: ['Bodyweight calf raise'], family: 'straight-leg-calf-raise',
+    instructions: [
+      'Stand on one foot with the ball of the foot on a stair edge (or flat on the floor), holding a wall or rail for balance.',
+      'Lower the heel as far as you can for a full stretch.',
+      'Rise as high as possible onto the big toe, pause, and lower slowly. Finish the set, then switch legs.',
+    ],
+    movementPattern: 'calf', primaryMuscles: ['calves'],
+    mechanic: 'isolation', laterality: 'unilateral', stance: 'single-leg', lengthBias: 'lengthened', equipment: ['none'], ...BW,
+    repRange: { min: 10, max: 25 }, perSide: true, fatigueCost: 1,
+    progressions: ['single-leg-dumbbell-calf-raise'],
     slots: ['legs:calf'], tags: ['runner-support', 'balance'],
     cues: ['Hold something for balance', 'Full range every rep', 'Slow on the way down'],
   }),

@@ -55,6 +55,17 @@ export async function setSyncToken(token: string | null, db: GetFitDB = defaultD
   else await db.meta.delete('syncToken');
 }
 
+/**
+ * Whether this device syncs with a server: it has a sync token, signs in through the configured headers
+ * (cookies or an account session), or has synced before.
+ */
+export async function isSyncConnected(db: GetFitDB = defaultDb): Promise<boolean> {
+  const signedIn = await Promise.resolve(defaults.headers?.()).catch(() => undefined);
+  if (signedIn) return true;
+  const [token, joined, lastPushedAt] = await Promise.all([getMeta<string>(db, 'syncToken'), getMeta<boolean>(db, 'joined'), getMeta<string>(db, 'lastPushedAt')]);
+  return !!token || !!joined || !!lastPushedAt;
+}
+
 export async function getSyncStatus(db: GetFitDB = defaultDb): Promise<SyncStatus> {
   const [token, lastSyncedAt, lastError] = await Promise.all([
     getMeta<string>(db, 'syncToken'),

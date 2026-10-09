@@ -12,7 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@orca-solutions/get-fit-core": "0.1.0",
+    "@orca-solutions/get-fit-core": "0.2.0",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",
     "react": "^19.3.0",
