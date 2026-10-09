@@ -1,7 +1,7 @@
 import { formatRest, progress, restTimer, secondsLeft, STEP_SEC, useNow, useRestTimer } from '../../lib/restTimer';
 
 /**
- * Rest between sets, in the thumb zone above Prev / Next (v2 design: a small label, a large count, a
+ * Rest between sets, in the thumb zone above Prev / Next (a small label, a large count, a
  * thin bar, ±30 s, tap to dismiss). Calm by design: no pop-ups, no alarms.
  */
 export function RestBar() {

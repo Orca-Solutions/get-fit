@@ -59,9 +59,6 @@
     "dexie": "^4.4.6",
     "fake-indexeddb": "^6.2.5"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "engines": {
     "node": ">=22"
   }

@@ -1,5 +1,5 @@
 // Hand-curated exercise catalog for get-fit (Planet Fitness gym + home core kit).
-// See plan/exercise-database.md §6 and plan/periodization.md §4.2.
+// See docs/exercise-database.md §6 and docs/periodization.md §4.2.
 //
 // Each entry carries our own tags. `sourceId` points at a free-exercise-db entry
 // (pinned commit, see build-exercises.ts) whose photos — and instructions, unless we
@@ -7,7 +7,7 @@
 // and must carry their own `instructions`.
 //
 // Run `npx tsx scripts/build-exercises.ts` after editing to regenerate
-// src/data/exercises.json and public/exercises/.
+// src/data/exercises.json and apps/web/public/exercises/.
 
 import type { Exercise } from '../src/types.js';
 
