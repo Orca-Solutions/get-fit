@@ -4,15 +4,37 @@
   "description": "The get-fit training engine: exercise library, plan generator, progression and sync.",
   "license": "MIT",
   "type": "module",
-  "repository": { "type": "git", "url": "git+https://github.com/Orca-Solutions/get-fit.git", "directory": "packages/core" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Orca-Solutions/get-fit.git",
+    "directory": "packages/core"
+  },
   "sideEffects": false,
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "source": "./src/index.ts", "default": "./dist/index.js" },
-    "./client": { "types": "./dist/client/index.d.ts", "source": "./src/client/index.ts", "default": "./dist/client/index.js" },
-    "./sqlite": { "types": "./dist/server/sqlite.d.ts", "source": "./src/server/sqlite.ts", "default": "./dist/server/sqlite.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "source": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "source": "./src/client/index.ts",
+      "default": "./dist/client/index.js"
+    },
+    "./sqlite": {
+      "types": "./dist/server/sqlite.d.ts",
+      "source": "./src/server/sqlite.ts",
+      "default": "./dist/server/sqlite.js"
+    }
   },
-  "files": ["dist", "src", "!src/**/*.test.ts"],
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "prepack": "npm run build",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
@@ -24,8 +46,12 @@
     "dexie": "^4"
   },
   "peerDependenciesMeta": {
-    "better-sqlite3": { "optional": true },
-    "dexie": { "optional": true }
+    "better-sqlite3": {
+      "optional": true
+    },
+    "dexie": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
@@ -33,6 +59,10 @@
     "dexie": "^4.4.6",
     "fake-indexeddb": "^6.2.5"
   },
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=22" }
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }

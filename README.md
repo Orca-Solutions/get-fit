@@ -22,7 +22,7 @@ This project is not affiliated with AnatolyFit. It's an independent, from-scratc
 
 - **Today:** the day's generated workout with a one-line reason for its shape, progress, and a jump into logging.
 - **Logging:** one screen per movement. Reps show the plan in grey and typing replaces them; weight starts blank with "last time at this rep count" above it, and carries forward to later sets. ✓ logs whatever is grey. Band movements log band and steps from the anchor; holds log seconds. History for the movement sits right below.
-- **Plan generator:** 4-week blocks (3 loading weeks and a deload), always planned one block ahead; a block planned ahead is refreshed from your latest logs on its first day. Mon chest and biceps, Wed legs, Fri back, triceps and shoulders, weekend core at home. Each lifting day rotates heavy, moderate and light; lighter days add variety movements and a grip finisher. The rules are written down in [docs/periodization.md](docs/periodization.md) and implemented in [src/generator](src/generator).
+- **Plan generator:** 4-week blocks (3 loading weeks and a deload), always planned one block ahead; a block planned ahead is refreshed from your latest logs on its first day. Mon chest and biceps, Wed legs, Fri back, triceps and shoulders, weekend core at home. Each lifting day rotates heavy, moderate and light; lighter days add variety movements and a grip finisher. The rules are written down in [docs/periodization.md](docs/periodization.md) and implemented in [packages/core](packages/core).
 - **Calendar:** month and week views with done, partial, missed and done-late states, deload weeks shaded.
 - **History and library:** per-movement history with an estimated-1RM trend; about 130 curated movements with start/end photos.
 - **Sync:** each device keeps a full offline copy and syncs to a small server when it has signal, so the phone and a desktop browser share one plan and history. Settings › Export my data saves a full JSON backup (restorable, never removes sets) or your logged sets as CSV.
@@ -31,19 +31,29 @@ This project is not affiliated with AnatolyFit. It's an independent, from-scratc
 
 Vite, React and TypeScript as an installable PWA; Dexie (IndexedDB) on the phone; a Hono + SQLite server that serves the app and `/api/sync`. One Railway service runs it all.
 
+The repo is an npm workspace:
+
+- `packages/core`: the engine, published as [`@orca-solutions/get-fit-core`](packages/core/README.md). Exercise library, plan generator and the `Program` it follows, progression, the device database and sync engine, and the SQLite sync store.
+- `apps/web`: the app.
+- `server`: the sync server, which also serves the built app.
+
 ## Develop
 
 ```sh
 npm install
 npm run dev          # app on http://localhost:5173 (proxies /api to :3000)
-npm test             # unit tests: generator, progression, sync, server, catalog
+npm test             # unit tests: golden plans, generator, progression, sync, server, catalog
 npm run typecheck
 npm run sample       # print a generated block as Markdown
 npm run build && SYNC_TOKEN=$(openssl rand -hex 32) npm start   # production build on http://localhost:3000
 npm run test:e2e     # Playwright at iPhone size against the production build
 ```
 
-The exercise catalog is generated: edit `scripts/curation.ts`, then `npm run build:exercises` rebuilds `src/data/exercises.json` and the photos in `public/exercises/`.
+The exercise catalog is generated: edit `packages/core/scripts/curation.ts`, then `npm run build:exercises` rebuilds `packages/core/src/data/exercises.json` and the photos in `apps/web/public/exercises/`.
+
+`packages/core/tests/golden.test.ts` pins the exact plans for blocks 1 to 8. A change to the training rules fails it on purpose: if the change is intended, bump the program's `version` and refresh the pins with `GOLDEN_UPDATE=1 npx vitest run packages/core/tests/golden.test.ts`.
+
+Releasing the engine: bump `version` in `packages/core/package.json`, then push a tag `core-v<version>`; the Release core workflow tests and publishes it to npm (it needs an `NPM_TOKEN` repository secret).
 
 ## Deploy (Railway)
 
