@@ -12,6 +12,8 @@ import { HistoryPanel } from './HistoryPanel';
 import { SetRow, type Carry } from './SetRow';
 import { movementFor } from '../../lib/session';
 import { FinishSheet, InfoSheet, SwapSheet } from './WorkoutSheets';
+import { RestBar } from './RestBar';
+import { restTimer, useRestTimer } from '../../lib/restTimer';
 
 export default function Workout() {
   const { plannedId = '' } = useParams();
@@ -26,6 +28,7 @@ export default function Workout() {
   const sessionSets = liveSets ?? [];
   const [sheet, setSheet] = useState<'swap' | 'info' | 'finish' | null>(null);
   useWakeLock(true);
+  const resting = !!useRestTimer();
 
   // Opening a workout by link starts its session (dated today) so every tap has somewhere to save.
   useEffect(() => {
@@ -56,7 +59,7 @@ export default function Workout() {
 
   return (
     <div
-      className="with-footer"
+      className={resting ? 'with-footer with-rest' : 'with-footer'}
       onTouchStart={(e) => (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY })}
       onTouchEnd={(e) => {
         const t = touch.current;
@@ -85,12 +88,13 @@ export default function Workout() {
       </div>
 
       {ex ? (
-        <MovementLogger key={pe.id + actualId} pe={pe} ex={ex} sessionId={session.id} sessionDate={session.date} sets={sessionSets} />
+        <MovementLogger key={pe.id + actualId} pe={pe} ex={ex} sessionId={session.id} sessionDate={session.date} sets={sessionSets} lastMovement={isLast} />
       ) : (
         <p className="muted">Unknown movement {actualId}.</p>
       )}
 
       <div className="footer-nav">
+        <RestBar />
         <div className="inner">
           <button className="btn" disabled={index === 0} onClick={() => go(index - 1)}>‹ Prev</button>
           {isLast ? (
@@ -105,6 +109,7 @@ export default function Workout() {
       {sheet === 'info' && ex && <InfoSheet pe={pe} ex={ex} session={session} onClose={() => setSheet(null)} onFinish={() => setSheet('finish')} />}
       {sheet === 'finish' && <FinishSheet workout={workout} session={session} sets={sessionSets} onClose={() => setSheet(null)} onDone={async (patch) => {
         await updateSession(session.id, { ...patch, endedAt: new Date().toISOString() });
+        restTimer.stop();
         nav('/');
       }} />}
     </div>
@@ -121,12 +126,15 @@ function NextButton({ pe, next, sets, names, session, onClick }: { pe: PlannedEx
   );
 }
 
+/** Rest after a set on a movement added mid-workout, which has no planned rest. */
+const DEFAULT_REST_SEC = 90;
+
 function firstUnfinished(list: PlannedExercise[], sets: LoggedSet[], skipped?: string[]): number {
   const i = list.findIndex((e) => !skipped?.includes(e.id) && sets.filter((s) => s.plannedExerciseId === e.id).length < e.sets.length);
   return i < 0 ? 0 : i;
 }
 
-function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedExercise; ex: Exercise; sessionId: string; sessionDate: string; sets: LoggedSet[] }) {
+function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement }: { pe: PlannedExercise; ex: Exercise; sessionId: string; sessionDate: string; sets: LoggedSet[]; lastMovement: boolean }) {
   const profile = useProfile();
   const allHistory = useLiveQuery(async () => (await db.loggedSets.where('exerciseId').equals(ex.id).toArray()).filter((s) => !s.deletedAt), [ex.id]) ?? [];
   const history = useMemo(() => summarizeHistory(ex, allHistory.filter((s) => s.sessionId !== sessionId), profile), [ex, allHistory, sessionId, profile]);
@@ -196,6 +204,10 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets }: { pe: PlannedE
                 autoFocusWeight={focusWeightRow === i}
                 onLog={async (v) => {
                   setFocusWeightRow(null);
+                  // A new set starts the rest the plan gives it (longer for heavy compounds); editing a
+                  // logged set doesn't, and nor does the workout's very last set.
+                  const finishing = lastMovement && mine.length + 1 >= pe.sets.length;
+                  if (!logged && !finishing) restTimer.start((pe.sets[i] ?? pe.sets[pe.sets.length - 1])?.restSec ?? DEFAULT_REST_SEC, ex.name);
                   await logSet(session, ex.id, pe.id, i, v);
                 }}
                 onUnlog={() => logged && unlogSet(logged.id)}

@@ -7,6 +7,7 @@ import { uuid } from '../../lib/ids';
 import { today } from '../../lib/dates';
 import { useProfile } from '../../lib/hooks';
 import { parseKettlebells } from '../../lib/kettlebells';
+import { useRestPrefs } from '../../lib/restTimer';
 import type { Profile } from '../../types';
 
 export default function Settings() {
@@ -37,6 +38,8 @@ export default function Settings() {
           <button className={profile.coreWave === 'flat' ? 'on' : ''} onClick={() => save({ coreWave: 'flat' })}>Flat</button>
         </div>
       </div>
+
+      <RestCard />
 
       <h2 className="section">My bands (lightest first)</h2>
       <div className="card">
@@ -103,6 +106,32 @@ export default function Settings() {
       </div>
       <p className="small faint center">get-fit · MIT · exercise photos from free-exercise-db (public domain)</p>
       {msg && <div className="toast">{msg}</div>}
+    </>
+  );
+}
+
+/** Saved on this device only: the phone at the gym and a laptop at home can differ. */
+function RestCard() {
+  const [prefs, setPrefs] = useRestPrefs();
+  return (
+    <>
+      <h2 className="section">Rest timer</h2>
+      <div className="card">
+        <p className="small muted" style={{ margin: '0 0 8px' }}>Starts when you log a set: longer after heavy compound lifts, shorter for isolation and core.</p>
+        <div className="seg">
+          <button className={prefs.enabled ? 'on' : ''} onClick={() => setPrefs({ enabled: true })}>On</button>
+          <button className={!prefs.enabled ? 'on' : ''} onClick={() => setPrefs({ enabled: false })}>Off</button>
+        </div>
+        {prefs.enabled && (
+          <>
+            <label className="field-label">When rest is up</label>
+            <div className="seg">
+              <button className={prefs.sound ? 'on' : ''} onClick={() => setPrefs({ sound: true })}>Chime and buzz</button>
+              <button className={!prefs.sound ? 'on' : ''} onClick={() => setPrefs({ sound: false })}>Silent</button>
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }
