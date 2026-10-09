@@ -182,6 +182,17 @@ describe('slot coverage', () => {
     }
   });
 
+  it('has beginner sumo squats for a dumbbell, a Smith machine and a kettlebell in the single-leg slot', () => {
+    for (const id of ['dumbbell-sumo-squat', 'smith-sumo-squat', 'kettlebell-sumo-squat']) {
+      const e = byId.get(id)!;
+      expect(e.slots, id).toEqual(['legs:single-leg']);
+      expect([e.level, e.family, e.laterality, e.repRange.min], id).toEqual(['beginner', 'sumo-squat', 'bilateral', 8]);
+    }
+    for (const kit of [GYM_EQUIPMENT, HOME_EQUIPMENT, ['dumbbell', 'none'] as Equipment[]]) {
+      expect(candidates('legs:single-leg', kit).some((e) => e.laterality === 'bilateral'), kit.join()).toBe(true);
+    }
+  });
+
   it('keeps the core ladders in order', () => {
     const rank = (id: string) => byId.get(id)?.difficultyRank;
     expect([rank('plank'), rank('long-lever-plank'), rank('body-saw')]).toEqual([1, 2, 3]);

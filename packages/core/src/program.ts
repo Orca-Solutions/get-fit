@@ -12,6 +12,12 @@ export type BaseSlot = {
   role: Exclude<SlotRole, 'V' | 'G' | 'K'>;
   /** Pick from a different movement family than the day's other base slots (a second row, a second press). */
   distinctFamily?: boolean;
+  /**
+   * Alternate block by block between the slot's single-leg movements (odd blocks) and its bilateral ones (even
+   * blocks), e.g. split squats and lunges one block, sumo squats the next (§4.8). Falls back to whatever fits
+   * the kit. In bilateral blocks the day's first variety slot offers `varietyFirst` (exercise ids) first.
+   */
+  alternateLaterality?: { varietyFirst?: string[] };
 };
 
 export type LiftDay = {
@@ -117,7 +123,7 @@ export type Program = {
 
 export const STRANGE_PERIODIZATION: Program = {
   id: 'strange-periodization',
-  version: '1.3.0',
+  version: '1.4.0',
   days: {
     legs: {
       kind: 'lift',
@@ -125,7 +131,9 @@ export const STRANGE_PERIODIZATION: Program = {
       base: [
         { key: 'legs:squat', role: 'P' },
         { key: 'legs:hinge', role: 'C' },
-        { key: 'legs:single-leg', role: 'C' },
+        // Knee-dominant: single-leg one block, a sumo squat the next, with the leg press, then the hack squat, first in line for the
+        // variety slot in sumo blocks (§4.8).
+        { key: 'legs:single-leg', role: 'C', alternateLaterality: { varietyFirst: ['leg-press', 'hack-squat'] } },
         { key: 'legs:knee-extension', role: 'I' },
         { key: 'legs:knee-flexion', role: 'I' },
         { key: 'legs:calf', role: 'I' },

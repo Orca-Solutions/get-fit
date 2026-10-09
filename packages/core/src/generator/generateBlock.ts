@@ -10,7 +10,7 @@ import { ZONE_NAME, compoundReps, coreTargets, isolationReps, restFor, rirFor, s
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.3.0';
+export const GENERATOR_VERSION = '1.4.0';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -265,6 +265,11 @@ function jitter(ctx: Ctx, id: string, salt = ''): number {
   return (hash(`${id}|${ctx.blockIndex}|${salt}`) % 1000) / 1000;
 }
 
+/** Blocks where slots with `alternateLaterality` take their bilateral movements (§4.8). */
+function bilateralBlock(ctx: Ctx): boolean {
+  return ctx.blockIndex % 2 === 0;
+}
+
 /** One pick per base slot, in template order; undefined where nothing fits the equipment. */
 function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefined)[] {
   const prev = ctx.input.previousBlock?.baseSlots ?? {};
@@ -283,6 +288,10 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefi
     const key = `${type}|${slot.key}`;
     const prevId = prev[key];
     let pool = candidates(ctx, slot.key, 'gym').filter((e) => !chosen.some((c) => c.id === e.id));
+    if (slot.alternateLaterality) {
+      const turn = pool.filter((e) => (e.laterality === 'bilateral') === bilateralBlock(ctx));
+      if (turn.length) pool = turn;
+    }
     if (slot.distinctFamily) {
       const fresh = pool.filter((e) => !chosen.some((c) => c.family === e.family));
       if (fresh.length) pool = fresh;
@@ -440,12 +449,25 @@ function buildLift(
   if (zone !== 'deload' && proj) {
     const nV = p.varietySlots[zone];
     const baseFamilies = new Set(base.flatMap((b) => (b ? [b.family] : [])));
+    // In a bilateral block of an alternating slot, its varietyFirst movements claim the first variety slot
+    // while they fit under every band's ceiling (the leg press on sumo-squat leg days, §4.8).
+    const first = tpl.base.flatMap((slot, i) => (slot.alternateLaterality && base[i]?.laterality === 'bilateral' ? slot.alternateLaterality.varietyFirst ?? [] : []));
     for (let v = 0; v < nV; v++) {
       const pools = rotateList(tpl.varietyPool, week * 2 + v + ctx.blockIndex);
       let pick: Exercise | undefined;
       let pickSlot: SlotKey = pools[0];
       let top = -Infinity;
-      pools.forEach((pool, rank) => {
+      if (v === 0) {
+        for (const id of first) {
+          const pool = tpl.varietyPool.find((k) => candidates(ctx, k, 'gym').some((e) => e.id === id));
+          const e = pool && ctx.byId.get(id);
+          if (!pool || !e || inSession.has(e.id) || !fitsBands(e, 2, proj, p.bands)) continue;
+          pick = e;
+          pickSlot = pool;
+          break;
+        }
+      }
+      if (!pick) pools.forEach((pool, rank) => {
         for (const e of candidates(ctx, pool, 'gym')) {
           if (inSession.has(e.id) || exercises.some((x) => x.role === 'V' && ctx.byId.get(x.exerciseId)?.family === e.family)) continue;
           const need = needOf(e, proj, p.bands);

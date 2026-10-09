@@ -341,6 +341,51 @@ export const curation: CuratedEntry[] = [
     cues: ['Whole foot on the bench', 'Drive through the top leg, not the bottom foot', 'Lower slowly'],
   }),
 
+  // Sumo squats share the single-leg slot and take it every other block (§4.8).
+  x({
+    id: 'dumbbell-sumo-squat', name: 'Dumbbell Sumo Squat', aliases: ['DB sumo squat', 'Plie squat'], family: 'sumo-squat',
+    instructions: [
+      'Stand with your feet well past shoulder width, toes turned out, holding one dumbbell by its top end at arm\'s length between your legs.',
+      'Keep your chest up and sit straight down between your heels, knees pushing out over your toes.',
+      'Go as low as you can while your back stays flat, then press through your whole foot to stand.',
+    ],
+    movementPattern: 'squat', primaryMuscles: ['quads', 'glutes'], secondaryMuscles: ['adductors', 'hamstrings'],
+    mechanic: 'compound', laterality: 'bilateral', stance: 'standing', equipment: ['dumbbell'], ...DB, weightConvention: 'total',
+    repRange: { min: 8, max: 15 }, fatigueCost: 2, runImpact: 'low',
+    progressions: ['smith-sumo-squat'],
+    slots: ['legs:single-leg'],
+    cues: ['Wide stance, toes out', 'Knees follow the toes', 'Dumbbell hangs straight down'],
+  }),
+  x({
+    id: 'smith-sumo-squat', name: 'Smith Machine Sumo Squat', aliases: ['Smith wide-stance squat'], family: 'sumo-squat',
+    instructions: [
+      'Set the Smith bar at shoulder height and rest it across your upper back.',
+      'Stand with your feet well past shoulder width under the bar, toes turned out, and unhook the bar.',
+      'Sit straight down, knees pushing out over your toes, until your thighs are about parallel.',
+      'Press through your whole foot to stand, then rack the bar when the set is done.',
+    ],
+    movementPattern: 'squat', primaryMuscles: ['quads', 'glutes'], secondaryMuscles: ['adductors', 'hamstrings'],
+    mechanic: 'compound', laterality: 'bilateral', stance: 'standing', ...SMITH,
+    repRange: { min: 8, max: 15 }, fatigueCost: 2, axialLoad: true, runImpact: 'low',
+    regressions: ['dumbbell-sumo-squat'],
+    slots: ['legs:single-leg'],
+    cues: ['Feet wide and slightly ahead of the bar', 'Knees out the whole way down', 'Chest stays tall'],
+  }),
+  x({
+    id: 'kettlebell-sumo-squat', name: 'Kettlebell Sumo Squat', aliases: ['KB sumo squat'], family: 'sumo-squat',
+    instructions: [
+      'Stand with your feet well past shoulder width, toes turned out, holding a kettlebell by the handle at arm\'s length.',
+      'Sit straight down between your heels, knees pushing out, until the bell nearly touches the floor.',
+      'Press through your whole foot to stand tall.',
+    ],
+    movementPattern: 'squat', primaryMuscles: ['quads', 'glutes'], secondaryMuscles: ['adductors', 'hamstrings'],
+    mechanic: 'compound', laterality: 'bilateral', stance: 'standing', ...KB,
+    repRange: { min: 8, max: 20 }, fatigueCost: 2, runImpact: 'low',
+    progressions: ['dumbbell-sumo-squat'],
+    slots: ['legs:single-leg'], tags: ['home-pack'],
+    cues: ['Wide stance, toes out', 'Knees follow the toes', 'Bell hangs straight down'],
+  }),
+
   // ───────────────────────────── LEGS: knee extension / flexion ─────────────────────────────
   x({
     id: 'leg-extension', name: 'Leg Extension', aliases: ['Quad extension'], family: 'leg-extension',

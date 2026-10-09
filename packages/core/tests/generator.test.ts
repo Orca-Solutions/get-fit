@@ -4,7 +4,7 @@ import { BANDS, groupOf, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
 import { e1rm, effectiveLoad, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
-import { STRANGE_PERIODIZATION } from '../src/program';
+import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
 import { parseKettlebells } from '../src/kettlebells';
 import type { Equipment, Exercise, LoggedSet, PlannedWorkout, Profile } from '../src/types';
@@ -187,14 +187,41 @@ describe('generateBlock: later blocks', () => {
   const b2 = gen({ previousBlock: b1.block, startDate: '2026-11-09' });
   const b3 = gen({ previousBlock: b2.block, startDate: '2026-12-07' });
 
-  it('rotates one or two base slots per lifting day', () => {
+  it('rotates one or two base slots per lifting day, besides the slot that alternates every block', () => {
     expect(b2.block.index).toBe(2);
     for (const type of ['legs', 'chest-biceps', 'back-tri-shoulders']) {
-      const keys = Object.keys(b1.block.baseSlots).filter((k) => k.startsWith(`${type}|`));
+      const keys = Object.keys(b1.block.baseSlots).filter((k) => k.startsWith(`${type}|`) && k !== 'legs|legs:single-leg');
       const changed = keys.filter((k) => b1.block.baseSlots[k] !== b2.block.baseSlots[k]);
       expect(changed.length, type).toBeGreaterThanOrEqual(1);
       expect(changed.length, type).toBeLessThanOrEqual(2);
     }
+  });
+
+  it('alternates leg day slot 3 between single-leg work and a sumo squat by block (§4.8)', () => {
+    const blocks = [b1, b2, b3, gen({ previousBlock: b3.block, startDate: '2027-01-04' })];
+    const slot3 = blocks.map((g) => byId.get(g.block.baseSlots['legs|legs:single-leg'])!);
+    expect(slot3.map((e) => e.laterality === 'bilateral')).toEqual([false, true, false, true]);
+    expect(slot3.filter((e) => e.laterality === 'bilateral').every((e) => e.family === 'sumo-squat')).toBe(true);
+    // Slot 3's rep clamp holds for the sumo squat: 8–10 on the heavy day.
+    const heavy = b2.workouts.find((w) => w.zone === 'H' && w.sessionType === 'legs')!;
+    const sumo = heavy.exercises.find((e) => e.exerciseId === slot3[1].id)!;
+    expect(sumo.sets[0].targetReps).toEqual({ min: 8, max: 10 });
+  });
+
+  it('gives the varietyFirst movements first claim on the variety slot in bilateral blocks only', () => {
+    const legs = STRANGE_PERIODIZATION.days.legs as LiftDay;
+    const program: Program = {
+      ...STRANGE_PERIODIZATION,
+      days: {
+        ...STRANGE_PERIODIZATION.days,
+        legs: { ...legs, base: legs.base.map((s) => (s.alternateLaterality ? { ...s, alternateLaterality: { varietyFirst: ['cable-hip-adduction'] } } : s)) },
+      },
+    };
+    const one = gen({ program });
+    const two = gen({ program, previousBlock: one.block, startDate: '2026-11-09' });
+    const firstV = (g: typeof one) => g.workouts.filter((w) => w.sessionType === 'legs' && (w.zone === 'M' || w.zone === 'L')).map((w) => w.exercises.find((e) => e.role === 'V')?.exerciseId);
+    expect(firstV(two)).toEqual(['cable-hip-adduction', 'cable-hip-adduction']);
+    expect(firstV(one)).not.toContain('cable-hip-adduction');
   });
 
   it('rotates core variants every block', () => {
