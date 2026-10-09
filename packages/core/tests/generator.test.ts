@@ -208,7 +208,7 @@ describe('generateBlock: later blocks', () => {
     expect(sumo.sets[0].targetReps).toEqual({ min: 8, max: 10 });
   });
 
-  it('keeps main lifts two-sided: the press rotates to the seated DB press, never a one-arm free press (§4.3, rev 3.7)', () => {
+  it('keeps main presses two-sided: the press rotates to the seated DB press, never a one-arm free press (§4.3, rev 3.7)', () => {
     const blocks = [b1];
     for (let i = 1; i < 8; i++) blocks.push(gen({ previousBlock: blocks[i - 1].block, startDate: addDays(blocks[i - 1].block.startDate, 28) }));
     const press = blocks.map((g) => g.block.baseSlots['back-tri-shoulders|shoulders:vertical-press']);
@@ -219,7 +219,7 @@ describe('generateBlock: later blocks', () => {
       for (const [key, id] of Object.entries(g.block.baseSlots)) {
         const [type, slot] = key.split('|');
         const base = (tpl[type] as LiftDay).base?.find((s) => s.key === slot);
-        if (!base || base.alternateLaterality) continue;
+        if (!base || !slot.includes('press')) continue;
         const e = byId.get(id)!;
         expect(e.laterality === 'unilateral' && e.stability === 'free', `${key}: ${id}`).toBe(false);
       }
@@ -353,6 +353,14 @@ describe('generateBlock: thin equipment never stops the plan', () => {
     expect(block.baseSlots['chest-biceps|chest:flat-press']).toBe('kettlebell-floor-press');
     expect(byId.get(block.baseSlots['back-tri-shoulders|back:vertical-pull'])!.equipment).toContain('band');
     expect(block.rationale).not.toContain('flagged');
+  });
+
+  it('keeps one-arm rows and pulldowns as home main lifts, but not the one-arm kettlebell press (§4.3, rev 3.7)', () => {
+    const picks = chain(homeOnly, 8).flatMap((g) => Object.entries(g.block.baseSlots));
+    const pulls = picks.filter(([k]) => k === 'back-tri-shoulders|back:vertical-pull' || k === 'back-tri-shoulders|back:horizontal-pull').map(([, id]) => id);
+    expect(pulls).toContain('band-single-arm-pulldown');
+    expect(pulls).toContain('kettlebell-bent-over-row');
+    expect(picks.filter(([k]) => k.includes('press')).map(([, id]) => id)).not.toContain('kettlebell-overhead-press');
   });
 
   it('keeps the home pack out of a gym plan that has machines, cables or dumbbells for the slot', () => {

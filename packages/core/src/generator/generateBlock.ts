@@ -321,9 +321,9 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefi
       const turn = pool.filter((e) => (e.laterality === 'bilateral') === bilateralBlock(ctx));
       if (turn.length) pool = turn;
       if (slot.alternateLaterality.stepUp && bilateralBlock(ctx)) pool = lowestRungs(ctx, pool);
-    } else {
-      // Main lifts stay two-sided: no free-standing one-arm variants in P and C slots. Supported or machine
-      // one-arm versions (one-arm DB row, single-arm cable pulldown) still count (§4.3, rev 3.7).
+    } else if (slot.key.includes('press')) {
+      // Main presses stay two-sided: no free-standing one-arm presses in P and C press slots. One-arm rows and
+      // pulldowns still count as main lifts (§4.3, rev 3.7).
       const twoSided = pool.filter((e) => !(e.laterality === 'unilateral' && e.stability === 'free'));
       if (twoSided.length) pool = twoSided;
     }

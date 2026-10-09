@@ -8,10 +8,10 @@
     "family": "smith-squat",
     "movementPattern": "squat",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "lower-back"
     ],
@@ -146,10 +146,10 @@
     "family": "goblet-squat",
     "movementPattern": "squat",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "abs"
     ],
@@ -915,10 +915,10 @@
     "family": "split-squat",
     "movementPattern": "lunge",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "glute-med"
     ],
@@ -986,10 +986,10 @@
     "family": "split-squat",
     "movementPattern": "lunge",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "glute-med"
     ],
@@ -1049,10 +1049,10 @@
     "family": "split-squat",
     "movementPattern": "lunge",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors"
     ],
     "mechanic": "compound",
@@ -1113,10 +1113,10 @@
     "family": "split-squat",
     "movementPattern": "lunge",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "glute-med"
     ],
@@ -1179,10 +1179,10 @@
     "family": "lunge",
     "movementPattern": "lunge",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "hamstrings",
       "glute-med"
@@ -1250,10 +1250,10 @@
     "family": "lunge",
     "movementPattern": "lunge",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "hamstrings",
       "glute-med"
@@ -1320,10 +1320,10 @@
     "movementPattern": "lunge",
     "primaryMuscles": [
       "quads",
-      "glutes",
       "adductors"
     ],
     "secondaryMuscles": [
+      "glutes",
       "glute-med"
     ],
     "mechanic": "compound",
@@ -1382,10 +1382,10 @@
     "family": "step-up",
     "movementPattern": "lunge",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "hamstrings",
       "glute-med"
     ],
@@ -1452,10 +1452,10 @@
     "family": "sumo-squat",
     "movementPattern": "squat",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "hamstrings"
     ],
@@ -1514,10 +1514,10 @@
     "family": "sumo-squat",
     "movementPattern": "squat",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "hamstrings"
     ],
@@ -1577,10 +1577,10 @@
     "family": "sumo-squat",
     "movementPattern": "squat",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "hamstrings"
     ],
@@ -10673,10 +10673,10 @@
     "family": "barbell-squat",
     "movementPattern": "squat",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "lower-back"
     ],
@@ -10744,10 +10744,10 @@
     "family": "barbell-squat",
     "movementPattern": "squat",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "upper-back"
     ],
@@ -11765,10 +11765,10 @@
     "family": "lunge",
     "movementPattern": "lunge",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "glute-med"
     ],
@@ -11835,10 +11835,10 @@
     "family": "step-up",
     "movementPattern": "lunge",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "glute-med",
       "hamstrings"
     ],
@@ -12565,10 +12565,10 @@
     "family": "kettlebell-goblet-squat",
     "movementPattern": "squat",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "abs"
     ],
@@ -12694,10 +12694,10 @@
     "family": "kettlebell-lunge",
     "movementPattern": "lunge",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "hamstrings"
     ],

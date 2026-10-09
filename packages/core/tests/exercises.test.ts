@@ -188,8 +188,11 @@ describe('slot coverage', () => {
       expect(e.slots, id).toEqual(['legs:single-leg']);
       expect([e.level, e.family, e.laterality, e.repRange.min], id).toEqual(['beginner', 'sumo-squat', 'bilateral', 8]);
     }
-    // The leg press is quad-dominant: glutes and hamstrings count half (§4.8).
-    expect([byId.get('leg-press')!.primaryMuscles, byId.get('leg-press')!.secondaryMuscles]).toEqual([['quads'], ['glutes', 'adductors', 'hamstrings']]);
+    // Knee-dominant compounds count glutes half; hinges and hip extensions count them fully (§4.8).
+    for (const e of exercises.filter((x) => (x.movementPattern === 'squat' || x.movementPattern === 'lunge') && x.mechanic === 'compound')) {
+      expect(e.primaryMuscles, e.id).not.toContain('glutes');
+    }
+    expect(byId.get('dumbbell-romanian-deadlift')!.primaryMuscles).toContain('glutes');
     for (const kit of [GYM_EQUIPMENT, HOME_EQUIPMENT, ['dumbbell', 'none'] as Equipment[]]) {
       expect(candidates('legs:single-leg', kit).some((e) => e.laterality === 'bilateral'), kit.join()).toBe(true);
     }

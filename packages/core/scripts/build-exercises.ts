@@ -224,6 +224,10 @@ export function validateCatalog(exercises: readonly Exercise[]): string[] {
     if (!Array.isArray(ex.aliases)) err(id, 'aliases must be an array');
     if (!Array.isArray(ex.tags)) err(id, 'tags must be an array');
     if (ex.license !== 'FSL-1.1-MIT') err(id, 'entries are FSL-1.1-MIT');
+    // Knee-dominant compounds count glutes half; hinges and hip extensions count them fully (§4.8).
+    if ((ex.movementPattern === 'squat' || ex.movementPattern === 'lunge') && ex.mechanic === 'compound' && ex.primaryMuscles?.includes('glutes')) {
+      err(id, 'squats and lunges list glutes as secondary');
+    }
 
     if (ex.source?.name === 'free-exercise-db') {
       if (!ex.source.sourceId) err(id, 'free-exercise-db source without sourceId');
