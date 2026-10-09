@@ -10492,7 +10492,7 @@
     "runImpact": "low",
     "level": "beginner",
     "difficultyRank": 2,
-    "starter": false,
+    "starter": true,
     "regressions": [
       "goblet-squat"
     ],
@@ -10907,7 +10907,7 @@
     "runImpact": "none",
     "level": "beginner",
     "difficultyRank": 2,
-    "starter": false,
+    "starter": true,
     "regressions": [],
     "progressions": [],
     "slots": [
@@ -11115,7 +11115,7 @@
     "runImpact": "none",
     "level": "beginner",
     "difficultyRank": 2,
-    "starter": false,
+    "starter": true,
     "regressions": [],
     "progressions": [],
     "slots": [
@@ -11185,7 +11185,7 @@
     "runImpact": "none",
     "level": "beginner",
     "difficultyRank": 2,
-    "starter": false,
+    "starter": true,
     "regressions": [],
     "progressions": [],
     "slots": [

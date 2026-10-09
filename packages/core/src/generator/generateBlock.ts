@@ -279,6 +279,7 @@ function scoreBase(ctx: Ctx, e: Exercise, slot: BaseSlot, prevId: string | undef
   const rules = ctx.program.selection;
   if (ctx.blockIndex === 1 && e.starter) s += rules.starterBonus;
   if (slot.role === 'P') s += rules.primaryLoadTypeBonus[e.loadType] ?? 0;
+  if (slot.role === 'C') s += rules.compoundLoadTypeBonus?.[e.loadType] ?? 0;
   s += rules.levelBonus[e.level] ?? 0;
   if (flags?.favourite) s += rules.favouriteBonus;
   if (prevId) {
@@ -562,17 +563,19 @@ function addCoverageSet(ctx: Ctx, workouts: PlannedWorkout[], muscle: CoverageGr
 }
 
 /**
- * Take one set off a muscle over its band in `week`: an isolation or variety set beyond 2 first, then a
- * secondary compound's, then a variety movement whose main muscles are all over their bands. The primary
- * lift is never trimmed, and base movements keep 2 sets or more.
+ * Take one set off a muscle over its band in `week`: an isolation set beyond 2 first, then a variety set
+ * beyond 2 (the third press and second row in ":v:" base slots count as variety here), then a variety
+ * movement whose main muscles are all over their bands. The other base compounds keep their sets (3 or
+ * more on a loading day, §4.2), so a muscle can stay over its band when only they carry it.
  */
 function removeCoverageSet(ctx: Ctx, workouts: PlannedWorkout[], muscle: CoverageGroup, week: number, coverage: CoverageReport): boolean {
   const { byId } = ctx;
   const hits = (e: PlannedExercise) => byId.get(e.exerciseId)?.primaryMuscles.some((m) => muscleGroupOf(m) === muscle);
   const sessions = workouts.filter((w) => w.weekIndex === week && !w.isDeload && w.sessionType !== ctx.coreType);
-  for (const roles of [['I', 'V'], ['C']]) {
+  const variety = (e: PlannedExercise) => e.role === 'V' || (e.role === 'C' && e.slot.includes(':v:'));
+  for (const trimmable of [(e: PlannedExercise) => e.role === 'I', variety]) {
     for (const w of sessions) {
-      const target = [...w.exercises].reverse().find((e) => roles.includes(e.role) && e.sets.length > 2 && hits(e));
+      const target = [...w.exercises].reverse().find((e) => trimmable(e) && e.sets.length > 2 && hits(e));
       if (target) {
         target.sets.pop();
         return true;

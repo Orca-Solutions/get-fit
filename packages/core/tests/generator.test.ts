@@ -316,6 +316,28 @@ describe('generateBlock: thin equipment never stops the plan', () => {
     expect(noRack.every((id) => !byId.get(id)!.equipment.includes('rack'))).toBe(true);
   });
 
+  it('keeps the main lifts at 3 sets or more on every loading day for 8 blocks, with or without a barbell', () => {
+    for (const p of [profile, kit([...profile.equipmentByLocation.gym, 'barbell', 'rack'])]) {
+      for (const g of chain(p, 8)) {
+        for (const w of g.workouts.filter((w) => !w.isDeload && w.sessionType !== 'core')) {
+          for (const e of w.exercises.filter((e) => (e.role === 'P' || e.role === 'C') && !e.slot.includes(':v:'))) {
+            expect(e.sets.length, `block ${g.block.index} ${w.date} ${e.exerciseId}`).toBeGreaterThanOrEqual(3);
+          }
+        }
+      }
+    }
+  });
+
+  it('runs the barbell squat, bench, overhead press and row from block 1 with a bar and rack', () => {
+    const { block } = gen({ profile: kit([...profile.equipmentByLocation.gym, 'barbell', 'rack']) });
+    expect(block.baseSlots['legs|legs:squat']).toBe('barbell-back-squat');
+    expect(block.baseSlots['chest-biceps|chest:flat-press']).toBe('barbell-bench-press');
+    expect(block.baseSlots['back-tri-shoulders|shoulders:vertical-press']).toBe('barbell-overhead-press');
+    expect(block.baseSlots['back-tri-shoulders|back:horizontal-pull']).toBe('barbell-bent-over-row');
+    // The hinge stays a dumbbell RDL: a barbell deadlift or RDL would stack two fatigue-3 lifts with the squat (§4.6).
+    expect(block.baseSlots['legs|legs:hinge']).toBe('dumbbell-romanian-deadlift');
+  });
+
   it('leaves a slot out, and says so, when nothing at all fits', () => {
     const { block, workouts } = gen({ profile: kit([]) });
     expect(block.rationale).toContain('No squat movement fits your equipment, so this block leaves that slot out');
