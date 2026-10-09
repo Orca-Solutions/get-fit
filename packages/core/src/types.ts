@@ -21,6 +21,8 @@ export type Muscle =
 export type Equipment =
   | 'dumbbell' | 'kettlebell' | 'cable' | 'machine' | 'smith-machine' | 'bench'
   | 'pull-up-bar' | 'back-extension-bench' | 'plate' | 'band' | 'ab-wheel' | 'mat' | 'none'
+  /** A bench that sets to a decline, for decline presses. */
+  | 'decline-bench'
   /** A free barbell with plates, an EZ curl bar, and a squat or power rack to start a barbell from. */
   | 'barbell' | 'ez-bar' | 'rack';
 
@@ -51,6 +53,8 @@ export type CatalogSlot =
   | 'back:vertical-pull' | 'back:horizontal-pull' | 'shoulders:vertical-press'
   | 'shoulders:side-delt' | 'triceps:overhead' | 'triceps:pushdown'
   | 'shoulders:v:rear-delt' | 'back:v:row-variant' | 'back:v:shrug'
+  // Friday's deadlift, in place of the second row on some weeks (§4.8)
+  | 'back:deadlift'
   // Core day (home)
   | `core:${CoreDynamic}`
   // Grip finishers

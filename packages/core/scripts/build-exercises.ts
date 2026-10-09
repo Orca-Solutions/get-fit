@@ -37,6 +37,8 @@ export const GYM_EQUIPMENT: readonly Equipment[] = [
 export const HOME_EQUIPMENT: readonly Equipment[] = ['band', 'kettlebell', 'ab-wheel', 'mat', 'none'];
 /** Optional gear: barbell-pack movements are planned only for a kit that lists it. */
 export const BARBELL_EQUIPMENT: readonly Equipment[] = ['barbell', 'ez-bar', 'rack'];
+/** Optional place gear: decline presses are planned only where a place lists a decline bench (§4.8). */
+export const OPTIONAL_EQUIPMENT: readonly Equipment[] = ['decline-bench'];
 
 export const usableWith = (ex: Pick<Exercise, 'equipment'>, available: readonly Equipment[]): boolean =>
   ex.equipment.every((e) => available.includes(e));
@@ -58,7 +60,7 @@ export const MUSCLES = [
 ] as const;
 export const EQUIPMENT = [
   'dumbbell', 'kettlebell', 'cable', 'machine', 'smith-machine', 'bench', 'pull-up-bar', 'back-extension-bench',
-  'plate', 'band', 'ab-wheel', 'mat', 'none', 'barbell', 'ez-bar', 'rack',
+  'plate', 'band', 'ab-wheel', 'mat', 'none', 'barbell', 'ez-bar', 'rack', 'decline-bench',
 ] as const;
 export const LOAD_TYPES = ['smith', 'barbell', 'ez-bar', 'dumbbell', 'kettlebell', 'machine', 'cable', 'bodyweight', 'assisted', 'band', 'plate'] as const;
 export const WEIGHT_CONVENTIONS = ['total', 'per-hand', 'added', 'assist', 'band', 'none'] as const;
@@ -77,9 +79,11 @@ export const VARIETY_SLOTS = [
   'legs:v:hip-extension', 'legs:v:squat-machine', 'legs:v:adduction', 'legs:v:abduction', 'legs:v:hinge-variant',
   'chest:v:press-variant', 'biceps:v:curl-variant', 'shoulders:v:rear-delt', 'back:v:row-variant', 'back:v:shrug',
 ] as const;
+/** Slots a base slot swaps into on some weeks (Friday's deadlift in place of the row). */
+export const SWAP_SLOTS = ['back:deadlift'] as const;
 export const CORE_SLOTS = CORE_DYNAMICS.map((d) => `core:${d}` as const);
 export const GRIP_SLOTS = GRIP_TYPES.map((g) => `grip:${g}` as const);
-export const ALL_SLOTS: readonly CatalogSlot[] = [...BASE_SLOTS, ...VARIETY_SLOTS, ...CORE_SLOTS, ...GRIP_SLOTS];
+export const ALL_SLOTS: readonly CatalogSlot[] = [...BASE_SLOTS, ...VARIETY_SLOTS, ...SWAP_SLOTS, ...CORE_SLOTS, ...GRIP_SLOTS];
 
 exact<Exact<(typeof MOVEMENT_PATTERNS)[number], MovementPattern>>(true);
 exact<Exact<(typeof MUSCLES)[number], Muscle>>(true);
@@ -89,7 +93,7 @@ exact<Exact<(typeof WEIGHT_CONVENTIONS)[number], WeightConvention>>(true);
 exact<Exact<(typeof CORE_DYNAMICS)[number], CoreDynamic>>(true);
 exact<Exact<(typeof GRIP_TYPES)[number], GripType>>(true);
 exact<
-  Exact<(typeof BASE_SLOTS)[number] | (typeof VARIETY_SLOTS)[number] | `core:${CoreDynamic}` | `grip:${GripType}`, CatalogSlot>
+  Exact<(typeof BASE_SLOTS)[number] | (typeof VARIETY_SLOTS)[number] | (typeof SWAP_SLOTS)[number] | `core:${CoreDynamic}` | `grip:${GripType}`, CatalogSlot>
 >(true);
 
 const MECHANICS = ['compound', 'isolation'];
@@ -211,7 +215,7 @@ export function validateCatalog(exercises: readonly Exercise[]): string[] {
       if (gripSlots.length > 0 && !usableWith(ex, GYM_EQUIPMENT)) err(id, 'grip slot but not usable with gym equipment');
     }
     const liftingSlots = (ex.slots ?? []).filter((s) => !s.startsWith('core:'));
-    if (liftingSlots.length > 0 && !usableWith(ex, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT, ...HOME_EQUIPMENT])) err(id, 'lifting slot but not usable with gym, barbell or home equipment');
+    if (liftingSlots.length > 0 && !usableWith(ex, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT, ...HOME_EQUIPMENT, ...OPTIONAL_EQUIPMENT])) err(id, 'lifting slot but not usable with gym, barbell, home or optional equipment');
     if ((ex.loadType === 'barbell' || ex.loadType === 'ez-bar') && !ex.equipment.includes(ex.loadType)) err(id, `${ex.loadType} load needs ${ex.loadType} equipment`);
     if (ex.starter && !(ex.slots ?? []).some((s) => (BASE_SLOTS as readonly string[]).includes(s) || s.startsWith('core:'))) {
       err(id, 'starter must fill a base slot or a core slot');

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
-  BARBELL_EQUIPMENT, BASE_SLOTS, CORE_DYNAMICS, FORBIDDEN_EQUIPMENT, GRIP_TYPES, GYM_EQUIPMENT, HOME_EQUIPMENT, MUSCLES, VARIETY_SLOTS,
+  BARBELL_EQUIPMENT, OPTIONAL_EQUIPMENT, BASE_SLOTS, CORE_DYNAMICS, FORBIDDEN_EQUIPMENT, GRIP_TYPES, GYM_EQUIPMENT, HOME_EQUIPMENT, MUSCLES, VARIETY_SLOTS,
   usableWith, validateCatalog,
 } from '../scripts/build-exercises';
 import { curation } from '../scripts/curation';
@@ -160,9 +160,9 @@ describe('slot coverage', () => {
     }
   });
 
-  it('only offers gym-usable movements (or barbell- or home-pack ones) in lifting and grip slots, with a matching gripType', () => {
+  it('only offers gym-usable movements (or barbell-, decline-bench- or home-pack ones) in lifting and grip slots, with a matching gripType', () => {
     for (const e of exercises) {
-      if (e.slots.some((s) => !s.startsWith('core:'))) expect(usableWith(e, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT, ...HOME_EQUIPMENT]), e.id).toBe(true);
+      if (e.slots.some((s) => !s.startsWith('core:'))) expect(usableWith(e, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT, ...HOME_EQUIPMENT, ...OPTIONAL_EQUIPMENT]), e.id).toBe(true);
       if (e.slots.some((s) => s.startsWith('grip:'))) expect(usableWith(e, GYM_EQUIPMENT), e.id).toBe(true);
       const grip = e.slots.filter((s) => s.startsWith('grip:'));
       if (grip.length === 0) expect(e.gripType, e.id).toBeUndefined();

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import catalog from '../src/data/exercises.json';
-import { BANDS, groupOf, type CoverageGroup } from '../src/generator/coverage';
+import { BANDS, creditOf, groupOf, weeklySets, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
-import { e1rm, effectiveLoad, isOutgrown, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
+import { e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
 import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
@@ -19,6 +19,21 @@ function gen(extra: Partial<GeneratorInput> = {}) {
 
 const totalSets = (w: PlannedWorkout) => w.exercises.reduce((n, e) => n + e.sets.length, 0);
 const lifts = (ws: PlannedWorkout[]) => ws.filter((w) => w.sessionType !== 'core');
+
+/**
+ * Weeks and muscles outside their band, leaving out what the hinge schedule costs (§4.8): in the deadlift week,
+ * back up to half a set under (Friday's heavy day has no room for another row set) and lower back up to 1.5
+ * over (the RDL and deadlift share that week); in a week with only the RDL, lower back under its band but at
+ * its floor or above (no lifting day that week has a slot for lower-back work).
+ */
+function outsideBands(g: { workouts: PlannedWorkout[]; coverage: { weeks: Record<CoverageGroup, number>[]; under: { week: number; group: CoverageGroup }[]; over: { week: number; group: CoverageGroup }[] } }) {
+  const deadliftWeeks = new Set(g.workouts.filter((w) => w.exercises.some((e) => e.slot === 'back:deadlift')).map((w) => w.weekIndex));
+  const sets = (o: { week: number; group: CoverageGroup }) => g.coverage.weeks[o.week][o.group];
+  const cost = (o: { week: number; group: CoverageGroup }, side: 'under' | 'over') => side === 'under'
+    ? (deadliftWeeks.has(o.week) && o.group === 'back' && sets(o) >= BANDS.back![0] - 0.5) || (o.group === 'lower-back' && sets(o) >= STRANGE_PERIODIZATION.params.floors['lower-back'])
+    : deadliftWeeks.has(o.week) && o.group === 'lower-back' && sets(o) <= BANDS['lower-back']![1] + 1.5;
+  return { under: g.coverage.under.filter((o) => !cost(o, 'under')), over: g.coverage.over.filter((o) => !cost(o, 'over')) };
+}
 
 describe('generateBlock: block 1', () => {
   const { block, workouts, coverage } = gen();
@@ -108,7 +123,7 @@ describe('generateBlock: block 1', () => {
   it('keeps base movements fixed for the block, except light-day stand-ins', () => {
     for (const type of ['legs', 'chest-biceps', 'back-tri-shoulders']) {
       const weeks = workouts.filter((w) => w.sessionType === type);
-      const base = (w: PlannedWorkout) => w.exercises.filter((e) => ['P', 'C', 'I'].includes(e.role) && !e.note?.startsWith('Stands in')).map((e) => `${e.slot}=${e.exerciseId}`);
+      const base = (w: PlannedWorkout) => w.exercises.filter((e) => ['P', 'C', 'I'].includes(e.role) && !e.note?.startsWith('Stands in') && !e.note?.startsWith('Takes the place')).map((e) => `${e.slot}=${e.exerciseId}`);
       const all = new Set(weeks.flatMap(base));
       expect(all.size, type).toBe(6);
     }
@@ -134,10 +149,9 @@ describe('generateBlock: block 1', () => {
     }
   });
 
-  it('keeps every muscle inside its weekly band in every loading week', () => {
+  it('keeps every muscle inside its weekly band in every loading week, but for what the Friday deadlift costs', () => {
     expect(coverage.warnings).toEqual([]);
-    expect(coverage.under).toEqual([]);
-    expect(coverage.over).toEqual([]);
+    expect(outsideBands({ workouts, coverage })).toEqual({ under: [], over: [] });
   });
 
   it('adds a third chest press on Monday and a second back compound on Friday, each from a new family', () => {
@@ -176,7 +190,8 @@ describe('generateBlock: block 1', () => {
   });
 
   it('prefers starter movements in block 1', () => {
-    const base = Object.values(block.baseSlots).map((id) => byId.get(id)!);
+    // The Friday deadlift (a swap, dumbbells first) isn't a starter.
+    const base = Object.entries(block.baseSlots).filter(([k]) => !k.endsWith('|back:deadlift')).map(([, id]) => byId.get(id)!);
     const lifting = base.filter((e) => !e.slots.some((s) => s.startsWith('core:')));
     expect(lifting.filter((e) => e.starter).length).toBeGreaterThanOrEqual(lifting.length - 2);
   });
@@ -234,10 +249,10 @@ describe('generateBlock: later blocks', () => {
     expect(stepped.block.baseSlots['legs|legs:single-leg']).toBe('smith-sumo-squat');
   });
 
-  it('puts the leg press on light days of sumo blocks, and leaves moderate days at squat plus sumo squat', () => {
+  it('puts the leg press on moderate and light days of sumo blocks: squat, sumo squat and leg press', () => {
     const legs = (zone: string) => b2.workouts.find((w) => w.sessionType === 'legs' && w.zone === zone)!;
+    expect(legs('M').exercises.find((e) => e.role === 'V')?.exerciseId).toBe('leg-press');
     expect(legs('L').exercises.find((e) => e.role === 'V')?.exerciseId).toBe('leg-press');
-    expect(legs('M').exercises.some((e) => e.role === 'V')).toBe(false);
   });
 
   it('gives the varietyFirst movements first claim on the variety slot in bilateral blocks only', () => {
@@ -246,14 +261,14 @@ describe('generateBlock: later blocks', () => {
       ...STRANGE_PERIODIZATION,
       days: {
         ...STRANGE_PERIODIZATION.days,
-        legs: { ...legs, base: legs.base.map((s) => (s.alternateLaterality ? { ...s, alternateLaterality: { varietyFirst: ['cable-hip-adduction'] } } : s)) },
+        legs: { ...legs, base: legs.base.map((s) => (s.alternateLaterality ? { ...s, alternateLaterality: { varietyFirst: ['hip-abduction-machine'] } } : s)) },
       },
     };
     const one = gen({ program });
     const two = gen({ program, previousBlock: one.block, startDate: '2026-11-09' });
     const firstV = (g: typeof one) => g.workouts.filter((w) => w.sessionType === 'legs' && (w.zone === 'M' || w.zone === 'L')).map((w) => w.exercises.find((e) => e.role === 'V')?.exerciseId);
-    expect(firstV(two)).toEqual(['cable-hip-adduction', 'cable-hip-adduction']);
-    expect(firstV(one)).not.toContain('cable-hip-adduction');
+    expect(firstV(two)).toEqual(['hip-abduction-machine', 'hip-abduction-machine']);
+    expect(firstV(one)).not.toContain('hip-abduction-machine');
   });
 
   it('rotates core variants every block', () => {
@@ -270,10 +285,7 @@ describe('generateBlock: later blocks', () => {
   });
 
   it('keeps every muscle inside its weekly band as blocks rotate', () => {
-    for (const b of [b2, b3]) {
-      expect(b.coverage.under, `block ${b.block.index}`).toEqual([]);
-      expect(b.coverage.over, `block ${b.block.index}`).toEqual([]);
-    }
+    for (const b of [b2, b3]) expect(outsideBands(b), `block ${b.block.index}`).toEqual({ under: [], over: [] });
   });
 
   it('keeps sessions within 22 sets as volume ramps', () => {
@@ -437,6 +449,116 @@ describe('generateBlock: thin equipment never stops the plan', () => {
   });
 });
 
+describe('generateBlock: deadlifts, RDLs and lower back (§4.8)', () => {
+  const kit = (gym: Equipment[]): Profile => ({ ...profile, equipmentByLocation: { ...profile.equipmentByLocation, gym } });
+  const barbellKit = kit([...profile.equipmentByLocation.gym, 'barbell', 'rack']);
+  const chain = (n: number, extra: Partial<GeneratorInput> = {}) => {
+    const out = [gen(extra)];
+    for (let i = 1; i < n; i++) out.push(gen({ ...extra, previousBlock: out[i - 1].block, startDate: addDays(out[i - 1].block.startDate, 28) }));
+    return out;
+  };
+  const reference = chain(8);
+  const barbell = chain(8, { profile: barbellKit });
+  const day = (g: { workouts: PlannedWorkout[] }, type: string, zone: string) => g.workouts.find((w) => w.sessionType === type && w.zone === zone)!;
+  const deadlift = (w: PlannedWorkout) => w.exercises.find((e) => e.slot === 'back:deadlift');
+  const deadliftIds = exercises.filter((e) => e.slots.includes('back:deadlift')).map((e) => e.id);
+
+  it('runs the RDL on heavy and moderate leg days only; light and deload weeks swap it, and leg day never deadlifts', () => {
+    for (const g of reference) {
+      const legs = g.workouts.filter((w) => w.sessionType === 'legs');
+      const rdl = legs.filter((w) => w.exercises.some((e) => byId.get(e.exerciseId)!.family === 'romanian-deadlift'));
+      expect(rdl.map((w) => w.zone), `block ${g.block.index}`).toEqual(['H', 'M']);
+      for (const w of legs) expect(w.exercises.some((e) => deadliftIds.includes(e.exerciseId)), w.focus).toBe(false);
+      expect(day(g, 'legs', 'deload').exercises[1].note).toMatch(/^Stands in for .* in the deload week\./);
+      expect(day(g, 'legs', 'L').exercises[1].note).toMatch(/^Stands in for .* on the light day\./);
+    }
+    // Dumbbells first, at a gym with a barbell too.
+    expect(barbell.every((g) => g.block.baseSlots['legs|legs:hinge'] === 'dumbbell-romanian-deadlift')).toBe(true);
+  });
+
+  it('runs a 3-set dumbbell deadlift in place of the second row on the heavy Friday, never on light or deload weeks', () => {
+    for (const g of reference) {
+      const h = deadlift(day(g, 'back-tri-shoulders', 'H'))!;
+      expect(h.exerciseId, `block ${g.block.index}`).toBe('dumbbell-deadlift');
+      expect(h.role).toBe('C');
+      expect(h.sets).toHaveLength(3);
+      expect(h.note).toMatch(/^Takes the place of /);
+      expect(day(g, 'back-tri-shoulders', 'H').exercises.some((e) => e.slot === 'back:v:row-variant')).toBe(false);
+      for (const zone of ['L', 'deload']) {
+        const w = day(g, 'back-tri-shoulders', zone);
+        expect(deadlift(w), w.focus).toBeUndefined();
+        expect(w.exercises.some((e) => e.slot === 'back:v:row-variant'), w.focus).toBe(true);
+      }
+      expect(g.block.baseSlots['back-tri-shoulders|back:deadlift']).toBe('dumbbell-deadlift');
+    }
+  });
+
+  it('adds the moderate-Friday deadlift only when back stays at 9 or more and glutes and hamstrings at 12 or fewer', () => {
+    let moderate = 0;
+    for (const g of [...reference, ...barbell]) {
+      const w = day(g, 'back-tri-shoulders', 'M');
+      if (!deadlift(w)) continue;
+      moderate++;
+      expect(deadlift(w)!.sets).toHaveLength(3);
+      expect(g.coverage.weeks[w.weekIndex].back, w.date).toBeGreaterThanOrEqual(9);
+      expect(g.coverage.weeks[w.weekIndex]['glutes-hamstrings'], w.date).toBeLessThanOrEqual(12);
+    }
+    expect(moderate).toBeGreaterThan(0);
+    // On the reference gym back sits too close to 9 for the swap: the moderate Friday keeps its row.
+    expect(deadlift(day(reference[0], 'back-tri-shoulders', 'M'))).toBeUndefined();
+  });
+
+  it('keeps the row every week when every deadlift is avoided, or none fits the equipment', () => {
+    const avoided = gen({ flags: Object.fromEntries(deadliftIds.map((id) => [id, { avoid: true }])) });
+    const noFit = gen({ profile: kit(['machine', 'cable', 'bench', 'pull-up-bar', 'plate', 'mat', 'none']) });
+    for (const g of [avoided, noFit]) {
+      expect(Object.keys(g.block.baseSlots)).not.toContain('back-tri-shoulders|back:deadlift');
+      const fridays = g.workouts.filter((w) => w.sessionType === 'back-tri-shoulders');
+      expect(fridays.some(deadlift)).toBe(false);
+      expect(fridays.every((w) => w.exercises.some((e) => e.slot === 'back:v:row-variant'))).toBe(true);
+    }
+  });
+
+  it('moves to the next deadlift when one is avoided, and to the Smith one once the dumbbells are outgrown', () => {
+    expect(gen({ flags: { 'dumbbell-deadlift': { avoid: true } } }).block.baseSlots['back-tri-shoulders|back:deadlift']).toBe('smith-deadlift');
+    expect(gen({ flags: { 'dumbbell-deadlift': { unavailableAt: ['gym'] } } }).block.baseSlots['back-tri-shoulders|back:deadlift']).toBe('smith-deadlift');
+    expect(gen({ outgrown: ['dumbbell-deadlift'] }).block.baseSlots['back-tri-shoulders|back:deadlift']).toBe('smith-deadlift');
+    expect(gen({ outgrown: ['dumbbell-romanian-deadlift'] }).block.baseSlots['legs|legs:hinge']).toBe('smith-romanian-deadlift');
+    // Barbell lifts stay opt-in even once the Smith is outgrown too.
+    const both = gen({ profile: barbellKit, outgrown: ['dumbbell-deadlift', 'smith-deadlift'] }).block.baseSlots['back-tri-shoulders|back:deadlift'];
+    expect(both).toBe('smith-deadlift');
+  });
+
+  it('plans barbell deadlifts and RDLs only when the lifter marks them Favourite', () => {
+    const fav = gen({ profile: barbellKit, flags: { 'barbell-deadlift': { favourite: true }, 'barbell-romanian-deadlift': { favourite: true } } });
+    expect(fav.block.baseSlots['back-tri-shoulders|back:deadlift']).toBe('barbell-deadlift');
+    expect(fav.block.baseSlots['legs|legs:hinge']).toBe('barbell-romanian-deadlift');
+    expect(barbell[0].block.baseSlots['back-tri-shoulders|back:deadlift']).toBe('dumbbell-deadlift');
+    // Without a barbell the Favourite can't be planned.
+    expect(gen({ flags: { 'barbell-deadlift': { favourite: true } } }).block.baseSlots['back-tri-shoulders|back:deadlift']).toBe('dumbbell-deadlift');
+  });
+
+  it('counts lower back: deadlifts and back extensions 1, RDLs and swings 0.5, core work toward lower back only', () => {
+    const lb = (id: string) => creditOf(byId.get(id)!).get('lower-back');
+    expect([lb('dumbbell-deadlift'), lb('back-extension'), lb('superman-hold'), lb('bird-dog')]).toEqual([1, 1, 1, 1]);
+    expect([lb('dumbbell-romanian-deadlift'), lb('kettlebell-swing')]).toEqual([0.5, 0.5]);
+    expect(creditOf(byId.get('dumbbell-deadlift')!).get('back')).toBe(0.5);
+    const core: PlannedWorkout = { ...reference[0].workouts[0], sessionType: 'core', weekIndex: 0, exercises: [{ id: 'k', exerciseId: 'superman-hold', slot: 'core:hip-extension', role: 'K', order: 0, sets: [{ setIndex: 0, rir: 2, restSec: 45 }, { setIndex: 1, rir: 2, restSec: 45 }] }] };
+    const [wk] = weeklySets([core], byId);
+    expect(wk['lower-back']).toBe(2);
+    expect(wk['glutes-hamstrings']).toBe(0);
+  });
+
+  it('plans decline presses only where the place has a decline bench', () => {
+    const others = exercises.filter((e) => e.slots.includes('chest:v:press-variant') && e.family !== 'decline-press').map((e) => e.id);
+    const flags = Object.fromEntries(others.map((id) => [id, { avoid: true }]));
+    const withBench = gen({ profile: kit([...profile.equipmentByLocation.gym, 'decline-bench']), flags });
+    expect(byId.get(withBench.block.baseSlots['chest-biceps|chest:v:press-variant'])!.family).toBe('decline-press');
+    const without = gen({ flags });
+    expect(byId.get(without.block.baseSlots['chest-biceps|chest:v:press-variant'])?.family).not.toBe('decline-press');
+  });
+});
+
 describe('generateBlock: weekly bands over many blocks', () => {
   // TODO: from block 6 Friday runs out of room (back 8 one week, triceps 10.5, rear delts about 2 from
   // block 8). Expected to fail until that's fixed; it.fails turns red once it passes, as a reminder.
@@ -509,6 +631,26 @@ describe('progression', () => {
     expect(isOutgrown(mk([top(50, 9, 'right')], [top(50, 10, 'right')]), max)).toBe(false);
     expect(isOutgrown(mk([top(50, 10, 'right')]), max)).toBe(false);
     expect(isOutgrown(mk([top(50, 10, 'right')], [top(50, 10, 'right')]), () => undefined)).toBe(false);
+  });
+
+  it('suggests a deadlift load from the latest e1RM: one increment at most, about 95% after 3 weeks off', () => {
+    const dl = byId.get('dumbbell-deadlift')!;
+    const smith = byId.get('smith-deadlift')!;
+    const log = (ex: Exercise, date: string, weight: number, reps: number, effort: LoggedSet['effort']): LoggedSet => ({
+      ...set('s', date, weight, reps), id: `${ex.id}-${date}`, exerciseId: ex.id, sessionId: `${ex.id}-${date}`, effort,
+    });
+    const hist = (ex: Exercise, ...sets: LoggedSet[]) => summarizeHistory(ex, sets, profile);
+    // 60 × 6 at Right is an e1RM of 76; 5–8 reps at RIR 2 gives 61.6, rounded down to 60.
+    expect(e1rmLoadHint(dl, hist(dl, log(dl, '2026-10-02', 60, 6, 'right')), { min: 5, max: 8 }, 2, '2026-10-16', profile)!.suggest).toBe(60);
+    // Same e1RM across a different rep range: 8–12 at RIR 2 gives 57, rounded to 55.
+    expect(e1rmLoadHint(dl, hist(dl, log(dl, '2026-10-02', 60, 6, 'right')), { min: 8, max: 12 }, 2, '2026-10-16', profile)!.suggest).toBe(55);
+    // 40 × 15 at Easy points at 50, but one increment past last time is the most: 45.
+    expect(e1rmLoadHint(dl, hist(dl, log(dl, '2026-10-02', 40, 15, 'easy')), { min: 5, max: 8 }, 2, '2026-10-16', profile)!.suggest).toBe(45);
+    // More than 3 weeks off: 95% of 61.6 is 58.5, rounded down to 55.
+    expect(e1rmLoadHint(dl, hist(dl, log(dl, '2026-09-01', 60, 6, 'right')), { min: 5, max: 8 }, 2, '2026-10-16', profile)!.suggest).toBe(55);
+    // Smith plates: 100 + the 20 lb bar × 6 at Right is an e1RM of 152; 123.2 at 5–8, less the bar, is 100.
+    expect(e1rmLoadHint(smith, hist(smith, log(smith, '2026-10-02', 100, 6, 'right')), { min: 5, max: 8 }, 2, '2026-10-16', profile)!.suggest).toBe(100);
+    expect(e1rmLoadHint(dl, [], { min: 5, max: 8 }, 2, '2026-10-16', profile)).toBeNull();
   });
 
   it('flags a movement as stalled after 3 exposures without a gain', () => {

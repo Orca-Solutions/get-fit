@@ -12,8 +12,7 @@
     ],
     "secondaryMuscles": [
       "glutes",
-      "adductors",
-      "lower-back"
+      "adductors"
     ],
     "mechanic": "compound",
     "laterality": "bilateral",
@@ -348,11 +347,12 @@
     "movementPattern": "hinge",
     "primaryMuscles": [
       "glutes",
-      "hamstrings"
+      "hamstrings",
+      "lower-back"
     ],
     "secondaryMuscles": [
-      "lower-back",
       "quads",
+      "upper-back",
       "traps",
       "forearms"
     ],
@@ -378,13 +378,15 @@
     "runImpact": "high",
     "level": "beginner",
     "difficultyRank": 1,
-    "starter": true,
+    "starter": false,
     "regressions": [
       "dumbbell-deadlift"
     ],
-    "progressions": [],
+    "progressions": [
+      "barbell-deadlift"
+    ],
     "slots": [
-      "legs:hinge"
+      "back:deadlift"
     ],
     "tags": [],
     "cues": [
@@ -452,7 +454,9 @@
     "regressions": [
       "dumbbell-romanian-deadlift"
     ],
-    "progressions": [],
+    "progressions": [
+      "barbell-romanian-deadlift"
+    ],
     "slots": [
       "legs:hinge",
       "legs:v:hinge-variant"
@@ -569,12 +573,13 @@
     "primaryMuscles": [
       "glutes",
       "hamstrings",
-      "quads"
+      "lower-back"
     ],
     "secondaryMuscles": [
-      "lower-back",
-      "forearms",
-      "traps"
+      "quads",
+      "upper-back",
+      "traps",
+      "forearms"
     ],
     "mechanic": "compound",
     "grip": "neutral",
@@ -604,8 +609,7 @@
       "smith-deadlift"
     ],
     "slots": [
-      "legs:hinge",
-      "legs:v:hinge-variant"
+      "back:deadlift"
     ],
     "tags": [],
     "cues": [
@@ -776,9 +780,7 @@
       "glutes",
       "hamstrings"
     ],
-    "secondaryMuscles": [
-      "lower-back"
-    ],
+    "secondaryMuscles": [],
     "mechanic": "compound",
     "laterality": "bilateral",
     "stance": "standing",
@@ -2430,8 +2432,7 @@
       "glutes"
     ],
     "secondaryMuscles": [
-      "hamstrings",
-      "lower-back"
+      "hamstrings"
     ],
     "mechanic": "isolation",
     "laterality": "bilateral",
@@ -3218,6 +3219,132 @@
     },
     "license": "FSL-1.1-MIT",
     "imageLicense": "unverified"
+  },
+  {
+    "id": "smith-decline-press",
+    "name": "Smith Machine Decline Press",
+    "aliases": [
+      "Smith decline bench"
+    ],
+    "family": "decline-press",
+    "movementPattern": "push-horizontal",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "front-delts"
+    ],
+    "mechanic": "compound",
+    "angle": "decline",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "lying",
+    "stability": "machine",
+    "equipment": [
+      "smith-machine",
+      "decline-bench"
+    ],
+    "metric": "reps",
+    "loadType": "smith",
+    "weightConvention": "added",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 6,
+      "max": 12
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "chest:v:press-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Feet locked under the pads",
+      "Bar to the lower chest",
+      "Shoulder blades pinned back"
+    ],
+    "instructions": [
+      "Set a decline bench under the Smith bar so the bar lines up with your lower chest, and hook your feet under the pads.",
+      "Lie back, grip the bar a little wider than your shoulders and unhook it with straight arms.",
+      "Lower the bar under control to your lower chest, elbows slightly tucked.",
+      "Press back up to straight arms, then hook the bar when the set is done."
+    ],
+    "images": [],
+    "source": {
+      "name": "get-fit"
+    },
+    "license": "FSL-1.1-MIT"
+  },
+  {
+    "id": "dumbbell-decline-press",
+    "name": "Dumbbell Decline Press",
+    "aliases": [
+      "DB decline bench press"
+    ],
+    "family": "decline-press",
+    "movementPattern": "push-horizontal",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "front-delts"
+    ],
+    "mechanic": "compound",
+    "angle": "decline",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "lying",
+    "stability": "free",
+    "equipment": [
+      "dumbbell",
+      "decline-bench"
+    ],
+    "metric": "reps",
+    "loadType": "dumbbell",
+    "weightConvention": "per-hand",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "chest:v:press-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Feet locked under the pads",
+      "Dumbbells over the lower chest",
+      "Control the way down"
+    ],
+    "instructions": [
+      "Sit on a decline bench with your feet hooked under the pads and a dumbbell resting on each thigh.",
+      "Lie back, bringing the dumbbells to the sides of your lower chest, palms facing your feet.",
+      "Press the dumbbells up until your arms are straight, then lower them slowly back to your lower chest.",
+      "At the end of the set, bring the dumbbells to your chest and sit up before setting them down."
+    ],
+    "images": [],
+    "source": {
+      "name": "get-fit"
+    },
+    "license": "FSL-1.1-MIT"
   },
   {
     "id": "smith-close-grip-bench-press",
@@ -5727,8 +5854,7 @@
     ],
     "secondaryMuscles": [
       "biceps",
-      "rear-delts",
-      "lower-back"
+      "rear-delts"
     ],
     "mechanic": "compound",
     "grip": "pronated",
@@ -9026,9 +9152,7 @@
       "glutes",
       "hamstrings"
     ],
-    "secondaryMuscles": [
-      "lower-back"
-    ],
+    "secondaryMuscles": [],
     "mechanic": "compound",
     "laterality": "bilateral",
     "stance": "standing",
@@ -10423,9 +10547,7 @@
     "primaryMuscles": [
       "obliques"
     ],
-    "secondaryMuscles": [
-      "lower-back"
-    ],
+    "secondaryMuscles": [],
     "mechanic": "isolation",
     "laterality": "unilateral",
     "stance": "standing",
@@ -10484,9 +10606,7 @@
     "primaryMuscles": [
       "obliques"
     ],
-    "secondaryMuscles": [
-      "lower-back"
-    ],
+    "secondaryMuscles": [],
     "mechanic": "isolation",
     "angle": "low",
     "laterality": "unilateral",
@@ -10677,8 +10797,7 @@
     ],
     "secondaryMuscles": [
       "glutes",
-      "adductors",
-      "lower-back"
+      "adductors"
     ],
     "mechanic": "compound",
     "laterality": "bilateral",
@@ -10815,11 +10934,12 @@
     "movementPattern": "hinge",
     "primaryMuscles": [
       "glutes",
-      "hamstrings"
+      "hamstrings",
+      "lower-back"
     ],
     "secondaryMuscles": [
-      "lower-back",
       "quads",
+      "upper-back",
       "traps",
       "forearms"
     ],
@@ -10846,11 +10966,11 @@
     "difficultyRank": 3,
     "starter": false,
     "regressions": [
-      "barbell-romanian-deadlift"
+      "smith-deadlift"
     ],
     "progressions": [],
     "slots": [
-      "legs:hinge"
+      "back:deadlift"
     ],
     "tags": [],
     "cues": [
@@ -10915,10 +11035,10 @@
     "level": "intermediate",
     "difficultyRank": 2,
     "starter": false,
-    "regressions": [],
-    "progressions": [
-      "barbell-deadlift"
+    "regressions": [
+      "smith-romanian-deadlift"
     ],
+    "progressions": [],
     "slots": [
       "legs:hinge"
     ],
@@ -11370,8 +11490,7 @@
     ],
     "secondaryMuscles": [
       "rear-delts",
-      "biceps",
-      "lower-back"
+      "biceps"
     ],
     "mechanic": "compound",
     "grip": "pronated",
@@ -11565,12 +11684,13 @@
     "movementPattern": "hinge",
     "primaryMuscles": [
       "glutes",
-      "hamstrings"
+      "hamstrings",
+      "lower-back"
     ],
     "secondaryMuscles": [
       "adductors",
       "quads",
-      "lower-back",
+      "upper-back",
       "traps"
     ],
     "mechanic": "compound",
@@ -11598,7 +11718,7 @@
     "regressions": [],
     "progressions": [],
     "slots": [
-      "legs:v:hinge-variant"
+      "back:deadlift"
     ],
     "tags": [],
     "cues": [
@@ -11920,7 +12040,7 @@
     "stability": "free",
     "equipment": [
       "barbell",
-      "bench",
+      "decline-bench",
       "rack"
     ],
     "metric": "reps",
@@ -12112,8 +12232,7 @@
     ],
     "secondaryMuscles": [
       "biceps",
-      "rear-delts",
-      "lower-back"
+      "rear-delts"
     ],
     "mechanic": "compound",
     "grip": "supinated",
@@ -12180,8 +12299,7 @@
     ],
     "secondaryMuscles": [
       "rear-delts",
-      "biceps",
-      "lower-back"
+      "biceps"
     ],
     "mechanic": "compound",
     "grip": "pronated",
@@ -13678,8 +13796,7 @@
       "upper-back"
     ],
     "secondaryMuscles": [
-      "biceps",
-      "lower-back"
+      "biceps"
     ],
     "mechanic": "compound",
     "grip": "neutral",

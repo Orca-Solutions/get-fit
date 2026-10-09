@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, logSet, sessionFor, startSession, unlogSet, updateSession } from '@orca-solutions/get-fit-core/client';
-import { type Exercise, fmtNum, lastTimeHint, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory } from '@orca-solutions/get-fit-core';
+import { e1rmLoadHint, type Exercise, fmtNum, lastTimeHint, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory, swapSlotKeys } from '@orca-solutions/get-fit-core';
 import { useExercises, useProfile, useToday, useWakeLock } from '../../lib/hooks';
 import { Photo } from '../../ui/Photo';
 import { HistoryPanel } from './HistoryPanel';
@@ -133,6 +133,8 @@ function NextButton({ pe, next, sets, names, session, onClick }: { pe: PlannedEx
   );
 }
 
+const SWAP_SLOTS = swapSlotKeys();
+
 /** Rest after a set on a movement added mid-workout, which has no planned rest. */
 const DEFAULT_REST_SEC = 90;
 
@@ -152,7 +154,10 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement }: 
   const rowCount = Math.max(pe.sets.length + extraRows, mine.length ? mine[mine.length - 1].setIndex + 1 : 0);
   const mainTarget = pe.sets[pe.sets.length - 1]?.targetReps ?? pe.sets[0]?.targetReps;
   const bandName = (id: string) => profile.bands.find((b) => b.id === id)?.name ?? 'band';
-  const hint = lastTimeHint(ex, history, mainTarget, bandName);
+  // Lifts that come round only some weeks (the Friday deadlift) take their load from e1RM (§4.8).
+  const hint = SWAP_SLOTS.has(pe.slot)
+    ? e1rmLoadHint(ex, history, mainTarget, pe.sets[pe.sets.length - 1]?.rir ?? 2, sessionDate, profile, bandName)
+    : lastTimeHint(ex, history, mainTarget, bandName);
   const allDone = mine.length >= pe.sets.length;
   const effort = mine.find((s) => s.effort)?.effort;
   // The plan is written at block start, so its "first time" advice goes stale once the movement has history.
