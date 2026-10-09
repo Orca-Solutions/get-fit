@@ -84,7 +84,7 @@ A catalog entry or a custom movement. The catalog schema and tagging rules are d
 | `stability` | `'machine' \| 'supported' \| 'free'` | |
 | `equipment` | `Equipment[]` | All must be available at a location for the movement to be usable there. |
 | `metric` | `'reps' \| 'time'` | |
-| `loadType` | `LoadType` | `smith`, `dumbbell`, `kettlebell`, `machine`, `cable`, `bodyweight`, `assisted`, `band`, `plate`. |
+| `loadType` | `LoadType` | `smith`, `barbell`, `ez-bar`, `dumbbell`, `kettlebell`, `machine`, `cable`, `bodyweight`, `assisted`, `band`, `plate`. Barbell and EZ-bar lifts use `weightConvention: 'total'`: the weight on the bar, bar included. |
 | `weightConvention` | `WeightConvention` | What the logged weight means: `total`, `per-hand`, `added`, `assist`, `band`, `none`. |
 | `loadIncrementLb` | `number` (optional) | Step used by `nextLoad`; defaults to 5. |
 | `repRange` | `{ min, max }` | Sane bounds; seconds when `metric` is `'time'`. |
@@ -102,7 +102,7 @@ A catalog entry or a custom movement. The catalog schema and tagging rules are d
 | `source` | `{ name: 'free-exercise-db' \| 'get-fit'; sourceId?: string }` | |
 | `license` | `'Unlicense' \| 'FSL-1.1-MIT'` | `Unlicense` for entries drawn from free-exercise-db, `FSL-1.1-MIT` for the project's own. |
 
-Related enumerations: `MovementPattern`, `Muscle` (20 muscles), `Equipment` (13 values), `LoadType`, `WeightConvention`, `CoreDynamic` (the 8 dynamics the core day covers), `GripType` (7 grip finishers), and `CatalogSlot`, the slot tags the curated catalog uses (`'legs:squat'`, `'chest:v:press-variant'`, `` `core:${CoreDynamic}` ``, `` `grip:${GripType}` ``, ...). `SlotKey` is `string`, so a custom program can define its own slots.
+Related enumerations: `MovementPattern`, `Muscle` (20 muscles), `Equipment` (16 values; `barbell`, `ez-bar` and `rack` gate the catalog's optional barbell pack), `LoadType`, `WeightConvention`, `CoreDynamic` (the 8 dynamics the core day covers), `GripType` (7 grip finishers), and `CatalogSlot`, the slot tags the curated catalog uses (`'legs:squat'`, `'chest:v:press-variant'`, `` `core:${CoreDynamic}` ``, `` `grip:${GripType}` ``, ...). `SlotKey` is `string`, so a custom program can define its own slots.
 
 ### `Profile`
 
@@ -301,7 +301,7 @@ type DayTemplate = LiftDay | CoreDay;
 | `starterBonus` | `number` | Added in block 1 for movements marked `starter`. |
 | `levelBonus` | `Partial<Record<level, number>>` | Added per level; negative discourages. |
 | `favouriteBonus` | `number` | Added for movements flagged `favourite`. |
-| `primaryLoadTypeBonus` | `Partial<Record<LoadType, number>>` | Added on primary (P) slots by load type. |
+| `primaryLoadTypeBonus` | `Partial<Record<LoadType, number>>` | Added on primary (P) slots by load type (original: `smith` 3, `barbell` 4). |
 | `fatigueStackPenalty` | `number` | Subtracted for a second fatigue-3 compound in one session. |
 | `highRunImpactPenalty` | `number` | Subtracted for movements with `runImpact: 'high'`. |
 
@@ -309,7 +309,7 @@ type DayTemplate = LiftDay | CoreDay;
 
 | Export | Signature | Description |
 |---|---|---|
-| `STRANGE_PERIODIZATION` | `Program` | The original program: id `strange-periodization`, version `1.0.0`. |
+| `STRANGE_PERIODIZATION` | `Program` | The original program: id `strange-periodization`, version `1.1.0`. |
 | `liftDays` | `(p: Program) => [string, LiftDay][]` | The program's lifting days with their day types. |
 | `coreDayType` | `(p: Program) => string \| undefined` | The day type of its core day, if any. |
 | `validateProgram` | `(program: Program, catalog: Pick<Exercise, 'slots'>[], scheduleTypes?: string[]) => string[]` | Problems that would stop `program` planning against `catalog`. Empty when fine. |
@@ -366,7 +366,7 @@ type GeneratedBlock = { block: Block; workouts: PlannedWorkout[]; coverage: Cove
 | `workouts` | Every session of the four weeks, sorted by date: one per schedule entry per week, with ids `w-<date>-<sessionType>`. |
 | `coverage` | The `CoverageReport` of the final plan for the three loading weeks (see [Coverage](#coverage)). |
 
-There is no separate notices field. When no candidate for a slot is usable (every one is flagged, or none fits the equipment), the slot takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of the block. Each fallback appends a sentence to `block.rationale`.
+There is no separate notices field. When no candidate for a slot is usable (every one is flagged, none fits the equipment, or the ones that fit are already on that day), the slot takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of the block. Each fallback appends a sentence to `block.rationale`.
 
 ### What the generator does
 
@@ -377,7 +377,7 @@ There is no separate notices field. When no candidate for a slot is usable (ever
 
 ### Errors
 
-`generateBlock` throws an `Error` only when the profile's schedule names a day type the program doesn't define. Thin equipment never throws: a slot nothing fits is left out (see above). Run `validateProgram` first to catch schedule mismatches and slots no movement is tagged for.
+`generateBlock` throws an `Error` when the profile's schedule names a day type the program doesn't define. When `program` is passed in, it is checked with `validateProgram` against the exercises and the schedule's day types first, and any errors are thrown as one `Error` (`Program <id> is invalid: ...`); the default program is not re-checked. Thin equipment never throws: a slot nothing fits is left out (see above).
 
 ### Other generator exports
 
@@ -665,7 +665,7 @@ All take and return `YYYY-MM-DD` strings in local time unless noted.
 import { ... } from '@orca-solutions/get-fit-core/client';
 ```
 
-The device side: an IndexedDB copy of every record (Dexie), the plan horizon, logging, backup and restore, and the sync engine. Requires `dexie`. Functions that touch storage take an optional `GetFitDB` as their last parameter and otherwise use the default database (exceptions: `setFlagIn` takes it first, `setFlag` has none, and the sync functions take it as `SyncOptions.db` or a trailing `db`). Writes save immediately and schedule a background sync.
+The device side: an IndexedDB copy of every record (Dexie), the plan horizon, logging, backup and restore, and the sync engine. Requires `dexie`. Functions that touch storage take an optional `GetFitDB` as their last parameter and otherwise use the default database (exceptions: `setFlagIn` takes it first, `setFlag` has none, and the sync functions take it as `SyncOptions.db` or a trailing `db`; without one, `setSyncToken`, `getSyncStatus` and `isSyncConnected` use the database `configureSync` named, then the default). Writes save immediately and schedule a background sync.
 
 `/client` also re-exports `CATALOG`, `PROFILE_ID`, `SYNC_TABLES` and `SyncTable`.
 
