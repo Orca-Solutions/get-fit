@@ -1,5 +1,5 @@
 // Shared domain types for the app, the generator and the sync server.
-// See docs/product-spec.md §3 and docs/exercise-database.md §4.
+// See docs/SPEC.md §3 and docs/exercise-database.md §4.
 
 export type MovementPattern =
   | 'squat' | 'lunge' | 'hinge' | 'hip-extension'

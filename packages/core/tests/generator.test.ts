@@ -6,7 +6,7 @@ import { e1rm, effectiveLoad, isStalled, lastTimeHint, summarizeHistory } from '
 import { referenceProfile } from '../src/profiles';
 import { addDays } from '../src/dates';
 import { parseKettlebells } from '../src/kettlebells';
-import type { Exercise, LoggedSet, PlannedWorkout } from '../src/types';
+import type { Equipment, Exercise, LoggedSet, PlannedWorkout, Profile } from '../src/types';
 
 const exercises = catalog as unknown as Exercise[];
 const byId = new Map(exercises.map((e) => [e.id, e]));
@@ -249,6 +249,54 @@ describe('generateBlock: flags never stop the plan', () => {
     // Marked as not possible at the gym: still fine for the home core day.
     expect(gen({ flags: { [core]: { unavailableAt: ['gym'] } } }).block.baseSlots['core|core:anti-extension']).toBe(core);
     expect(gen({ flags: { [core]: { unavailableAt: ['home'] } } }).block.baseSlots['core|core:anti-extension']).not.toBe(core);
+  });
+});
+
+describe('generateBlock: thin equipment never stops the plan', () => {
+  const kit = (equipment: Equipment[], kettlebells: Profile['kettlebells'] = []): Profile => ({
+    ...profile,
+    equipmentByLocation: { gym: equipment, home: equipment },
+    kettlebells,
+  });
+  const dumbbellsOnly = kit(['dumbbell', 'bench', 'mat', 'none']);
+  const homeOnly = kit(['band', 'kettlebell', 'mat', 'none'], [{ lb: 25, count: 2 }, { lb: 35, count: 1 }]);
+  const chain = (p: Profile, count: number) => {
+    const out: ReturnType<typeof generateBlock>[] = [];
+    for (let i = 0; i < count; i++) {
+      const prev = out[i - 1]?.block;
+      out.push(gen({ profile: p, startDate: prev ? addDays(prev.startDate, 28) : '2026-10-12', previousBlock: prev }));
+    }
+    return out;
+  };
+
+  it('does calf raises on bodyweight with dumbbells but no step or plate', () => {
+    const { block } = gen({ profile: dumbbellsOnly });
+    expect(block.baseSlots['legs|legs:calf']).toBe('single-leg-calf-raise');
+  });
+
+  it('does split squats on bodyweight with bands and kettlebells only', () => {
+    const { block } = gen({ profile: homeOnly });
+    expect(Object.values(block.baseSlots)).toContain('bodyweight-split-squat');
+    expect(block.baseSlots['legs|legs:single-leg']).toBeDefined();
+    expect(block.rationale).not.toContain('flagged');
+  });
+
+  it('plans 8 blocks on thin kits using only the equipment there is', () => {
+    const kits = [dumbbellsOnly, homeOnly, kit(['mat', 'none']), kit(['band', 'none']), kit(['pull-up-bar', 'mat', 'none'])];
+    for (const p of kits) {
+      for (const { workouts } of chain(p, 8)) {
+        for (const w of workouts) {
+          for (const e of w.exercises) expect(byId.get(e.exerciseId)!.equipment.every((q) => p.equipmentByLocation[w.location].includes(q))).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('leaves a slot out, and says so, when nothing at all fits', () => {
+    const { block, workouts } = gen({ profile: kit([]) });
+    expect(block.rationale).toContain('No squat movement fits your equipment, so this block leaves that slot out');
+    expect(block.baseSlots['legs|legs:squat']).toBeUndefined();
+    expect(workouts.flatMap((w) => w.exercises).every((e) => byId.get(e.exerciseId)!.equipment.length === 0)).toBe(true);
   });
 });
 

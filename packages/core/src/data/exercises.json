@@ -970,6 +970,69 @@
     "license": "Unlicense"
   },
   {
+    "id": "bodyweight-split-squat",
+    "name": "Bodyweight Split Squat",
+    "aliases": [
+      "Split squat"
+    ],
+    "family": "split-squat",
+    "movementPattern": "lunge",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "adductors",
+      "glute-med"
+    ],
+    "mechanic": "compound",
+    "laterality": "unilateral",
+    "stance": "split",
+    "stability": "free",
+    "equipment": [
+      "none"
+    ],
+    "metric": "reps",
+    "loadType": "bodyweight",
+    "weightConvention": "none",
+    "repRange": {
+      "min": 10,
+      "max": 20
+    },
+    "perSide": true,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "low",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [
+      "dumbbell-split-squat"
+    ],
+    "slots": [
+      "legs:single-leg"
+    ],
+    "tags": [
+      "runner-support"
+    ],
+    "cues": [
+      "Long stance, both feet pointing forward",
+      "Drop the back knee straight down",
+      "Slow down, quick up"
+    ],
+    "instructions": [
+      "Take a long split stance, feet hip width apart and both pointing forward, hands on hips.",
+      "Lower straight down until the back knee nearly touches the floor, front shin close to vertical.",
+      "Drive through the front heel to stand back up. Finish the set, then switch legs."
+    ],
+    "images": [],
+    "source": {
+      "name": "get-fit"
+    },
+    "license": "MIT"
+  },
+  {
     "id": "smith-split-squat",
     "name": "Smith Machine Split Squat",
     "aliases": [
@@ -2019,6 +2082,67 @@
       "sourceId": "Standing_Dumbbell_Calf_Raise"
     },
     "license": "Unlicense"
+  },
+  {
+    "id": "single-leg-calf-raise",
+    "name": "Single-Leg Calf Raise",
+    "aliases": [
+      "Bodyweight calf raise"
+    ],
+    "family": "straight-leg-calf-raise",
+    "movementPattern": "calf",
+    "primaryMuscles": [
+      "calves"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "laterality": "unilateral",
+    "stance": "single-leg",
+    "lengthBias": "lengthened",
+    "stability": "free",
+    "equipment": [
+      "none"
+    ],
+    "metric": "reps",
+    "loadType": "bodyweight",
+    "weightConvention": "none",
+    "repRange": {
+      "min": 10,
+      "max": 25
+    },
+    "perSide": true,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [
+      "single-leg-dumbbell-calf-raise"
+    ],
+    "slots": [
+      "legs:calf"
+    ],
+    "tags": [
+      "runner-support",
+      "balance"
+    ],
+    "cues": [
+      "Hold something for balance",
+      "Full range every rep",
+      "Slow on the way down"
+    ],
+    "instructions": [
+      "Stand on one foot with the ball of the foot on a stair edge (or flat on the floor), holding a wall or rail for balance.",
+      "Lower the heel as far as you can for a full stretch.",
+      "Rise as high as possible onto the big toe, pause, and lower slowly. Finish the set, then switch legs."
+    ],
+    "images": [],
+    "source": {
+      "name": "get-fit"
+    },
+    "license": "MIT"
   },
   {
     "id": "back-extension",

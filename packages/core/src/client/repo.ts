@@ -3,7 +3,7 @@ import { CATALOG } from '../catalog.js';
 import type { Block, Exercise, ExerciseFlag, LoggedSet, PlannedWorkout, Profile, Session } from '../types.js';
 import { addDays, daysBetween, mondayOf, today } from '../dates.js';
 import { uuid } from '../ids.js';
-import { scheduleSync } from './sync.js';
+import { isSyncConnected, scheduleSync } from './sync.js';
 import { generateBlock, type ExerciseFlags, type GeneratorInput } from '../generator/generateBlock.js';
 import { isStalled, summarizeHistory } from '../generator/progression.js';
 import { db, SYNC_TABLES, type GetFitDB, type SyncTable } from './db.js';
@@ -298,10 +298,11 @@ export async function importAll(data: { app?: string; tables: Record<string, unk
   const t = nowIso();
   let imported = 0;
   let skipped = 0;
+  // A device with nothing logged takes the backup's plan as its own, unless it's already connected to
+  // sync: then its plan is everyone's, and a re-stamped old plan would replace it on every device.
+  // Checked before the transaction, which can't wait on the app's sign-in headers.
+  const connected = await isSyncConnected(d);
   await d.transaction('rw', [...SYNC_TABLES.map((name) => d.table(name)), d.meta], async () => {
-    // A device with nothing logged takes the backup's plan as its own, unless it's already connected to
-    // sync: then its plan is everyone's, and a re-stamped old plan would replace it on every device.
-    const connected = !!(await d.meta.get('syncToken'))?.value;
     const replacePlan = !connected && !(await d.loggedSets.filter((s) => !s.deletedAt).count());
     const PLAN: SyncTable[] = ['profile', 'blocks', 'plannedWorkouts'];
     for (const name of SYNC_TABLES) {

@@ -40,7 +40,7 @@ function invalidChange(ch: unknown): string | null {
  * fatal: rejecting the whole batch would make the device resend it, and fail, forever.
  */
 function parseSyncBody(body: unknown): { cursor: number; cursorKey?: CursorKey; epoch?: string; changes: Change[]; rejected: string[] } | string {
-  if (!body || typeof body !== 'object') return 'body must be a JSON object';
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return 'body must be a JSON object';
   const { cursor = 0, changes = [], cursorKey, epoch } = body as { cursor?: unknown; changes?: unknown; cursorKey?: Partial<CursorKey>; epoch?: unknown };
   if (typeof cursor !== 'number' || !Number.isSafeInteger(cursor) || cursor < 0) return 'cursor must be a non-negative integer';
   if (!Array.isArray(changes)) return 'changes must be an array';

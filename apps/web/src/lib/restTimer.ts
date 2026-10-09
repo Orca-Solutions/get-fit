@@ -14,7 +14,7 @@ const KEY = 'restTimer';
 const PREFS_KEY = 'restTimerPrefs';
 
 export type RestPrefs = { enabled: boolean; sound: boolean };
-// v2 design: one buzz at the end where the phone allows; a tone only if you turn sound on.
+// One buzz at the end where the phone allows; a tone only if you turn sound on.
 const DEFAULT_PREFS: RestPrefs = { enabled: true, sound: false };
 
 // ---- pure helpers (tested) ----

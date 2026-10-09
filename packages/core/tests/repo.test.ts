@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { GetFitDB } from '../src/client/db';
+import { configureSync } from '../src/client/sync';
 import { ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/client/repo';
 import { addDays, mondayOf, today } from '../src/dates';
 
@@ -175,6 +176,26 @@ describe('repo', () => {
     // Not re-stamped as newest, so it can't replace the server's copy on other devices.
     expect(after!.updatedAt).toBe(before!.updatedAt);
     expect((await phone.blocks.toArray()).every((b) => !b.deletedAt)).toBe(true);
+  });
+
+  it('counts a device signed in through headers, or one that has synced before, as connected', async () => {
+    const source = await fresh();
+    await ensurePlan('2026-10-14', source);
+    const backup = JSON.parse(JSON.stringify(await exportAll(source)));
+    const setups: [string, (d: GetFitDB) => Promise<unknown>][] = [
+      ['cookie or account sign-in', async () => configureSync({ headers: () => ({}), credentials: 'include' })],
+      ['synced before', (d) => d.meta.put({ key: 'joined', value: true })],
+    ];
+    for (const [, connect] of setups) {
+      const phone = await fresh();
+      await connect(phone);
+      await ensurePlan('2026-10-14', phone);
+      const before = await phone.blocks.get('block-2026-10-12');
+      await new Promise((r) => setTimeout(r, 5));
+      await importAll(backup, phone);
+      expect((await phone.blocks.get('block-2026-10-12'))!.updatedAt).toBe(before!.updatedAt);
+      configureSync({});
+    }
   });
 
   it('on a slow pull, plans early only when there is nothing to show yet', async () => {
