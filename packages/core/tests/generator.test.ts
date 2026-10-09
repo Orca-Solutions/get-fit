@@ -292,6 +292,18 @@ describe('generateBlock: thin equipment never stops the plan', () => {
     }
   });
 
+  it('plans barbell movements only for a kit with a barbell', () => {
+    const barbellKit = kit([...profile.equipmentByLocation.gym, 'barbell', 'rack']);
+    const isBarbell = (id: string) => byId.get(id)!.equipment.includes('barbell');
+    const withBar = chain(barbellKit, 4).flatMap((g) => g.workouts.flatMap((w) => w.exercises.map((e) => e.exerciseId)));
+    expect(withBar.some(isBarbell)).toBe(true);
+    const without = chain(profile, 4).flatMap((g) => g.workouts.flatMap((w) => w.exercises.map((e) => e.exerciseId)));
+    expect(without.some(isBarbell)).toBe(false);
+    // A barbell without a rack: deadlifts, rows and curls, but no squats or presses from the rack.
+    const noRack = chain(kit([...profile.equipmentByLocation.gym, 'barbell']), 4).flatMap((g) => g.workouts.flatMap((w) => w.exercises.map((e) => e.exerciseId)));
+    expect(noRack.every((id) => !byId.get(id)!.equipment.includes('rack'))).toBe(true);
+  });
+
   it('leaves a slot out, and says so, when nothing at all fits', () => {
     const { block, workouts } = gen({ profile: kit([]) });
     expect(block.rationale).toContain('No squat movement fits your equipment, so this block leaves that slot out');

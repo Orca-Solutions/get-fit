@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
-  BASE_SLOTS, CORE_DYNAMICS, FORBIDDEN_EQUIPMENT, GRIP_TYPES, GYM_EQUIPMENT, HOME_EQUIPMENT, MUSCLES, VARIETY_SLOTS,
+  BARBELL_EQUIPMENT, BASE_SLOTS, CORE_DYNAMICS, FORBIDDEN_EQUIPMENT, GRIP_TYPES, GYM_EQUIPMENT, HOME_EQUIPMENT, MUSCLES, VARIETY_SLOTS,
   usableWith, validateCatalog,
 } from '../scripts/build-exercises';
 import { curation } from '../scripts/curation';
@@ -30,9 +30,9 @@ describe('exercise catalog', () => {
     expect(exercises.map((e) => e.id)).toEqual(curation.map((c) => c.id));
   });
 
-  it('has about 130 curated movements', () => {
+  it('has about 170 curated movements (130 core plus the barbell pack)', () => {
     expect(exercises.length).toBeGreaterThanOrEqual(110);
-    expect(exercises.length).toBeLessThanOrEqual(170);
+    expect(exercises.length).toBeLessThanOrEqual(200);
   });
 
   it('has unique kebab-case ids', () => {
@@ -40,12 +40,21 @@ describe('exercise catalog', () => {
     for (const e of exercises) expect(e.id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
   });
 
-  it('never uses free-barbell equipment (Planet Fitness)', () => {
+  it('keeps barbell work in the barbell pack, out of reach of a Planet Fitness kit', () => {
     for (const e of exercises) {
       for (const eq of e.equipment) expect(FORBIDDEN_EQUIPMENT).not.toContain(eq);
+      const pack = e.loadType === 'barbell' || e.loadType === 'ez-bar';
+      expect(e.equipment.some((q) => q === 'barbell' || q === 'ez-bar'), e.id).toBe(pack);
+      if (pack) expect(usableWith(e, GYM_EQUIPMENT), e.id).toBe(false);
     }
-    const ids = exercises.map((e) => e.id).join(' ');
-    expect(ids).not.toMatch(/barbell|ez-bar|trap-bar|landmine/);
+    expect(exercises.map((e) => e.id).join(' ')).not.toMatch(/trap-bar|landmine/);
+  });
+
+  it('gives a barbell kit a barbell option in the main squat, hinge, press, row and curl slots', () => {
+    const kit = [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT];
+    for (const slot of ['legs:squat', 'legs:hinge', 'chest:flat-press', 'chest:incline-press', 'shoulders:vertical-press', 'back:horizontal-pull', 'biceps:supinated'] as SlotKey[]) {
+      expect(candidates(slot, kit).some((e) => e.loadType === 'barbell'), slot).toBe(true);
+    }
   });
 
   it('resolves every regression and progression', () => {
@@ -143,9 +152,10 @@ describe('slot coverage', () => {
     }
   });
 
-  it('only offers gym-usable movements in lifting and grip slots, with a matching gripType', () => {
+  it('only offers gym-usable movements (or barbell-pack ones) in lifting and grip slots, with a matching gripType', () => {
     for (const e of exercises) {
-      if (e.slots.some((s) => !s.startsWith('core:'))) expect(usableWith(e, GYM_EQUIPMENT), e.id).toBe(true);
+      if (e.slots.some((s) => !s.startsWith('core:'))) expect(usableWith(e, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT]), e.id).toBe(true);
+      if (e.slots.some((s) => s.startsWith('grip:'))) expect(usableWith(e, GYM_EQUIPMENT), e.id).toBe(true);
       const grip = e.slots.filter((s) => s.startsWith('grip:'));
       if (grip.length === 0) expect(e.gripType, e.id).toBeUndefined();
       else expect(grip, e.id).toEqual([`grip:${e.gripType}`]);

@@ -109,7 +109,7 @@ export type Program = {
 
 export const STRANGE_PERIODIZATION: Program = {
   id: 'strange-periodization',
-  version: '1.0.0',
+  version: '1.1.0',
   days: {
     legs: {
       kind: 'lift',
@@ -249,8 +249,9 @@ export const STRANGE_PERIODIZATION: Program = {
     // Intermediate movements only when nothing beginner-friendly offers variety.
     levelBonus: { beginner: 2, intermediate: -3 },
     favouriteBonus: 3,
-    // The Smith squat, deadlift, bench and press lead from block 1 at a Planet Fitness-style gym.
-    primaryLoadTypeBonus: { smith: 3 },
+    // The Smith squat, deadlift, bench and press lead from block 1 at a Planet Fitness-style gym; with a
+    // barbell, the barbell lifts take over the primary slot as it rotates.
+    primaryLoadTypeBonus: { smith: 3, barbell: 4 },
     // Keeps heavy leg day recoverable for a daily run (§4.6).
     fatigueStackPenalty: 8,
     highRunImpactPenalty: 1,

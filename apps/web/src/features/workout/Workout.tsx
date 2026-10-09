@@ -46,6 +46,17 @@ export default function Workout() {
 
   if (workout === undefined || !session) return null;
   if (!workout) return <p className="muted">Workout not found.</p>;
+  // A day can come out empty when no movement fits the equipment in the profile.
+  if (!workout.exercises.length) {
+    return (
+      <div>
+        <div className="topbar">
+          <button className="icon-btn" onClick={() => nav('/')}>‹ Today</button>
+        </div>
+        <p className="muted">Nothing is planned for this day: no movement fits the equipment in your profile.</p>
+      </div>
+    );
+  }
 
   const pe = workout.exercises[index];
   const actualId = movementFor(pe, session, sessionSets);

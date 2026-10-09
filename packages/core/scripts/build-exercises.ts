@@ -34,6 +34,8 @@ export const GYM_EQUIPMENT: readonly Equipment[] = [
   'back-extension-bench', 'plate', 'mat', 'none',
 ];
 export const HOME_EQUIPMENT: readonly Equipment[] = ['band', 'kettlebell', 'ab-wheel', 'mat', 'none'];
+/** Optional gear: barbell-pack movements are planned only for a kit that lists it. */
+export const BARBELL_EQUIPMENT: readonly Equipment[] = ['barbell', 'ez-bar', 'rack'];
 
 export const usableWith = (ex: Pick<Exercise, 'equipment'>, available: readonly Equipment[]): boolean =>
   ex.equipment.every((e) => available.includes(e));
@@ -55,9 +57,9 @@ export const MUSCLES = [
 ] as const;
 export const EQUIPMENT = [
   'dumbbell', 'kettlebell', 'cable', 'machine', 'smith-machine', 'bench', 'pull-up-bar', 'back-extension-bench',
-  'plate', 'band', 'ab-wheel', 'mat', 'none',
+  'plate', 'band', 'ab-wheel', 'mat', 'none', 'barbell', 'ez-bar', 'rack',
 ] as const;
-export const LOAD_TYPES = ['smith', 'dumbbell', 'kettlebell', 'machine', 'cable', 'bodyweight', 'assisted', 'band', 'plate'] as const;
+export const LOAD_TYPES = ['smith', 'barbell', 'ez-bar', 'dumbbell', 'kettlebell', 'machine', 'cable', 'bodyweight', 'assisted', 'band', 'plate'] as const;
 export const WEIGHT_CONVENTIONS = ['total', 'per-hand', 'added', 'assist', 'band', 'none'] as const;
 export const CORE_DYNAMICS = [
   'anti-extension', 'hip-extension', 'trunk-flexion', 'anti-rotation', 'rotation', 'anti-lateral-flexion',
@@ -99,12 +101,14 @@ const STABILITIES = ['machine', 'supported', 'free'];
 const METRICS = ['reps', 'time'];
 const RUN_IMPACTS = ['none', 'low', 'high'];
 const LEVELS = ['beginner', 'intermediate', 'advanced'];
-/** Equipment that must never appear: the gym is a Planet Fitness (no free barbells). */
-export const FORBIDDEN_EQUIPMENT = ['barbell', 'ez-bar', 'trap-bar', 'landmine', 'rack'];
+/** Specialty bars the catalog doesn't use. */
+export const FORBIDDEN_EQUIPMENT = ['trap-bar', 'landmine'];
 
 /** Which weight conventions make sense for each load type. */
 const CONVENTIONS_BY_LOAD: Record<LoadType, WeightConvention[]> = {
   smith: ['added'],
+  barbell: ['total'],
+  'ez-bar': ['total'],
   dumbbell: ['per-hand', 'total'],
   kettlebell: ['total', 'per-hand'],
   machine: ['total'],
@@ -169,7 +173,7 @@ export function validateCatalog(exercises: readonly Exercise[]): string[] {
       err(id, `weightConvention "${ex.weightConvention}" does not fit loadType "${ex.loadType}"`);
     }
     if (ex.loadIncrementLb !== undefined && !(ex.loadIncrementLb > 0)) err(id, 'loadIncrementLb must be positive');
-    if (['smith', 'dumbbell', 'machine', 'cable', 'assisted'].includes(ex.loadType) && ex.loadIncrementLb === undefined) {
+    if (['smith', 'barbell', 'ez-bar', 'dumbbell', 'machine', 'cable', 'assisted'].includes(ex.loadType) && ex.loadIncrementLb === undefined) {
       err(id, `loadType "${ex.loadType}" needs a loadIncrementLb`);
     }
 
@@ -206,7 +210,9 @@ export function validateCatalog(exercises: readonly Exercise[]): string[] {
       if (gripSlots.length > 0 && !usableWith(ex, GYM_EQUIPMENT)) err(id, 'grip slot but not usable with gym equipment');
     }
     const liftingSlots = (ex.slots ?? []).filter((s) => !s.startsWith('core:'));
-    if (liftingSlots.length > 0 && !usableWith(ex, GYM_EQUIPMENT)) err(id, 'gym slot but not usable with gym equipment');
+    if (liftingSlots.length > 0 && !usableWith(ex, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT])) err(id, 'gym slot but not usable with gym equipment');
+    if ((ex.loadType === 'barbell' || ex.loadType === 'ez-bar') && !ex.equipment.includes(ex.loadType)) err(id, `${ex.loadType} load needs ${ex.loadType} equipment`);
+    if (ex.equipment.some((e) => BARBELL_EQUIPMENT.includes(e)) && ex.starter) err(id, 'barbell-pack movements are not starters');
     if (ex.starter && !(ex.slots ?? []).some((s) => (BASE_SLOTS as readonly string[]).includes(s) || s.startsWith('core:'))) {
       err(id, 'starter must fill a base slot or a core slot');
     }
