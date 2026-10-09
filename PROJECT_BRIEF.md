@@ -9,7 +9,7 @@ A single-user workout app: generate a plan in the spirit of AnatolyFit's "strang
 - Installable PWA, offline-first; each device keeps a full copy of the data.
 - Plan generator: 4-week blocks (3 loading weeks and a deload); Mon chest and biceps, Wed legs, Fri back, triceps and shoulders, weekend core at home; heavy/moderate/light rotation, variety slots, grip finishers, per-muscle weekly targets and a coverage check ([docs/periodization.md](docs/periodization.md)).
 - Logging: reps placeholder = planned reps in grey; weight blank with a "last time at this rep count" hint and carry-forward; band and stance; timed holds; optional effort tap; rest timer.
-- Movement history, calendar (month and week; done, partial, missed, done late), exercise library (186 curated movements, most with photos), settings, JSON and CSV export, restore.
+- Movement history, calendar (month and week; done, partial, missed, done late), exercise library (215 curated movements, most with photos), settings, JSON and CSV export, restore.
 - Sync to one small self-hosted server (Hono and SQLite) with a single secret token.
 - The engine as a reusable package, `@orca-solutions/get-fit-core`, released on GitHub.
 

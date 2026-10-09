@@ -6,7 +6,7 @@ Where the exercise catalog comes from, the schema each movement follows, what's 
 
 ## 1. Summary
 
-get-fit ships **its own curated catalog of 186 movements**. 139 are seeded from **free-exercise-db** (876 entries, one static JSON file plus photos; see §8 for the license status of its photos and text), keeping its names, instructions and start/end photos; 47 that it lacks (Bulgarian split squat, bird dog, suitcase carry, Pendlay row, band movements and others) are written for this project. Every entry carries a hand-written tag layer that no source provides: movement pattern, angle, grip, laterality, the generator slots it can fill, a sensible rep range, fatigue cost and running impact. Everything is vendored into the repo as static data: no live API, nothing that can break at the gym. wger was consulted only as a checklist of commonly done movements and is never copied, so the data carries no share-alike terms.
+get-fit ships **its own curated catalog of 215 movements**. 139 are seeded from **free-exercise-db** (876 entries, one static JSON file plus photos) and use its start and end photos (see §8 for their license status); 76 that it lacks (Bulgarian split squat, bird dog, suitcase carry, Pendlay row, the home pack, band movements and others) are written for this project and have no photos. Every movement's instructions are written for this project; none are copied from free-exercise-db. Every entry carries a hand-written tag layer that no source provides: movement pattern, angle, grip, laterality, the generator slots it can fill, a sensible rep range, fatigue cost and running impact. Everything is vendored into the repo as static data: no live API, nothing that can break at the gym. wger was consulted only as a checklist of commonly done movements and is never copied, so the data carries no share-alike terms.
 
 ---
 
@@ -99,10 +99,11 @@ type Exercise = {
 
   // Content
   cues: string[];             // 2–4 short form cues for the logging screen
-  instructions: string[];
+  instructions: string[];     // step-by-step text, always the project's own
   images: string[];           // relative paths, vendored
-  source: { name: 'free-exercise-db' | 'get-fit'; sourceId?: string };
-  license: 'Unlicense' | 'FSL-1.1-MIT';
+  source: { name: 'free-exercise-db' | 'get-fit'; sourceId?: string };  // where the photos come from
+  license: 'FSL-1.1-MIT';     // the entry's text and tags
+  imageLicense?: 'unverified';  // set on entries with free-exercise-db photos (§8)
 };
 ```
 
@@ -160,14 +161,15 @@ The muscle, equipment and movement-pattern enums are in `types.ts`. A separate l
   "slots": ["legs:hinge"],
   "tags": ["runner-support"],
   "cues": ["Push hips back, soft knees", "Dumbbells slide down the thighs", "Stop when hamstrings are tight, not when the back rounds"],
-  "instructions": ["…"],
+  "instructions": ["Stand tall holding a dumbbell in each hand in front of your thighs, feet hip width, knees softly bent.", "…"],
   "images": ["exercises/dumbbell-romanian-deadlift/0.jpg", "exercises/dumbbell-romanian-deadlift/1.jpg"],
   "source": {"name": "free-exercise-db", "sourceId": "Stiff-Legged_Dumbbell_Deadlift"},
-  "license": "Unlicense"
+  "license": "FSL-1.1-MIT",
+  "imageLicense": "unverified"
 }
 ```
 
-This entry is from the generated `exercises.json` (instructions shortened). It maps to free-exercise-db's "Stiff-Legged Dumbbell Deadlift", which supplies its instructions and photos.
+This entry is from the generated `exercises.json` (instructions shortened). It maps to free-exercise-db's "Stiff-Legged Dumbbell Deadlift", which supplies its photos; the instructions are the project's own.
 
 ---
 
@@ -187,7 +189,7 @@ This entry is from the generated `exercises.json` (instructions shortened). It m
 
 ## 6. The catalog
 
-186 movements: 154 beginner, 31 intermediate, 1 advanced (the generator picks only beginner and intermediate). ★ = starter, preferred in block 1. + = written for this project (no free-exercise-db entry, so no photos). Everything else maps to a free-exercise-db entry and has start and end photos.
+215 movements: 183 beginner, 31 intermediate, 1 advanced (the generator picks only beginner and intermediate). ★ = starter, preferred in block 1. + = written for this project (no free-exercise-db entry, so no photos). Everything else maps to a free-exercise-db entry and has its start and end photos.
 
 The catalog's base targets a **Planet Fitness-style gym**: no free barbells, racks, EZ bars, trap bar or landmine, so the starter squat, deadlift, bench and overhead press are **Smith machine** versions. It has assisted pull-up and dip machines, a hack squat, hip abduction and adduction, and the usual machines. For a gym with free bars, an optional **barbell pack** (listed after the main tables) adds 28 movements. They need the `barbell`, `ez-bar` or `rack` equipment, so the generator plans them only at a location whose equipment lists that gear, and the lifts that start from a rack (marked in the table) only when a rack is listed too. Trap bar and landmine movements are still left out. Planet Fitness dumbbells usually top out around 60–75 lb (inferred, not checked), which caps dumbbell progressions; past that, a movement moves to its Smith or machine sibling.
 
@@ -249,6 +251,28 @@ The grip-heavy curls (hammer, reverse, Zottman) also serve the reverse-curl grip
 
 Barbell and EZ-bar weights are logged as the total on the bar, bar included (`weightConvention: total`), with 5 lb steps.
 
+**Home pack** (29 movements, all +, tagged `home-pack`: kettlebells, bands with a door anchor and bodyweight, so a kit of only those fills every lifting slot)
+
+| Pattern | Movements |
+|---|---|
+| Squat | Kettlebell Goblet Squat |
+| Lunge / single-leg | Kettlebell Reverse Lunge |
+| Hinge | Kettlebell Romanian Deadlift |
+| Knee extension | Sissy Squat |
+| Knee flexion | Band Lying Leg Curl |
+| Push, horizontal | Kettlebell Floor Press, Band Incline Press, Band Chest Press |
+| Chest fly | Band Chest Fly |
+| Push, vertical | Kettlebell Overhead Press, Band Overhead Press |
+| Pull, vertical | Band Lat Pulldown, Band Single-Arm Pulldown |
+| Pull, horizontal | Kettlebell One-Arm Row, Band Seated Row, Kettlebell Gorilla Row |
+| Shrug | Kettlebell Shrug |
+| Side delt | Band Lateral Raise, Band Upright Row |
+| Rear delt | Band Face Pull, Band Pull-Apart |
+| Biceps | Kettlebell Curl, Kettlebell Hammer Curl, Band Curl, Band Hammer Curl, Band Behind-the-Back Curl |
+| Triceps | Kettlebell Overhead Triceps Extension, Band Overhead Triceps Extension, Band Triceps Pushdown |
+
+The generator picks a home-pack movement for a slot only when nothing else that fits the slot at that location needs gym equipment (anything beyond bands, kettlebells, an ab wheel, a mat or bodyweight). In a gym the machines, cables, dumbbells and barbells keep their slots, so gym plans don't change; at home the pack fills the gaps.
+
 **Core** (done at home with bands, kettlebells, an ab wheel and bodyweight)
 
 | Dynamic | Movements |
@@ -270,8 +294,8 @@ Stretching, plyometrics, Olympic lifts and strongman are left out. Plyometrics i
 
 ## 7. How it's built
 
-1. [`packages/core/scripts/curation.ts`](../packages/core/scripts/curation.ts) lists every movement: its id, name and tags, plus a `sourceId` pointing at a free-exercise-db entry, or its own `instructions` when it has none.
-2. `npm run build:exercises` runs [`build-exercises.ts`](../packages/core/scripts/build-exercises.ts), which downloads free-exercise-db at a **pinned commit** (so the seed never changes underneath the catalog; downloads are cached in `.cache/`), joins it with the curation file and validates every entry: enum values, unique kebab-case ids, regressions and progressions that point at real ids, 2–4 cues, rep ranges in sensible bounds, slots usable with the equipment at their location, one core slot per core dynamic, one grip slot per grip type, and licenses that match the source.
+1. [`packages/core/scripts/curation.ts`](../packages/core/scripts/curation.ts) lists every movement: its id, name and tags, plus a `sourceId` pointing at the free-exercise-db entry whose photos it uses. Instructions for entries with photos are in [`instructions.ts`](../packages/core/scripts/instructions.ts); entries written for this project keep theirs in `curation.ts`.
+2. `npm run build:exercises` runs [`build-exercises.ts`](../packages/core/scripts/build-exercises.ts), which downloads free-exercise-db at a **pinned commit** (so the seed never changes underneath the catalog; downloads are cached in `.cache/`), joins it with the curation file and validates every entry: enum values, unique kebab-case ids, regressions and progressions that point at real ids, 2–4 cues, rep ranges in sensible bounds, slots usable with the equipment at their location, one core slot per core dynamic, one grip slot per grip type, `license` and `imageLicense` set to match the source, and own instructions for every entry. It never reads free-exercise-db's instruction text, and the build fails if any step matches one of its sentences.
 3. It writes `packages/core/src/data/exercises.json` and copies the photos for the sourced entries (two per movement, about 8 MB in all) into `apps/web/public/exercises/<id>/`, so they work offline.
 4. `packages/core/tests/exercises.test.ts` runs the same validation against the committed JSON in CI.
 
@@ -281,10 +305,10 @@ Ids are permanent: rename a movement's `name`, never its `id`, because logged se
 
 ## 8. Licensing notes
 
-- **The catalog's own work** (tags, cues, the curated selection and the 47 entries written here) is under the project license, FSL-1.1-MIT.
-- **free-exercise-db's photos and instruction text have no known license.** free-exercise-db applies the Unlicense to its repository, but it is a restructured copy of [wrkout/exercises.json](https://github.com/wrkout/exercises.json), whose [CONTRIBUTING.md](https://github.com/wrkout/exercises.json/blob/master/CONTRIBUTING.md) says the images were scraped from the internet, that its author does not own their copyright, and advises against using them in commercial projects. The Unlicense can only cover what its author owns, which is the data structure, not the photos. The instruction text appears to come from a commercial fitness site: one entry checked matches that site's page word for word, and the rest are inferred to share its origin. Questions about the images' license and source are open upstream ([#305](https://github.com/wrkout/exercises.json/issues/305), [#308](https://github.com/wrkout/exercises.json/issues/308)).
-- The per-entry `license` field reads `Unlicense` for entries drawn from free-exercise-db and `FSL-1.1-MIT` for the project's own entries. `Unlicense` records free-exercise-db's stated license for its data; it does not cover the photos or the copied instruction text.
-- To reuse the catalog without this question, keep the project's own fields (tags, cues and its own entries) and movement names, which aren't copyrightable, and leave out the photos and the free-exercise-db instructions.
+- **The catalog's own work** (every entry's tags, cues and instructions, the curated selection, and the 76 entries written here) is under the project license, FSL-1.1-MIT.
+- **free-exercise-db's photos and instruction text have no known license.** The catalog uses only the photos; the instruction text is not used. free-exercise-db applies the Unlicense to its repository, but it is a restructured copy of [wrkout/exercises.json](https://github.com/wrkout/exercises.json), whose [CONTRIBUTING.md](https://github.com/wrkout/exercises.json/blob/master/CONTRIBUTING.md) says the images were scraped from the internet, that its author does not own their copyright, and advises against using them in commercial projects. The Unlicense can only cover what its author owns, which is the data structure, not the photos. The instruction text appears to come from a commercial fitness site: one entry checked matches that site's page word for word, and the rest are inferred to share its origin. Questions about the images' license and source are open upstream ([#305](https://github.com/wrkout/exercises.json/issues/305), [#308](https://github.com/wrkout/exercises.json/issues/308)).
+- The per-entry `license` field is `FSL-1.1-MIT` for every entry and covers its text and tags. Entries with free-exercise-db photos also carry `imageLicense: 'unverified'`, so an app can decide where showing them is acceptable.
+- To reuse the catalog without this question, keep everything except `images` and leave out the photos in `apps/web/public/exercises/`.
 - **wger** is never copied, only consulted for which movements are common. Exercise names aren't copyrightable, so writing entries for movements wger also lists is fine.
 - **Nothing in the app calls an exercise API at runtime.**
 
@@ -292,8 +316,8 @@ Ids are permanent: rename a movement's `name`, never its `id`, because logged se
 
 ## 9. Choices made
 
-1. **Catalog size:** about 160 curated movements, seeded from free-exercise-db, limited to what fits the target gym and home kit, plus the 28-movement barbell pack.
-2. **Photos:** bundled. free-exercise-db has two photos per movement (start and end), and the app shows them as a simple looping demo. Video is out of scope.
+1. **Catalog size:** about 160 curated movements, seeded from free-exercise-db, limited to what fits the target gym and home kit, plus the 28-movement barbell pack and the 29-movement home pack.
+2. **Photos:** bundled, with the licensing caveat in §8. free-exercise-db has two photos per movement (start and end), and the app shows them as a simple looping demo. Video is out of scope.
 3. **Gym:** a Planet Fitness-style gym: Smith machine for squat, deadlift, bench and overhead press; assisted pull-up and dip, hack squat, hip adduction and abduction, and most typical machines. Free barbells, EZ bars and racks are an optional pack for gyms that have them.
 4. **Smith lifts from block 1** (blocks are 4 weeks: 3 loading weeks and a deload; see [periodization.md](periodization.md)).
 5. **Home core kit** in the reference profile: resistance bands with a door anchor, two 25 lb kettlebells and one 35 lb, and an ab wheel. The pair of 25s allows two-bell carries and holds; single-bell work progresses 25 → 35, then by reps, time and harder variants. Bands default to light, medium and heavy until the user names their own.

@@ -4,6 +4,7 @@ Notable changes to get-fit. Releases of the core package are tagged `core-v<vers
 
 ## 2026-10-09
 
+- **Program 1.3.0** (core 0.4.0, not yet released): every catalog entry has instructions written for this project, and none use free-exercise-db's text. Every entry is `FSL-1.1-MIT`, and the 139 with free-exercise-db photos carry `imageLicense: 'unverified'`. A 29-movement home pack of kettlebell, band and bodyweight movements (tagged `home-pack`) fills every lifting slot for a home-only kit; it is picked only when nothing that fits a slot needs gym equipment, so gym plans are unchanged. The catalog is 215 movements.
 - **Program 1.2.0** (core 0.3.0, not yet released): the main lifts keep at least 3 sets on every loading day, light days take one variety movement instead of two, balancing no longer trims the base compounds, and the quads and chest targets rise to 9–12 and triceps to 7–10. With a barbell and rack, the barbell squat, bench, overhead press and row are the main lifts from block 1; the hinge stays a dumbbell Romanian deadlift. `GeneratedBlock.unfilledSlots` lists the slots a block leaves out.
 - The docs no longer call free-exercise-db's photos and instruction text public domain: its upstream project says the photos were scraped and are not for commercial use, so they have no known license.
 - **core-v0.2.0:** second release of `@orca-solutions/get-fit-core` and the first under FSL-1.1-MIT, with everything below that came after core-v0.1.0, including the barbell pack.
