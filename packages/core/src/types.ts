@@ -195,6 +195,8 @@ export type Session = SyncFields & {
   beatUp?: boolean;
   /** plannedExerciseId → exerciseId actually done. */
   swaps?: Record<string, string>;
+  /** plannedExerciseId → why it was swapped (e.g. "busy", "pain"). */
+  swapReasons?: Record<string, string>;
   /** plannedExerciseIds skipped on purpose. */
   skipped?: string[];
   /** Movements added on the fly. */

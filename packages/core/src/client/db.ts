@@ -34,4 +34,10 @@ export class GetFitDB extends Dexie {
   }
 }
 
-export const db = new GetFitDB();
+/** The database every function uses unless given another. */
+export let db = new GetFitDB();
+
+/** Use another database by default, e.g. one per signed-in account (`new GetFitDB('get-fit:<userId>')`). */
+export function setDefaultDb(d: GetFitDB) {
+  db = d;
+}

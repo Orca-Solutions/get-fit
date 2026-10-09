@@ -13,7 +13,19 @@ type Change = { table: SyncTable; record: SyncRecord };
 type CursorKey = { table: string; id: string; updatedAt: string };
 type SyncResponse = { cursor: number; cursorKey?: CursorKey; epoch?: string; more?: boolean; reset?: boolean; accepted?: number; changes: Change[] };
 
-export type SyncOptions = { db?: GetFitDB; fetch?: typeof fetch; baseUrl?: string };
+export type SyncOptions = {
+  db?: GetFitDB;
+  fetch?: typeof fetch;
+  baseUrl?: string;
+  /**
+   * Request headers for the server. When given, they replace the stored sync token (e.g. a server that
+   * signs in with cookies); return undefined while there's nothing to sync with yet.
+   */
+  headers?: () => HeadersInit | undefined | Promise<HeadersInit | undefined>;
+  credentials?: RequestCredentials;
+  /** Called when the server answers 401. */
+  onUnauthorized?: () => void;
+};
 export type SyncResult =
   | { ok: true; pushed: number; pulled: number }
   | { ok: false; error: string; skipped?: 'no-token' | 'offline' };
@@ -26,6 +38,13 @@ const DEBOUNCE_MS = 2_000;
 const FETCH_TIMEOUT_MS = 30_000;
 
 const inflight = new WeakMap<GetFitDB, Promise<SyncResult>>();
+
+let defaults: SyncOptions = {};
+
+/** Options every sync uses unless a call overrides them, including the background syncs writes schedule. */
+export function configureSync(opts: SyncOptions) {
+  defaults = opts;
+}
 
 const getMeta = async <T>(db: GetFitDB, key: string) => (await db.meta.get(key))?.value as T | undefined;
 const setMeta = (db: GetFitDB, key: string, value: unknown) => db.meta.put({ key, value });
@@ -53,7 +72,8 @@ async function countHeldBack(db: GetFitDB): Promise<number> {
 }
 
 /** Runs one sync, or joins the one already running. Resolves with { ok: false, error } instead of throwing. */
-export function syncNow(opts: SyncOptions = {}): Promise<SyncResult> {
+export function syncNow(callOpts: SyncOptions = {}): Promise<SyncResult> {
+  const opts = { ...defaults, ...callOpts };
   const db = opts.db ?? defaultDb;
   const running = inflight.get(db);
   if (running) return running;
@@ -83,15 +103,16 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 export function scheduleSync(opts: SyncOptions = {}) {
   clearTimeout(timer);
   timer = setTimeout(() => {
-    const running = inflight.get(opts.db ?? defaultDb);
+    const running = inflight.get(opts.db ?? defaults.db ?? defaultDb);
     void (running ?? Promise.resolve()).then(() => syncNow(opts));
   }, DEBOUNCE_MS);
 }
 
 async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
   try {
-    const token = await getMeta<string>(db, 'syncToken');
-    if (!token) return { ok: false, error: 'No sync token set.', skipped: 'no-token' };
+    const token = opts.headers ? undefined : await getMeta<string>(db, 'syncToken');
+    const auth = opts.headers ? await opts.headers() : token ? { Authorization: `Bearer ${token}` } : undefined;
+    if (!auth) return { ok: false, error: 'No sync token set.', skipped: 'no-token' };
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return { ok: false, error: 'Offline.', skipped: 'offline' };
 
     const doFetch = opts.fetch ?? ((input, init) => fetch(input, init));
@@ -101,11 +122,13 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
     const post = async (cursor: number, changes: Change[], cursorKey?: CursorKey, epoch?: string) => {
       const res = await doFetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { ...Object.fromEntries(new Headers(auth)), 'Content-Type': 'application/json' },
+        credentials: opts.credentials,
         body: JSON.stringify({ cursor, cursorKey, epoch, changes }),
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
-      if (!res.ok) throw new Error(await describeHttpError(res));
+      if (res.status === 401) opts.onUnauthorized?.();
+      if (!res.ok) throw new Error(await describeHttpError(res, !!token));
       return (await res.json()) as SyncResponse;
     };
     let pulled = 0;
@@ -281,8 +304,8 @@ async function loggedWorkoutIds(db: GetFitDB): Promise<Set<string>> {
   return new Set((await db.sessions.toArray()).filter((s) => !s.deletedAt && s.plannedWorkoutId && withSets.has(s.id)).map((s) => s.plannedWorkoutId!));
 }
 
-async function describeHttpError(res: Response): Promise<string> {
+async function describeHttpError(res: Response, usedToken: boolean): Promise<string> {
   const body = (await res.json().catch(() => null)) as { error?: string } | null;
-  if (res.status === 401) return 'The server rejected the sync token.';
+  if (res.status === 401) return usedToken ? 'The server rejected the sync token.' : 'Not signed in.';
   return body?.error ?? `Sync failed (HTTP ${res.status}).`;
 }

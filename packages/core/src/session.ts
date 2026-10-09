@@ -18,12 +18,19 @@ export function movementFor(pe: PlannedExercise, session: Pick<Session, 'swaps'>
 /** Session fields edited one at a time; each change is stamped in `fieldAt` so devices merge per field. */
 const FIELDS = ['notes', 'effort', 'beatUp', 'endedAt', 'extras'] as const;
 
-/** The `fieldAt` keys a patch changes: one per swapped or skipped slot, one per other field. */
+type IdMap = Record<string, unknown>;
+const isIdMap = (v: unknown): v is IdMap => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/**
+ * The `fieldAt` keys a patch changes: one per slot in a per-slot map (`swaps.<id>`, `swapReasons.<id>`,
+ * any other object field), one per skipped slot, one per other field.
+ */
 export function changedFields(before: Session, patch: Partial<Session>): string[] {
   const keys: string[] = [];
-  if (patch.swaps) {
-    const old = before.swaps ?? {};
-    for (const id of new Set([...Object.keys(old), ...Object.keys(patch.swaps)])) if (old[id] !== patch.swaps[id]) keys.push(`swaps.${id}`);
+  for (const [field, value] of Object.entries(patch)) {
+    if (field === 'fieldAt' || !isIdMap(value)) continue;
+    const old = ((before as Record<string, unknown>)[field] ?? {}) as IdMap;
+    for (const id of new Set([...Object.keys(old), ...Object.keys(value)])) if (old[id] !== value[id]) keys.push(`${field}.${id}`);
   }
   if (patch.skipped) {
     const old = new Set(before.skipped ?? []);
@@ -42,15 +49,22 @@ export function changedFields(before: Session, patch: Partial<Session>): string[
 export function mergeSession(a: Session, b: Session): { session: Session; changed: boolean } {
   const [base, other] = Date.parse(b.updatedAt) > Date.parse(a.updatedAt) ? [b, a] : [a, b];
   const out: Session = { ...base, swaps: { ...(base.swaps ?? {}) }, skipped: [...(base.skipped ?? [])], fieldAt: { ...(base.fieldAt ?? {}) } };
+  const o = out as Record<string, unknown>;
   let changed = false;
   for (const [key, at] of Object.entries(other.fieldAt ?? {})) {
     if ((base.fieldAt?.[key] ?? '') >= at) continue;
     changed = true;
     out.fieldAt![key] = at;
-    if (key.startsWith('swaps.')) {
-      const id = key.slice('swaps.'.length);
-      if (other.swaps?.[id] !== undefined) out.swaps![id] = other.swaps[id];
-      else delete out.swaps![id];
+    const dot = key.indexOf('.');
+    const field = dot > 0 ? key.slice(0, dot) : key;
+    if (dot > 0 && field !== 'skipped') {
+      // A per-slot map (swaps, swapReasons, ...): take just this slot's entry.
+      const id = key.slice(dot + 1);
+      const theirs = (other as Record<string, unknown>)[field];
+      const map: IdMap = { ...(isIdMap(o[field]) ? o[field] : {}) };
+      if (isIdMap(theirs) && theirs[id] !== undefined) map[id] = theirs[id];
+      else delete map[id];
+      o[field] = map;
     } else if (key.startsWith('skipped.')) {
       const id = key.slice('skipped.'.length);
       out.skipped = out.skipped!.filter((x) => x !== id);
