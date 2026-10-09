@@ -1,8 +1,8 @@
 # Deployment guide
 
-A starting point for whoever runs get-fit in production: how it's built, what it needs, and how we picture rollout and updates. The details are DevOps's call.
+How to run get-fit in production: how it's built, what it needs, and how rollout, backups and updates work. The examples use Railway for hosting and Cloudflare for DNS, with `getfit.example.com` standing in for the real domain; any host that runs Node 22 with a persistent disk works the same way.
 
-**Target:** `https://getfit.orcasolutions.dev`, served by one Railway service, with DNS on Cloudflare.
+The server's HTTP API is documented in [api/sync-server.md](api/sync-server.md).
 
 ## What gets deployed
 
@@ -19,10 +19,10 @@ get-fit is an offline-first PWA plus a small sync server, built from this repo a
 
 Each device (phone, desktop browser) keeps a full copy of the data in IndexedDB and works with no network. The server is the meeting point between devices and an off-device backup. It is not on the critical path of a workout: if it's down, logging carries on and syncs later.
 
-## Recommended topology: one Railway service, no GitHub Pages
+## Recommended topology: one service, no separate static hosting
 
 ```
-Phone / desktop ──HTTPS──▶ Cloudflare DNS (getfit.orcasolutions.dev)
+Phone / desktop ──HTTPS──▶ Cloudflare DNS (getfit.example.com)
                               │ CNAME
                               ▼
                          Railway service (app + /api, same origin)
@@ -30,13 +30,13 @@ Phone / desktop ──HTTPS──▶ Cloudflare DNS (getfit.orcasolutions.dev)
                          Railway volume /data (SQLite)
 ```
 
-**GitHub Pages isn't needed, and we'd advise against it.** The server already serves the app, so the app and the API share one origin. That means:
+**Static hosting such as GitHub Pages isn't needed, and isn't recommended.** The server already serves the app, so the app and the API share one origin. That means:
 
 - **No CORS:** the app calls `/api/sync` with a relative URL, and the server sends no CORS headers.
 - **One service worker scope:** the precache and offline fallback cover the whole site.
 - **One thing to deploy and roll back:** the app and API versions always match.
 
-Hosting the front end on Pages would split it from the API. That would need code changes (a configurable API URL and CORS with `Authorization` preflights), a second deploy pipeline, and could leave app and API versions out of step. The front end is a few MB of static files, so there's nothing to gain.
+Hosting the front end separately would split it from the API. That would need code changes (a configurable API URL and CORS with `Authorization` preflights), a second deploy pipeline, and could leave app and API versions out of step. The front end is a few MB of static files, so there's nothing to gain.
 
 ## Setup steps
 
@@ -52,10 +52,10 @@ Hosting the front end on Pages would split it from the API. That would need code
    | `STATIC_DIR` | leave unset | Defaults to `./dist`. |
    | `SYNC_EPOCH_RESET` | leave unset | Only for restoring a backup (see Rollback). Each new value starts a new sync epoch once. The value is remembered in the database, so use one that's never been used before (the restore date works). |
 
-   Without `SYNC_TOKEN` the app still loads, but `/api/*` answers 503.
+   Without `SYNC_TOKEN` the app still loads and `/api/health` still answers, but the rest of `/api/*` answers 503.
 4. **Replicas: one.** SQLite on a volume is single-writer. Don't scale horizontally.
-5. **Custom domain:** add `getfit.orcasolutions.dev` in Railway. In Cloudflare, create the CNAME (plus any verification TXT record) that Railway shows. Railway issues the TLS certificate.
-6. **Cloudflare proxy:** start with **DNS only** (grey cloud), which is the simplest path. If you turn the proxy on for WAF or rate limiting:
+5. **Custom domain:** add the domain (for example `getfit.example.com`) in Railway. In Cloudflare, create the CNAME (plus any verification TXT record) that Railway shows. Railway issues the TLS certificate.
+6. **Cloudflare proxy:** start with **DNS only** (grey cloud), which is the simplest path. If the proxy is turned on for WAF or rate limiting:
    - Set SSL/TLS mode to **Full (strict)**. Flexible causes redirect loops.
    - Don't add "Cache Everything" or HTML caching rules. The service worker update path depends on `index.html`, `sw.js` and the manifest being revalidated (the origin sends `no-cache` for these).
    - Hashed files under `/assets/` are sent `immutable` and are safe to cache.
@@ -66,7 +66,7 @@ Hosting the front end on Pages would split it from the API. That would need code
 
 ## Use the final domain from day one
 
-Browsers tie IndexedDB, the service worker and the home-screen install to the **origin**. Data saved on `*.up.railway.app` doesn't follow you to `getfit.orcasolutions.dev`.
+Browsers tie IndexedDB, the service worker and the home-screen install to the **origin**. Data saved on `*.up.railway.app` doesn't follow to the custom domain.
 
 Install on phones only from the final domain. If a device has already been used on another origin:
 
@@ -79,14 +79,14 @@ Install on phones only from the final domain. If a device has already been used 
 The server holds the only off-device copy of the workout logs, which can't be recreated. Every synced device also keeps a full copy.
 
 - **Railway volume backups:** turn on scheduled backups for the `/data` volume. Daily is plenty.
-- **Off-site export (optional):** a scheduled job can run `curl -H "Authorization: Bearer $SYNC_TOKEN" https://getfit.orcasolutions.dev/api/export` and store the JSON somewhere private. It contains personal data, so treat it as such.
+- **Off-site export (optional):** a scheduled job can run `curl -H "Authorization: Bearer $SYNC_TOKEN" https://getfit.example.com/api/export` and store the JSON somewhere private. It contains personal data, so treat it as such.
 - **In the app:** Settings › Export my data saves a JSON backup, which can be restored from the same screen and never removes sets, or the logged sets as CSV. On an installed iPhone app it opens the share sheet (Save to Files).
 - **If the volume is ever lost or restored from a backup:** the server ends up with a new database id (epoch). Each device notices on its next sync, pulls everything and re-uploads everything it has, so nothing synced after the backup is lost while a device still has it.
 
 ## Rollout
 
-- **Flow:** PR, then CI (typecheck, unit tests, build, and Playwright at iPhone size), then merge to `main`, then Railway auto-deploys `main`.
-- **Downtime:** a service with a volume restarts on deploy, so expect a few seconds when `/api/sync` is unavailable. The app is offline-first, so users won't notice. Syncs retry on focus, reconnect and every minute.
+- **Flow:** pull request, then CI (workflow lint, typecheck, unit tests, build, and Playwright at iPhone size), then merge to `main`, then Railway auto-deploys `main`.
+- **Downtime:** a service with a volume restarts on deploy, so expect a few seconds when `/api/sync` is unavailable. The app is offline-first, so nobody notices. Syncs retry on focus, reconnect and every minute.
 - **Staging (optional):** a Railway environment or PR environment with **its own volume and its own token**. Never point staging at the production volume.
 - **No migrations:** the server stores records as JSON rows keyed by table and id, so there's no server-side schema to migrate.
 - **Client data model:** changes ship inside the app as Dexie schema versions on each device. Treat those as forward-only (see Rollback).

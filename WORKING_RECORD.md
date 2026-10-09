@@ -1,21 +1,24 @@
 # Working record
 
-## Current state (2026-10-07)
+## Current state (2026-10-09)
 
-- Planning docs: docs/SPEC.md, docs/periodization.md, docs/exercise-database.md.
-- v1 build (PR #1): app, generator, catalog, sync server, CI, Railway config.
-- Sample generated block shared with jason for review (the one checkpoint before polish).
+- The app is complete for a single user: planning, logging, swap and skip, history, calendar, library, settings, export and restore, multi-device sync, the rest timer, in-app updates and a responsive desktop layout.
+- The repo is an npm workspace: `packages/core` (the engine), `apps/web` (the PWA) and `server` (the sync server).
+- `@orca-solutions/get-fit-core` 0.1.0 is released as the GitHub release `core-v0.1.0`.
+- Docs: [docs/SPEC.md](docs/SPEC.md), [docs/periodization.md](docs/periodization.md), [docs/exercise-database.md](docs/exercise-database.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and the [API reference](docs/api/README.md).
 
 ## Verification
 
-- `npm test`: generator, progression, sync, server and catalog unit tests.
-- `npm run test:e2e`: Playwright at iPhone size against the production build (log sets, reload, history; calendar; sync connect).
-- An independent review pass of the diff before marking the PR ready.
+- `npm run typecheck` and `npm test`: golden plans for blocks 1 to 8, property tests over random setups, generator, progression, client, sync, server and catalog.
+- `npm run test:e2e`: Playwright at iPhone size against the production build (logging, reload, history, rest timer, updates).
+- CI runs workflow lint, typecheck, unit tests, the build and the end-to-end suite on every push and pull request.
+- Changes get an independent review of the diff before merging.
 
-## Open items (polish pass)
+## Open items
 
-- Rest timer.
-- Supersets shown as one screen with alternating rows (core day currently steps through each movement in order).
-- Early deload trigger within a block; 10-day-gap load drop in the weight hint.
-- Progression tuning on real logs.
-- Weekly targets from block 6 on: Friday runs out of room, so back can dip to 8 in one week, triceps reach 10.5 in one week, and from block 8 rear delts sit at 1.5–2 (target 3–5). Blocks 1–5 stay inside every target.
+- Supersets shown as one screen with alternating rows (the core day currently steps through each movement in order).
+- Early deload trigger within a block, and the 10-day-gap load drop ([docs/periodization.md §4.8](docs/periodization.md#48-not-yet-implemented)).
+- The finer progression rules and tuning on real logs.
+- Weekly targets from block 6 on: Friday runs out of room, so back can dip to 8 in one week, triceps reach 10.5 in one week, and from block 8 rear delts sit at 1.5–2 (target 3–5). Blocks 1 to 5 stay inside every target.
+- Server-side field checks on synced records (today the server validates only the sync fields).
+- Editable schedule and units, and a screen for adding custom movements.

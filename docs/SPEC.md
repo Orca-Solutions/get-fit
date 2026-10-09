@@ -1,133 +1,133 @@
 # get-fit: Product spec and technical approach
 
-Milestone 1 (research and plan). Status: **draft for jason's review**. No code yet.
-Sibling docs in this folder, written by other threads: the exercise database and the periodization logic. This doc defines the app around them and the seams where they plug in.
+What the app does, how its screens behave, the records it stores, and how it is built. The training rules live in [periodization.md](periodization.md) and the exercise catalog in [exercise-database.md](exercise-database.md); this document defines the app around them. Code comments cite it by section number (§3 data model, §4.2 sync), so keep the numbering stable.
 
 ---
 
-## 1. What we're building
+## 1. What get-fit is
 
-A personal, single-user workout app for one iPhone at the gym. Three jobs, nothing else:
+A single-user workout app for the gym, used mainly on a phone and also from a desktop browser. Three jobs, nothing else:
 
-1. **Tell me what to do today:** a generated plan in the spirit of AnatolyFit's "strange periodization".
-2. **Let me log what I actually did:** reps and weight per set, with the plan pre-filled and easy to override.
-3. **Show me my history for the movement I'm on right now.**
+1. **Say what to do today:** a generated plan in the spirit of AnatolyFit's "strange periodization".
+2. **Record what was actually done:** reps and weight per set, with the plan pre-filled and easy to override.
+3. **Show the history of the movement in hand,** right where it's being logged.
 
-Out of scope: meal planning, running (jason's daily morning run stays as it is), social features, accounts, coaching chat, multiple users.
+Out of scope: meal planning, running (runs stay outside the app), social features, accounts, coaching chat, multiple users.
 
-### Product principles (the anti-AnatolyFit list)
+### Product principles
 
-- **Never lose a set.** Every tap saves immediately on the phone. There is no "Save workout" button that can fail.
+- **Never lose a set.** Every tap saves immediately on the device. There is no "Save workout" button that can fail.
 - **Works with no signal.** Gyms have bad reception; the app never needs the network to log.
 - **The plan is a suggestion, the log is the truth.** Logging never edits the plan. Deviating is normal and recorded, not an error.
-- **Small and tested.** Few features, with automated tests on the generator and the logging flow so regressions get caught before they reach the phone.
-- **My data is mine.** One-tap export to a plain JSON file, always.
+- **Small and tested.** Few features, with automated tests on the generator, sync and the logging flow, so regressions are caught before they reach a phone.
+- **The data belongs to the user.** Export to plain JSON or CSV at any time.
 
-### Weekly schedule and session size (from jason)
+### Weekly schedule and session size
 
 | Day | Session | Notes |
 |---|---|---|
-| Mon | Legs | |
+| Mon | Chest & biceps (gym) | |
 | Tue | Rest | |
-| Wed | Upper A | Wed and Fri hit largely non-overlapping parts of the upper body. AnatolyFit split arms across these two days. |
+| Wed | Legs (gym) | Midweek, so a weekend long run doesn't land the day before it. |
 | Thu | Rest | |
-| Fri | Upper B | |
-| Sat or Sun | Core (at home) | Either weekend day counts; it isn't "missed" until Sunday ends. Done at home with resistance bands, bodyweight and kettlebells only. |
+| Fri | Back, triceps & shoulders (gym) | Monday and Friday hit largely non-overlapping parts of the upper body. |
+| Sat or Sun | Core (home) | Either weekend day counts; it isn't missed until Sunday ends. Done at home with resistance bands, bodyweight and kettlebells. |
 
-- A session is **6–8 movements and 12–22 working sets**, typically about 17. The screens below are designed for the 8-movement, 22-set case.
-- What goes into each day (the split itself) belongs to the periodization thread. The app stores the schedule as a weekday → session-type map so it can be edited later in Settings.
+- A session is **6–8 movements and 12–22 working sets**, typically about 17. The screens are designed for the 8-movement, 22-set case.
+- The schedule is stored in the profile as weekday → session-type entries, each with a location (gym or home). The app doesn't edit it yet; the default is in `packages/core/src/profiles.ts`.
 
 ---
 
 ## 2. Screens and flows
 
+Five tabs (Today, Calendar, History, Library, Settings), plus a full-screen workout view and a plan preview. The navigation sits at the bottom on a phone and on the left on screens 960 px and wider.
+
 ### 2.1 Today (home)
 
 ```
 ┌──────────────────────────────┐
-│ Wed Oct 14        Week 2 / 4 │
-│ Upper A · 7 moves · 18 sets  │
-│ "Low reps on presses, high   │
-│  reps on curls today"        │  ← generator's one-line rationale
+│ Wed Oct 14        Week 1 / 4 │
+│ Legs · Heavy                 │
+│ 6 moves · 18 sets            │
+│ "Heavy day: fewer movements, │
+│  more sets, 6–8 reps on the  │  ← generator's one-line rationale
+│  big lifts."                 │
 │ ▓▓▓▓▓▓░░░░░░░░  6 / 18 sets  │
+│ 1 Smith Machine Squat  3×6–8 ✓│
+│ 2 Dumbbell RDL         3×6–8 ◐│  ← partial
+│ 3 DB Reverse Lunge    3×8–10  │
+│ 4 Leg Extension       3×10–15 │
+│ 5 Seated Leg Curl     3×10–15 │
+│ 6 Seated Calf Raise   3×10–15 │
+│       [ Resume workout ]     │
 ├──────────────────────────────┤
-│ 1 Bench Press      3×5      ✓│
-│ 2 Chest-Supp. Row  3×12     ◐│  ← partial
-│ 3 DB Shoulder Prs  3×8       │
-│ 4 EZ-Bar Curl      3×10      │
-│ 5 Hammer Curl      2×12      │
-│ 6 Cable Pushdown   3×15      │
-│ 7 Face Pull        2×15      │
-├──────────────────────────────┤
-│        [ Resume workout ]    │
-│  Calendar ▸  History ▸   ⚙   │
+│ Today Calendar History …     │
 └──────────────────────────────┘
 ```
 
-- Shows today's planned workout with a sets-done progress bar. On a rest day it shows "Rest day" with the next session ("Fri · Upper B") and a button to pull it forward to today.
-- Each row: movement, planned sets × reps (or seconds) and status (not started, partial, done). Eight rows fit on an iPhone screen without scrolling.
-- Tapping a row jumps straight to that movement's logging screen. "Start/Resume" goes to the first unfinished one.
-- Can log on a different day than planned (do Wednesday's legs on Thursday); the session records the real date and the calendar shows it as done late, not missed.
+- Shows today's planned workout with its rationale, a sets-done progress bar and the movement list (planned sets × reps or seconds, and status). Tapping a row opens that movement; the main button reads Start, Resume or Review.
+- On a rest day it shows "Rest day" with the next session, a **Preview** and a **Do it today** button that pulls it forward.
+- Missed sessions from the current week are listed with **Do it today**, so a session can be made up on another day. The session records the real date and the calendar shows it as done late, not missed.
+- The block's rationale sits at the bottom.
 
 ### 2.2 Movement logging screen (the core screen)
 
 ```
 ┌──────────────────────────────┐
-│ ‹ Today   2 of 7  Swap  ⋯    │
-│ ●◐○○○○○          6 / 18 sets │  ← movement strip: tap a dot to jump
-│ Chest-Supported Row          │
-│ Plan: 3 × 12 reps            │
-│ Last time at 12: 40 lb each  │  ← weight hint from history
+│ ‹ Today   2 of 6   Swap  ⋯   │
+│ ①②③④⑤⑥           6 / 18 sets │  ← movement strip: tap to jump
+│ Dumbbell Romanian Deadlift   │
+│ Plan: 3 × 6–8                │
+│ Last time at 6–8: 40 lb each │  ← weight hint from history
 ├──────────────────────────────┤
 │ Set   Weight    Reps         │
-│  1   [ 40 ]    [ 12 ]   (✓)  │  ← logged: dark text
-│  2   [ 35 ]    [ 11 ]   (✓)  │  ← changed weight, missed a rep
-│  3   [ 35 ]    [ 12 ]   ( )  │  ← grey: 35 carried from set 2,
-│          + Add set           │     12 from the plan
+│  1   [ 40 ]    [ 8 ]    (✓)  │  ← logged: dark text
+│  2   [ 35 ]    [ 7 ]    (✓)  │  ← changed weight, missed a rep
+│  3   [ 35 ]    [ 6–8 ]  ( )  │  ← grey: 35 carried from set 2,
+│          + Add set           │     reps from the plan
+│ Effort  [Easy][Right][Hard]  │
 ├──────────────────────────────┤
 │ History                      │
-│ Oct 7   40×12, 40×12, 40×10  │
-│ Sep 30  35×12, 35×12, 35×12  │
-│ Sep 23  35×10, 35×10, 30×12  │
-│ Best: 40×12  ·  ▁▂▃▅▆ e1RM   │
-│ See all ▸                    │
+│ Oct 7   40×8, 40×8, 40×7     │
+│ Sep 30  35×8, 35×8, 35×8     │
+│ Best: 40×8  ·  ▁▂▃▅▆ e1RM    │
 ├──────────────────────────────┤
-│ ‹ Prev                Next › │
+│        Rest  1:42  ▔▔▔▔      │  ← rest timer
+│ ‹ Prev     Next: Lunge ›     │
 └──────────────────────────────┘
 ```
 
 **Placeholder behaviour** (the grey pre-fill is HTML `placeholder` text):
 
-- **Reps** show the planned reps in grey. Typing anything replaces them instantly.
-- **Weight** starts blank, because the right weight depends on the rep target, which keeps changing. Above the sets, a hint line shows what you lifted last time at a similar rep count ("Last time at 12: 40 lb each"), and the history panel sits right below.
-- **Carry-forward:** once you log a weight on a set, the remaining sets of that movement show it in grey. So you type the weight once on set 1, and if you drop to 35 on set 2, later sets follow.
-- Tapping ✓ logs whatever is in grey for any empty field, so after set 1 "same again" is one tap. If a weighted set has no weight yet, ✓ puts the cursor in the weight field instead of logging.
+- **Reps** show the planned reps in grey. Typing anything replaces them.
+- **Weight** starts blank, because the right weight depends on the rep target, which keeps changing. Above the sets, a hint line shows what was lifted last time at a similar rep count ("Last time at 6–8: 40 lb each"), and suggests one increment more when every set of that session reached the top of the range.
+- **Carry-forward:** once a weight is logged on a set, the remaining sets of that movement show it in grey. The weight is typed once on set 1; a drop to 35 on set 2 carries to later sets.
+- Tapping ✓ logs whatever is in grey for any empty field, so "same again" is one tap. If a weighted set has no weight yet, ✓ puts the cursor in the weight field instead of logging.
 - Logged sets stay editable (tap a value to fix it). Un-ticking a set removes that log.
-- Number keypad: decimal pad for weight, number pad for reps. Fields use 16px+ text so iOS doesn't zoom.
-- **Band movements** (Pallof press, woodchop, band crunch) replace the weight field with two inputs: a **band** picker (chips from your band list, lightest to heaviest) and a **stance** stepper (steps from the anchor). Both carry forward like weight, and the hint line reads "Last time at 12: Green, 3 steps".
-- Timed movements (plank) show a seconds field instead of reps. Bodyweight movements hide weight but allow added load. Assisted machines allow negative or "assist" weight. (The exercise DB says which applies.)
+- Decimal pad for weight, number pad for reps. Fields use 16 px+ text so iOS doesn't zoom.
+- **Band movements** (Pallof press, woodchop, band crunch) replace the weight field with a **band** picker (the user's bands, lightest to heaviest) and a **stance** stepper (steps from the anchor). Both carry forward like weight, and the hint reads "Last time at 10–15: Green, 3 steps".
+- Timed movements (plank) show a seconds field instead of reps. Bodyweight movements hide weight or allow added load; assisted machines log the assistance; Smith machine lifts log the plates added. The catalog's weight convention says which applies.
+- **Effort:** an optional Easy / Right / Hard tap per movement feeds the progression math ([periodization.md §4.4](periodization.md#44-loads-and-progression-the-feedback-loop)).
 
 **Getting through 6–8 movements and up to 22 sets:**
 
-- **Movement strip** at the top: one dot per movement (done, partial, not started). Tap to jump; swipe left/right on the screen to go to the next or previous movement.
-- **Auto-advance:** ticking the last set of a movement turns "Next ›" into a large "Next: Hammer Curl ›" button. Unfinished movements are never skipped silently; the finish summary lists any that were.
-- **Always-visible progress:** "6 / 18 sets" in the header, so you know where you are in a long session.
-- **The next set is always in reach:** a movement rarely has more than 4–5 sets, so the set table sits above the fold; the history panel shrinks to 2 sessions if a movement has 5 or more sets.
-- **Supersets:** if the generator pairs two movements, they share a screen with alternating set rows (A1, B1, A2, B2).
-- A 22-set session is only 22 small on-device writes, so speed is not a concern.
+- **Movement strip** at the top: one marker per movement (done, partial, not started; grip finishers and core supersets are labelled). Tap to jump, or swipe left and right.
+- **Next button:** "Next: Reverse Lunge ›" names the next movement. The last movement shows **Finish**, and the finish summary lists any movement left unfinished.
+- **Always-visible progress:** "6 / 18 sets" in the header.
+- **Core day supersets** are labelled A–D in the strip; each movement still has its own screen.
+- The screen stays awake during a session (Screen Wake Lock).
 
 **Other controls:**
 
-- **Swap:** replace the movement for today with an alternative from the same category (same movement pattern and primary muscles, limited to the equipment where that session happens, so a core-day swap only offers band, bodyweight or kettlebell moves). The log records what you actually did and links it to what was planned.
-- **⋯ menu:** add a note, skip movement, view form cues/instructions.
-- **Add set / delete set.**
-- **History panel** (always visible on this screen): the last 3 sessions of *this* movement as compact "weight×reps" lists, best set ever, and an estimated-1RM sparkline. Band movements show "band · stance × reps" instead and skip the 1RM chart, since band tension isn't a weight. "See all" opens full history for the movement.
-- **Rest timer:** ticking a set starts a countdown in the thumb zone above Prev / Next (a small "Rest" label, a large count, a thin bar) using the plan's rest for that set (heavy-day compounds about 2.5 min, moderate 1.75, light 1.25; isolation 1.25 to 1.5; grip 1; core 0.75). −30 / +30 adjust it, tapping it dismisses it, and logging the next set starts a new one. It keeps time from the clock, so a locked phone shows the right time on return. At zero it buzzes once where the phone allows (not iPhone) and plays a soft tone only if sound is turned on, then shows how long ago rest ended. On/off and sound live in Settings, per device. Alerts while the app is in the background aren't possible for a web app on iPhone.
-- The screen stays awake during a session (Screen Wake Lock).
+- **Swap:** replace the movement for today. Movements tagged for the same slot come first, then ones with the same movement pattern and primary muscles, all limited to the equipment at that day's location and excluding movements marked Avoid or Can't do there. Swapping back to the plan is one tap. The log records what was actually done and links it to what was planned.
+- **⋯ menu:** form cues and instructions, a workout note, skip or un-skip the movement, and Finish workout.
+- **Add set / remove set.**
+- **History panel:** the last sessions of *this* movement as compact weight × reps lists, the best set ever, and an estimated-1RM sparkline. Band movements show band · stance × reps and skip the 1RM chart, since band tension isn't a weight.
+- **Rest timer:** ticking a set starts a countdown in the thumb zone above Prev / Next (a small "Rest" label, a large count, a thin bar) using the plan's rest for that set (heavy-day compounds 2.5 min, moderate 1.75, light 1.25; isolation 1.25 to 1.5; grip 1; core 0.75). −30 / +30 adjust it, tapping it dismisses it, and logging the next set starts a new one. It keeps time from the clock, so a locked phone shows the right time on return. At zero it buzzes once where the phone allows (not iPhone) and plays a soft tone only if sound is on, then shows how long ago rest ended. On/off and sound live in Settings, per device. Alerts while the app is in the background aren't possible for a web app on iPhone.
 
 ### 2.3 Finish summary
 
-Shown after the last movement or via "Finish". Duration, sets done vs planned, total volume, any personal bests, and a free-text note plus optional "how hard was today" (1–5). Leaving the app mid-workout is fine; the session stays open and resumes later.
+Shown from the last movement's **Finish** button or the ⋯ menu: sets done vs planned, duration, total volume, new personal bests (by e1RM), any unfinished movements, an optional "how hard was today" rating (1–5), a "beat up" checkbox and a note. Leaving the app mid-workout is fine; the session stays open and resumes later.
 
 ### 2.4 Calendar
 
@@ -136,154 +136,149 @@ Shown after the last movement or via "Finish". Duration, sets done vs planned, t
 │  ‹      October 2026      ›  │
 │       [ Month | Week ]       │
 │ Mo  Tu  We  Th  Fr  Sa  Su   │
-│             1   2   3   4    │
-│                 U✓      C✓   │
-│ 5   6   7   8   9   10  11   │
-│ L✓      U✓      U✕  C✓       │
+│                     10  11   │
+│                     C·       │
 │ 12  13  14* 15  16  17  18   │
-│ L✓      U◐      U·  C·       │
+│ U✓      L◐      U·  C·       │
 │ 19  20  21  22  23  24  25   │
-│ L·      U·      U·  C·       │
+│ U·      L·      U·  C·       │
 ├──────────────────────────────┤
-│ L legs  U upper  C core      │
 │ ✓ done  ◐ partial  ✕ missed  │
 │ · planned   14* = today      │
 ├──────────────────────────────┤
-│ Fri Oct 9 · Upper B · missed │
-│ 7 moves · 17 sets            │
-│ [ Do it today ]  [ Preview ] │
+│ Fri Oct 16 · Back, triceps & │
+│ shoulders · Light · planned  │
+│ [ Preview ]  [ Do it today ] │
 └──────────────────────────────┘
 ```
 
-- **Month view** (default) shows past and upcoming sessions at a glance; **Week view** lists the seven days with each session's focus line ("Legs, high reps") and set counts.
-- Each session day shows its type (L, U, C) and state: **planned**, **done**, **partial** (some sets logged), **missed** (date passed, nothing logged), or **done late** (logged on a different day, drawn on the day it was actually done with a small arrow back to its slot).
+- **Month view** (default) shows past and upcoming sessions at a glance; **Week view** lists the seven days with each session's focus and set count.
+- Each session day shows its state: **planned**, **done**, **partial** (some sets logged), **missed** (date passed, nothing logged), or **done late** (logged on a different day). Days before the app was first used show as not tracked rather than missed.
 - States are worked out from the plan and the logs, never stored, so they can't get out of sync.
-- **Tap a day:** a past day opens that session's log (editable); a future day previews the planned workout; a missed day offers "Do it today".
-- **Missed sessions:** the app marks them and offers the make-up. Whether later sessions shift to make room is the generator's rule (the periodization doc currently treats the plan as a queue); the calendar just draws whatever dates the plan holds.
-- Deload weeks and block boundaries are shaded, so the 4-week rhythm is visible.
-- A "Regenerate upcoming" action re-runs the generator for future days (never touches logged days).
+- **Tap a day:** a logged session opens its log (editable); a missed or upcoming session offers **Preview** and **Do it today**.
+- Deload weeks are shaded, so the 4-week rhythm is visible.
 
 ### 2.5 History
 
-- **By movement:** searchable list of movements you've done; each opens the full history (table of sessions, best sets, e1RM chart over time).
-- **By session:** list of past workouts; tap to see everything logged that day, editable.
+- **By movement:** a searchable list of movements that have been logged; each opens its full history (sessions, best set, e1RM chart over time).
+- **By workout:** past workouts, newest first; tap one to open everything logged in it, editable.
 
 ### 2.6 Exercise library
 
-Browse and search the exercise DB by muscle group, movement pattern, and equipment. Mark movements as "favourite", "avoid" (generator skips them) or "can't do here" (equipment missing). Add a custom movement.
+Browse and search the catalog by name, alias or equipment, filtered by muscle group (chest, back, shoulders, arms, legs, core). Each movement shows its photos, cues, instructions, muscles and equipment, and can be marked:
+
+- **Favourite:** picked more often.
+- **Avoid:** left out of new plans and swaps everywhere.
+- **Can't do at the gym / at home:** left out only at that place (the gym might lack a machine that exists at home, or the other way round).
 
 ### 2.7 Settings
 
-Profile (height, current bodyweight, units: lb default), weekly schedule (Mon upper A, Wed legs, Fri upper B, weekend core; editable), equipment by location (gym: everything; home: resistance bands, bodyweight, kettlebells), **my bands** (set up once: name or colour of each band, ordered lightest to heaviest; the first band movement prompts for this if the list is empty), other training preferences the generator needs (owned by the periodization thread: session length), rest timer on/off, export/import JSON backup, sync token and "last synced" time (see §4).
+- **You:** bodyweight (used for assisted machines), Smith machine bar weight (added to the plates logged), home kettlebells (for example "25x2, 35"), and the core day's light wave or flat scheme.
+- **My bands:** name each band and order them lightest to heaviest.
+- **Plan:** the weekly schedule (read-only for now) and **Regenerate upcoming workouts**, which rebuilds the rest of the current block and the next one; logged workouts are kept.
+- **Export my data:** a full JSON backup, the logged sets as CSV, and restore from a backup (§4.2).
+- **Rest timer:** on or off, and sound or no sound, per device.
+- **Sync:** paste the server's sync token to connect, see the last sync time and any records held back, sync now, or disconnect.
+
+Units are pounds throughout, and dumbbell weights are entered per hand.
 
 ---
 
 ## 3. Data model
 
-All records carry `id` (UUID), `createdAt`, `updatedAt`, `deletedAt` (soft delete). This costs nothing now and makes adding backup/sync later a non-migration.
+Every stored record carries `id`, `createdAt`, `updatedAt` and `deletedAt` (soft delete), so sync is last-write-wins per record. Types are in [`packages/core/src/types.ts`](../packages/core/src/types.ts); the exercise record is described in [exercise-database.md §4](exercise-database.md#4-schema).
 
 ```
-Exercise            ← supplied by the exercise DB thread (read-only seed) + user custom
-  id (stable slug, e.g. "barbell-bench-press")   ← logs reference this forever
-  name, aliases[]
-  primaryMuscles[], secondaryMuscles[]
-  movementPattern   (squat | hinge | lunge | push-horizontal | push-vertical |
-                     pull-horizontal | pull-vertical | carry | core | isolation …)
-  equipment[]
-  mechanic          (compound | isolation)
-  laterality        (bilateral | unilateral)
-  metric            (reps | time | distance)          ← drives which fields the logger shows
-  loadType          (barbell | dumbbell | kettlebell | machine | cable | bodyweight | assisted | band)
-  weightConvention  (total | per-hand | per-side | added | band)  ← how to read "40 lb"; band = log band + stance
-  instructions?, mediaUrl?, source, license
-  userFlags         (favourite | avoid | unavailable)  ← app-owned, not from the DB
+Exercise            ← the curated catalog (bundled, read-only) plus custom movements
+  id (stable slug, e.g. "dumbbell-romanian-deadlift")   ← logs reference this forever
+  name, aliases[], family, movementPattern, primary/secondaryMuscles, equipment[]
+  metric (reps | time), loadType, weightConvention, repRange, slots[] …
 
-Profile (singleton)
-  heightIn, units, bodyweightLog[{date, lb}], trainingPrefs{…}  ← prefs shape owned by periodization
-  schedule: [{ weekdays: [mon], type: "legs" }, { weekdays: [wed], type: "upper-a" },
-             { weekdays: [fri], type: "upper-b" }, { weekdays: [sat, sun], type: "core", location: "home" }]
+ExerciseFlag        (id = exerciseId)
+  favourite?, avoid?, unavailableAt? (gym | home)[]
+
+Profile (one record, id "me")
+  heightIn, bodyweightLb, units ("lb"), smithBarLb, coreWave (wave | flat)
+  schedule: [{ weekdays: [1], type: "chest-biceps", location: "gym" }, …,
+             { weekdays: [6, 0], type: "core", location: "home" }]
              ← a multi-day entry is a window: either day counts
-  equipmentByLocation: { gym: [all], home: [band, bodyweight, kettlebell] }
-  bands: [{ id, name, order }]   ← user's resistance bands, order 1 = lightest
+  equipmentByLocation: { gym: [...], home: [...] }
+  bands: [{ id, name, order }]          ← order 1 = lightest
+  kettlebells: [{ lb, count }]
 
-Block (mesocycle)
-  id, startDate, weeks, generatorVersion, generatorParams, rationale
+Block (4 weeks)
+  startDate, weeks, index, generatorVersion, programId, programVersion,
+  rationale, baseSlots (exercise per base slot, used to rotate the next block), plannedAhead?
 
 PlannedWorkout
-  id, blockId, date, windowEnd? (e.g. Sunday for the core day), sessionType,
-  weekIndex, isDeload, focus label, rationale
+  blockId, date, windowEnd? (e.g. Sunday for the core day), sessionType, location,
+  weekIndex, zone (H | M | L | deload), isDeload, focus ("Legs · Heavy"), rationale,
+  exercises: PlannedExercise[]
 
-PlannedExercise
-  id, plannedWorkoutId, exerciseId, order, supersetGroup?, notes
-
-PlannedSet
-  id, plannedExerciseId, setIndex, setType (warmup | working | amrap | drop)
-  targetReps | targetRepRange{min,max} | targetSeconds
-  targetWeight (nullable = "find your weight")
-  targetRIR?, restSec?
+PlannedExercise     (embedded in PlannedWorkout)
+  id, exerciseId, slot, role (P | C | I | V | G | K), order, supersetGroup?, note?,
+  sets: [{ setIndex, targetReps? {min,max} | targetSeconds? {min,max}, rir, restSec }]
 
 Session (what actually happened)
-  id, plannedWorkoutId (nullable for ad-hoc), startedAt, endedAt?, notes, effort 1–5?,
-  beatUp? (the periodization thread's early-deload trigger)
-
-SessionExercise (optional per-movement extras)
-  id, sessionId, exerciseId, plannedExerciseId?, effortTap?, skipped?
+  plannedWorkoutId, date (the real date), startedAt, endedAt?, notes?, effort (1–5)?, beatUp?,
+  swaps { plannedExerciseId → exerciseId }, swapReasons?, skipped[], extras[],
+  fieldAt { field → when it last changed }   ← lets devices merge per field
 
 LoggedSet
-  id, sessionId, exerciseId (actual), plannedSetId (nullable), plannedExerciseId (nullable)
-  setIndex, weight?, bandId?, stanceSteps?, reps?, seconds?, distance?, rir?, isWarmup, note?, loggedAt
+  sessionId, exerciseId (actual), plannedExerciseId?, setIndex, date, loggedAt,
+  weight?, bandId?, stanceSteps?, reps?, seconds?, effort (easy | right | hard)?
 ```
 
-Plan and log are separate tables joined by `plannedSetId`. That makes "planned vs actual" a simple comparison, which is exactly what the generator needs for progression.
+Plan and log are separate records joined by the planned exercise and set index, which makes "planned vs actual" a simple comparison. Ids are derived wherever two devices could create the same thing offline: a block's id comes from its start date, a planned workout's from its date and day type, a session's from its planned workout, and a planned set's log from its session, slot, movement and index. Two devices that plan the same block or log the same set before syncing therefore write the same record instead of a duplicate.
 
 ---
 
 ## 4. Technical approach
 
-### 4.1 Platform: installable web app (PWA) vs native iOS
+### 4.1 Platform: installable web app (PWA)
 
-| | PWA (recommended) | Native iOS (SwiftUI) |
+| | PWA (chosen) | Native iOS |
 |---|---|---|
-| Install | "Add to Home Screen", opens full-screen like an app | Xcode build; free Apple account re-signs every 7 days, or $99/yr for TestFlight |
-| Updates | Instant: push to repo, app refreshes | Rebuild and reinstall each time |
-| Can it be built and tested in the cloud? | Yes, fully (including mobile-viewport browser tests) | Only via a session on jason's Mac with Xcode |
-| Offline | Yes (service worker + on-device database) | Yes |
-| Nice-to-haves lost | Apple Health, Watch app, home-screen widgets, reliable background rest-timer alerts | — |
-| Laptop access to history | Same URL in any browser | No |
+| Install | "Add to Home Screen", opens full-screen like an app | Xcode build; a free Apple account re-signs every 7 days, or $99/yr for TestFlight |
+| Updates | Deploy, and the app updates on next launch | Rebuild and reinstall each time |
+| Build and test in CI | Yes, fully (including phone-size browser tests) | Needs macOS with Xcode |
+| Offline | Yes (service worker and on-device database) | Yes |
+| Given up | Apple Health, Watch app, home-screen widgets, reliable background rest-timer alerts | — |
+| Desktop access | Same URL in any browser | No |
 
-The things a PWA gives up are all milestone-5-and-beyond extras. If they ever matter, the data model and generator (plain TypeScript) carry over and a native shell can be added later.
+The engine is plain TypeScript in its own package, so a native shell could be added later without rewriting the plan or the data model.
 
-### 4.2 Storage: on the phone, synced to a small Railway service (decided)
+### 4.2 Storage and sync
 
-jason chose a small backend, on Railway like his personal treasury app. The phone stays the source of truth while you train, and the backend is the durable copy:
+Each device keeps a full copy of everything in IndexedDB and is the source of truth while training. A small server is the meeting point between devices and the off-device backup:
 
 ```
- iPhone (PWA)                                 Railway (one service)
+ Phone / desktop (PWA)                          Server (one Node process)
  ┌──────────────────────┐   HTTPS, when online   ┌─────────────────────────┐
- │ IndexedDB (Dexie)    │ ── push changes ─────▶ │ Node API  /api/sync     │
+ │ IndexedDB (Dexie)    │ ── push changes ─────▶ │ POST /api/sync          │
  │ every tap saves here │ ◀── pull changes ───── │ SQLite on a volume      │
  └──────────────────────┘                        │ also serves the app     │
                                                  └─────────────────────────┘
 ```
 
-- **Logging never waits on the network.** Sets save on the phone instantly; sync runs in the background on app open, when the app comes back into view or focus, when the network returns, every minute while it's open, after each ticked set when there's signal, and at "Finish". It also pulls before generating or regenerating a block, so a device never plans from stale data. Plain polling is enough for one person's devices; no websockets or queues. At the gym with no signal, nothing changes until you're back online.
-- **Sync protocol:** every record already has `id`, `updatedAt` and `deletedAt` (§3). The phone pushes records changed since its last sync and pulls records the server has that are newer. Last write wins per record, which is fine for one person. A laptop browser opening the same URL gets the full history. A device's first sync pulls before it pushes: if the server already has a plan, it replaces the plan that device generated on its own, so devices never end up with overlapping blocks; that device's logged sets are kept and pushed. Block, workout and session ids come from dates and planned workouts, so two devices that generate the same block or open the same workout before syncing write the same records instead of duplicates.
-- **Auth:** one long secret token, entered once on each device and stored there; the API rejects anything without it. No accounts or passwords.
-- **Database:** SQLite on a Railway volume, inside the same service as the API. One service, one bill line, and the database is a single file that's easy to back up. (Railway's Postgres works too, but it's a second always-on service for no benefit at this size.)
-- **Cost:** Railway bills by usage. The Hobby plan is $5/month and includes $5 of usage, which a one-user service fits inside. The Free plan ($1/month of credit, 0.5 GB RAM after the trial) is probably tight for an always-on service. If jason's treasury app is already on Hobby, this adds little or nothing. ([Railway pricing](https://railway.com/pricing), checked 2026-10-07.)
-- **Safety net:** three copies: the phone, the Railway volume, and the one-tap JSON export in Settings.
-- Notes on iOS storage: a home-screen web app keeps its own storage and is exempt from Safari's 7-day cleanup of website data. The app also calls `navigator.storage.persist()`.
+- **Logging never waits on the network.** Sets save on the device instantly. Sync runs in the background shortly after each write, on app open, when the app regains focus or visibility, when the network returns, and every minute while it's open. It also pulls before planning, so a device doesn't plan from stale data. Polling is enough for one person's devices; no websockets or queues.
+- **Protocol:** the device pushes records changed since its last push and pulls everything the server stored since its cursor. Last write wins per record, by `updatedAt`; sessions merge per field. A device's first sync pulls before it pushes: if the server already has a plan, it replaces the plan that device generated on its own, so devices never end up with overlapping blocks, while that device's logged sets are kept and pushed. The full protocol is in [api/sync-server.md](api/sync-server.md).
+- **Epochs:** the server's database has a random id (epoch). If the server is restored from a backup or its data is lost, it starts a new epoch, and every device pulls everything and re-uploads everything it has, so nothing written since the backup is lost while a device still holds it.
+- **Validation:** malformed records are never uploaded or stored. Settings › Sync shows how many local records are held back.
+- **Auth:** one long secret token, entered once on each device. No accounts or passwords.
+- **Database:** SQLite in the same process as the API, storing records as JSON rows keyed by table and id, so there's no server-side schema to migrate.
+- **Backup and restore:** Settings › Export my data saves every table as JSON, or the logged sets as CSV. Restoring merges by id and only replaces older copies, so it never removes logged sets. On a device with nothing logged yet, the backup's profile and plan replace the ones the device made for itself.
+- **Safety net:** three copies: each device, the server's volume, and the user's exports.
+- **iOS storage:** a home-screen web app keeps its own storage and is exempt from Safari's 7-day cleanup of website data.
 
 ### 4.3 Stack
 
-- **Vite + React + TypeScript.** The most common, best-documented combination, which matters for a project built and maintained with coding agents.
-- **Dexie** (IndexedDB wrapper) with live queries, so screens update the moment a set is saved.
-- **vite-plugin-pwa** for the manifest, service worker and offline caching.
-- **React Router** for the handful of screens; plain CSS (or Tailwind if preferred during build) with a dark, high-contrast, large-tap-target gym UI.
-- Charts: a hand-rolled SVG sparkline/line chart. No chart library needed.
-- **Vitest** for unit tests (generator, progression, placeholder/carry-forward logic); **Playwright** at iPhone viewport for the logging flow end to end. CI on GitHub Actions runs both on every push.
-- **Backend: Hono** (a small Node web framework) + **better-sqlite3**, in the same repo under `server/`. One Railway service builds the app, serves it, and handles `/api/sync`, so the app and API share one address and need no cross-origin setup.
-- **Hosting: Railway**, deploying automatically from the public GitHub repo on every merge to main. Workout data is never in the repo; it lives on the phone and on the Railway volume.
+- **Vite, React 19 and TypeScript**, with React Router for the handful of screens and plain CSS with a dark, high-contrast, large-tap-target UI.
+- **Dexie** (IndexedDB) with live queries, so screens update the moment a set is saved or a sync lands.
+- **vite-plugin-pwa** for the manifest, service worker and offline precache. A new version installs in the background and takes over on the next launch or on the **Update** button; the app never reloads an open screen by itself.
+- Charts are hand-rolled SVG sparklines; no chart library.
+- **Vitest** for unit tests (golden plans, property tests over random setups, generator, progression, sync, server, catalog); **Playwright** at iPhone size against the production build for logging, the rest timer and updates. GitHub Actions runs both on every push.
+- **Server: Hono** with **better-sqlite3**. It serves the built app and the API from one origin, so there's no CORS and one service-worker scope.
 
 ### 4.4 Code layout
 
@@ -291,108 +286,60 @@ An npm workspace. The engine is a package of its own, so other apps can build on
 
 ```
 get-fit/
-  README.md  LICENSE (MIT)  docs/ (this spec, periodization, exercise DB notes)
+  README.md  LICENSE (FSL-1.1-MIT)  docs/
   packages/core/                 ← @orca-solutions/get-fit-core
     scripts/                     ← curation.ts and build-exercises.ts → src/data/exercises.json
     src/program.ts               ← the training program as data (STRANGE_PERIODIZATION)
-    src/generator/               ← pure TS, no UI, no DB: the periodization engine
-    src/client/                  ← Dexie schema, plan horizon, logging, sync engine ("/client")
+    src/generator/               ← pure TS, no UI, no DB: the plan generator, coverage, progression
+    src/client/                  ← Dexie database, plan horizon, logging, backup, sync engine ("/client")
     src/server/sqlite.ts         ← SQLite sync store ("/sqlite")
     tests/                       ← golden plans, property tests, generator, catalog, client
   apps/web/                      ← the PWA: features/today | workout | plan | calendar | history | library | settings
-  server/                        ← Hono API, serves the built app; tests for the server and sync round trips
+  server/                        ← Hono API and static hosting; server and sync round-trip tests
   e2e/                           ← Playwright against the production build
 ```
 
----
-
-## 5. Integration points for the sibling threads
-
-### Exercise database thread
-
-- **Delivers** `data/exercises.json`: an array of `Exercise` objects matching §3, plus the script that produces it, plus source attribution and license notes for the README.
-- **App needs, at minimum**, per exercise: stable `id`, `name`, `primaryMuscles`, `movementPattern`, `equipment`, `metric`, `loadType`, `weightConvention`. Everything else is a bonus. Field names and enums in §3 are a proposal; the DB thread can rename, and the app adapts at import.
-- **IDs are forever.** Logged sets point at exercise IDs, so renaming a movement must not change its ID. Merges of duplicates need an alias map.
-- The app bundles the file and seeds IndexedDB on first launch and on version change; user flags and custom exercises survive reseeding.
-
-### Periodization thread
-
-The generator is a pure function the app calls; it never touches the database or UI.
-
-```ts
-generateBlock(input: {
-  profile: Profile;                 // height, bodyweight, schedule (Mon/Wed/Fri + weekend core), prefs
-  exercises: Exercise[];            // with userFlags applied (skip "avoid"/"unavailable")
-  history: ExerciseHistory;         // planned vs actual per exercise, recent sessions
-  startDate: string;
-  previousBlock?: Block;            // for rotation/variety across blocks
-}): Block                           // PlannedWorkouts → PlannedExercises → PlannedSets
-
-resolveLoads(week: PlannedWorkout[], history: ExerciseHistory): PlannedWorkout[]
-// fills targetWeight just before a week (or session) starts, from what was actually lifted
-
-substitutes(exerciseId, exercises, context): Exercise[]   // powers the Swap button
-```
-
-- Suggested split (for that thread to confirm): `generateBlock` decides the *structure* up front (which muscles, patterns, rep schemes on which days); `resolveLoads` picks *weights* a week at a time from real logs, so the plan adapts when you lift more or less than planned.
-- **Weights aren't shown as targets.** jason wants the weight field blank because the right weight depends on the rep target. The generator can still compute `targetWeight` for its own progression logic, but the UI shows only a "last time at this rep count" hint from the logs. With no history the hint is simply absent and the first logged sets become the baseline.
-- Each `Block` and `PlannedWorkout` carries a one-line `rationale` that the Today screen shows, so the "strange" variation is explained rather than mysterious.
-- jason has set the schedule: legs Wednesday (moved from Monday on 2026-10-08 so a Sunday long run doesn't precede it), two largely non-overlapping upper days Monday and Friday (arms split across them, as AnatolyFit did), core on the weekend, 6–8 movements and 12–22 sets per session. The generator fills those slots and stamps each `PlannedWorkout` with its date and `sessionType`; the calendar renders them. Core day is at home, so the generator must pick its movements from `equipmentByLocation.home` only.
-- Other prefs (session length, how the daily 2-mile run affects leg work) are that thread's questions to ask; the app just stores the answers.
+Builds land in `dist/` (the app) and `dist-server/` (the server) at the repo root.
 
 ---
 
-## 6. Milestone fit
+## 5. How the engine plugs in
 
-Milestones are the project's review checkpoints, and each one waits for jason's feedback before the next starts. M1 is this research and planning round.
+The app calls the core; the core never touches the UI.
 
-- **M2 Skeleton:** repo, README, LICENSE, CI, Railway service deployed; `exercises.json` loaded; generator produces a sample block rendered on a read-only Today screen and Calendar.
-- **M3 Logging:** movement screen with placeholders, carry-forward, swap, movement strip, history panel, finish summary, calendar states (done, partial, missed, make-up), sync to Railway, JSON export. Deployed and installable on jason's phone. Sync lands here, not later, so real logs are backed up from the first workout.
-- **M4 Polish:** rest timer, progression tuning on real data, PR highlights.
+- **Catalog:** `CATALOG` is the curated list in `src/data/exercises.json`, bundled with the app. Custom movements live in their own table and merge with it. Exercise ids never change, because logged sets reference them forever.
+- **Generator:** `generateBlock` is a pure function from the profile, catalog, flags, start date, previous block and a few facts from the logs (which movements have history, which have stalled, whether the last block had a "beat up" session) to a block of planned workouts. It follows a `Program`, which defaults to `STRANGE_PERIODIZATION`.
+- **Plan horizon:** `ensurePlan` keeps the current block and the next one planned, and rebuilds a planned-ahead block's unlogged workouts from the latest logs on its first day.
+- **Weights aren't targets.** The generator prescribes reps, effort and rest; the UI shows a "last time at this rep count" hint from the logs instead of a target weight. With no history the hint is absent and the first logged sets become the baseline.
+- Each block and planned workout carries a one-line `rationale` that the app shows, so the "strange" variation is explained rather than mysterious.
 
----
-
-## 7. README founding story (draft)
-
-> # get-fit
->
-> A personal workout planner and logger. One user (me), one phone, no accounts, no meal plans.
->
-> ## Why this exists
->
-> I liked AnatolyFit. Specifically, I liked its "strange periodization": the idea that you don't hit the same muscles the same way every week, but keep changing the angle, the rep range and the load so your body never settles into a rut. It made training feel less like a spreadsheet and more like a plan with a point of view.
->
-> What I didn't like was losing workouts to bugs. After enough sessions where the app got in the way of the training, I decided to build my own version that does the one thing I need, reliably: tell me what to do today, let me log what I actually did (which is often not what the plan said), and show me how that movement has gone before.
->
-> This project is not affiliated with AnatolyFit. It's an independent, from-scratch take on the training ideas that drew me to it, built for an audience of one.
->
-> ## Principles
->
-> - Never lose a logged set. Everything saves the moment you tap it.
-> - Works offline. The gym's Wi-Fi is not a dependency.
-> - The plan is a suggestion; the log is the truth.
-> - Small, tested, and boring in the best way.
-> - Your data is plain JSON you can take anywhere.
->
-> ## License
->
-> MIT.
+The full API is in [api/core.md](api/core.md).
 
 ---
 
-## 8. Decisions
+## 6. Status and open items
 
-Settled by jason on 2026-10-07:
+Built and in use: planning, logging, swap and skip, history, calendar, library, settings, export and restore, multi-device sync, the rest timer, in-app updates, and a responsive desktop layout.
 
-1. **Platform:** PWA.
-2. **Data:** a small backend on Railway, with the phone as the offline source of truth (§4.2).
-3. **Repo:** public.
-4. **Placeholders:** reps show the planned reps; weight stays blank (weight hint and carry-forward instead, §2.2).
-5. **Runs:** out of the app; the morning run stays as is.
+Open:
+
+- **Supersets on one screen:** the core day's supersets are labelled, but each movement still has its own screen rather than alternating rows (A1, B1, A2, B2).
+- **Training rules not yet implemented:** early deload, the 10-day-gap load drop and the finer progression rules ([periodization.md §4.8](periodization.md#48-not-yet-implemented)).
+- **Progression tuning** on real logs.
+- **Weekly targets from block 6:** Friday runs out of room, so back can dip to 8 sets in one week, triceps reach 10.5 in one week, and from block 8 rear delts sit at 1.5–2 (target 3–5). Blocks 1 to 5 stay inside every target.
+- **Server-side record checks:** the server validates only the sync fields of each record; field-level checks happen on the devices.
+- **Editable schedule and units:** the schedule and lb units are fixed for now, though the profile already stores both.
+- **Custom movements:** supported in the data model and sync, with no screen to add one yet.
+
+---
+
+## 7. Decisions
+
+1. **Platform:** PWA (§4.1).
+2. **Data:** a full offline copy on each device, synced to one small self-hosted server (§4.2).
+3. **Repo:** public source under FSL-1.1-MIT: no competing commercial use, and each release becomes MIT two years after it is published.
+4. **Placeholders:** reps show the planned reps; weight stays blank, with a weight hint and carry-forward instead (§2.2).
+5. **Runs:** outside the app.
 6. **Core day:** at home, with resistance bands, bodyweight and kettlebells only.
-
-7. **Rest timer:** M4.
-
-Nothing is open.
-
-Defaults assumed unless jason says otherwise: pounds, dumbbell weights entered per hand, dark theme.
+7. **Rest timer:** in the workout screen, from the plan's rest per set (§2.2).
+8. **Defaults:** pounds, dumbbell weights entered per hand, dark theme.
