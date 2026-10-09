@@ -7,7 +7,7 @@ The training engine behind [get-fit](https://github.com/Orca-Solutions/get-fit):
 From a GitHub release (each `core-v<version>` release carries the package):
 
 ```sh
-npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.2.0/orca-solutions-get-fit-core-0.2.0.tgz
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.1.0/orca-solutions-get-fit-core-0.1.0.tgz
 ```
 
 ## Entry points

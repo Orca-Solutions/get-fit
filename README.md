@@ -56,7 +56,7 @@ The exercise catalog is generated: edit `packages/core/scripts/curation.ts`, the
 Releasing the engine: bump `version` in `packages/core/package.json`, merge, then run the **Release core** workflow on main from the Actions tab (or push a tag `core-v<version>`). It tests the workspace and creates the GitHub release `core-v<version>` with the package attached, which other projects install by URL:
 
 ```sh
-npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.2.0/orca-solutions-get-fit-core-0.2.0.tgz
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.1.0/orca-solutions-get-fit-core-0.1.0.tgz
 ```
 
 Once an `NPM_TOKEN` repository secret exists, the same run also publishes to npm as `@orca-solutions/get-fit-core`.
