@@ -1,17 +1,27 @@
 name: Release core
 
-# Publishes @orca-solutions/get-fit-core when a tag like core-v0.1.0 is pushed.
+# Releases @orca-solutions/get-fit-core from main.
+#
+# - Run it from the Actions tab ("Run workflow" on main), or push a tag core-v<version> that matches
+#   packages/core/package.json.
+# - It tests the workspace, packs the package and attaches the tarball to a GitHub release named
+#   core-v<version> (creating the tag when run by hand). Other projects install that tarball by URL.
+# - It also publishes to npm, but only once an NPM_TOKEN repository secret exists; until then that
+#   step is skipped.
 on:
+  workflow_dispatch:
   push:
     tags: ['core-v*']
 
 permissions:
-  contents: read
+  contents: write # create the release and tag
   id-token: write # npm provenance
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,10 +30,26 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
       - run: npm ci
-      - name: Tag matches the package version
-        run: test "core-v$(node -p "require('./packages/core/package.json').version")" = "$GITHUB_REF_NAME"
+      - name: Work out the tag
+        run: |
+          version=$(node -p "require('./packages/core/package.json').version")
+          echo "TAG=core-v$version" >> "$GITHUB_ENV"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            test "$GITHUB_REF_NAME" = "core-v$version" || { echo "Tag $GITHUB_REF_NAME doesn't match package version $version"; exit 1; }
+          else
+            test "$GITHUB_REF_NAME" = main || { echo "Run this from main"; exit 1; }
+            if git ls-remote --exit-code --tags origin "core-v$version" >/dev/null; then echo "core-v$version already exists: bump the version in packages/core/package.json first"; exit 1; fi
+          fi
       - run: npm run typecheck
       - run: npm test
-      - run: npm publish -w @orca-solutions/get-fit-core --provenance --access public
+      - name: Pack
+        run: npm pack -w @orca-solutions/get-fit-core --pack-destination .
+      - name: GitHub release with the tarball
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" orca-solutions-get-fit-core-*.tgz --target "$GITHUB_SHA" --title "$TAG" --notes "Install: npm install https://github.com/${{ github.repository }}/releases/download/$TAG/$(ls orca-solutions-get-fit-core-*.tgz)"
+      - name: Publish to npm
+        if: env.NPM_TOKEN != ''
+        run: npm publish orca-solutions-get-fit-core-*.tgz --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

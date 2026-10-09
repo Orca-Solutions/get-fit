@@ -2,6 +2,14 @@
 
 The training engine behind [get-fit](https://github.com/Orca-Solutions/get-fit): a curated exercise library, a block-periodization plan generator, progression from logged sets, and offline-first sync. MIT licensed.
 
+## Install
+
+From a GitHub release (each `core-v<version>` release carries the package):
+
+```sh
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.1.0/orca-solutions-get-fit-core-0.1.0.tgz
+```
+
 ## Entry points
 
 | Import | What it is | Needs |

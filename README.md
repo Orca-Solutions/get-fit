@@ -53,7 +53,13 @@ The exercise catalog is generated: edit `packages/core/scripts/curation.ts`, the
 
 `packages/core/tests/golden.test.ts` pins the exact plans for blocks 1 to 8. A change to the training rules fails it on purpose: if the change is intended, bump the program's `version` and refresh the pins with `GOLDEN_UPDATE=1 npx vitest run packages/core/tests/golden.test.ts`.
 
-Releasing the engine: bump `version` in `packages/core/package.json`, then push a tag `core-v<version>`; the Release core workflow tests and publishes it to npm (it needs an `NPM_TOKEN` repository secret).
+Releasing the engine: bump `version` in `packages/core/package.json`, merge, then run the **Release core** workflow on main from the Actions tab (or push a tag `core-v<version>`). It tests the workspace and creates the GitHub release `core-v<version>` with the package attached, which other projects install by URL:
+
+```sh
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.1.0/orca-solutions-get-fit-core-0.1.0.tgz
+```
+
+Once an `NPM_TOKEN` repository secret exists, the same run also publishes to npm as `@orca-solutions/get-fit-core`.
 
 ## Deploy (Railway)
 
