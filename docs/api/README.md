@@ -20,6 +20,6 @@ Related documents:
 
 The package is pre-1.0. Until 1.0, a minor version can change the API, so pin an exact version.
 
-Plans are versioned separately from the code. Every `Block` records the `generatorVersion` (currently `1.2.0`) and the `programId` and `programVersion` of the program that planned it. A change to what `STRANGE_PERIODIZATION` plans bumps that program's `version` (currently `1.2.0`), so a stored block always says which rules produced it.
+Plans are versioned separately from the code. Every `Block` records the `generatorVersion` (currently `1.3.0`) and the `programId` and `programVersion` of the program that planned it. A change to what `STRANGE_PERIODIZATION` plans bumps that program's `version` (currently `1.3.0`), so a stored block always says which rules produced it.
 
 The sync protocol is shared by every client and server through `SYNC_TABLES` and the types in `protocol.ts`. The server only validates the envelope of each record (`id`, `updatedAt`, `deletedAt`) and stores the rest as given, so clients can add fields without a server change.

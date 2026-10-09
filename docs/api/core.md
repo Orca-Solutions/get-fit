@@ -2,7 +2,7 @@
 
 The get-fit training engine as a library: domain types, the curated exercise catalog, training programs as data, the block generator, progression and coverage helpers, the sync protocol, an IndexedDB client and a SQLite sync store.
 
-Version documented: `0.3.0` (the version on `main`; the latest release may be older). See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
+Version documented: `0.4.0` (the version on `main` and the latest release, `core-v0.4.0`). See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
 
 - [Install](#install)
 - [Entry points](#entry-points)
@@ -26,7 +26,7 @@ Version documented: `0.3.0` (the version on `main`; the latest release may be ol
 The package is distributed as a tarball attached to each `core-v<version>` GitHub release. It is not published to the npm registry.
 
 ```sh
-npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.2.0/orca-solutions-get-fit-core-0.2.0.tgz
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.4.0/orca-solutions-get-fit-core-0.4.0.tgz
 ```
 
 | Requirement | Needed for |
@@ -98,9 +98,10 @@ A catalog entry or a custom movement. The catalog schema and tagging rules are d
 | `regressions`, `progressions` | `string[]` | Exercise ids. |
 | `slots` | `SlotKey[]` | Generator slots the movement may fill (see `CatalogSlot`). |
 | `coreDynamic`, `gripType` | optional | For core and grip movements. |
-| `tags`, `cues`, `instructions`, `images` | `string[]` | |
-| `source` | `{ name: 'free-exercise-db' \| 'get-fit'; sourceId?: string }` | |
-| `license` | `'Unlicense' \| 'FSL-1.1-MIT'` | `Unlicense` for entries drawn from free-exercise-db (its stated license for its data; the photos and copied instructions have no known license, see [exercise-database.md §8](../exercise-database.md#8-licensing-notes)), `FSL-1.1-MIT` for the project's own. |
+| `tags`, `cues`, `instructions`, `images` | `string[]` | `instructions` are always the project's own text. `images` is empty for entries written for this project. |
+| `source` | `{ name: 'free-exercise-db' \| 'get-fit'; sourceId?: string }` | Where the photos come from. |
+| `license` | `'FSL-1.1-MIT'` | The entry's text and tags, the project's own work. |
+| `imageLicense` | `'unverified'`, optional | Set on entries with free-exercise-db photos, whose rights are unverified (see [exercise-database.md §8](../exercise-database.md#8-licensing-notes)); show them only where that risk is acceptable. |
 
 Related enumerations: `MovementPattern`, `Muscle` (20 muscles), `Equipment` (16 values; `barbell`, `ez-bar` and `rack` gate the catalog's optional barbell pack), `LoadType`, `WeightConvention`, `CoreDynamic` (the 8 dynamics the core day covers), `GripType` (7 grip finishers), and `CatalogSlot`, the slot tags the curated catalog uses (`'legs:squat'`, `'chest:v:press-variant'`, `` `core:${CoreDynamic}` ``, `` `grip:${GripType}` ``, ...). `SlotKey` is `string`, so a custom program can define its own slots.
 
@@ -305,12 +306,13 @@ type DayTemplate = LiftDay | CoreDay;
 | `compoundLoadTypeBonus` | `Partial<Record<LoadType, number>>`, optional | Added on secondary compound (C) slots by load type (original: `barbell` 4). |
 | `fatigueStackPenalty` | `number` | Subtracted for a second fatigue-3 compound in one session. |
 | `highRunImpactPenalty` | `number` | Subtracted for movements with `runImpact: 'high'`. |
+| `homePack` | `{ tag: string; homeEquipment: Equipment[] }`, optional | Movements tagged `tag` are candidates for a slot only when no other candidate that fits it needs equipment outside `homeEquipment` (original: tag `home-pack`; band, kettlebell, ab-wheel, mat, none). |
 
 ### Program functions
 
 | Export | Signature | Description |
 |---|---|---|
-| `STRANGE_PERIODIZATION` | `Program` | The original program: id `strange-periodization`, version `1.2.0`. |
+| `STRANGE_PERIODIZATION` | `Program` | The original program: id `strange-periodization`, version `1.3.0`. |
 | `liftDays` | `(p: Program) => [string, LiftDay][]` | The program's lifting days with their day types. |
 | `coreDayType` | `(p: Program) => string \| undefined` | The day type of its core day, if any. |
 | `validateProgram` | `(program: Program, catalog: Pick<Exercise, 'slots'>[], scheduleTypes?: string[]) => string[]` | Problems that would stop `program` planning against `catalog`. Empty when fine. |
@@ -386,7 +388,7 @@ When no candidate for a slot is usable (every one is flagged, none fits the equi
 
 | Export | Signature | Description |
 |---|---|---|
-| `GENERATOR_VERSION` | `'1.2.0'` | Recorded on every block. |
+| `GENERATOR_VERSION` | `'1.3.0'` | Recorded on every block. |
 | `BLOCK_WEEKS` | `4` | |
 | `blockIdFor` | `(startDate: string) => string` | `block-<startDate>`. |
 | `workoutIdFor` | `(date: string, type: SessionType) => string` | `w-<date>-<type>`. |

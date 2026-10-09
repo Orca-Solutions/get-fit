@@ -26,7 +26,7 @@ get-fit is independent and not affiliated with AnatolyFit. The training rules, w
 - **Swap and skip:** replace a movement with one that fills the same slot or trains the same muscles with the equipment where that day happens, or skip it. Logs record what was actually done.
 - **Plan generator:** 4-week blocks (3 loading weeks and a deload), always planned one block ahead; a block planned ahead is refreshed from the latest logs on its first day. The default week is Monday chest and biceps, Wednesday legs, Friday back, triceps and shoulders, and a weekend core day at home. Each lifting day rotates heavy, moderate and light; the main lifts get at least 3 sets every loading day, and moderate and light days add a variety movement and a grip finisher; weekly sets per muscle are balanced against target bands. With a barbell and rack listed, the barbell squat, bench, overhead press and row are the main lifts from the first block. The rules are in [docs/periodization.md](docs/periodization.md) and the code in [packages/core](packages/core).
 - **Calendar:** month and week views with done, partial, missed and done-late states, and deload weeks shaded.
-- **History and library:** per-movement history with an estimated-1RM trend, and a library of 186 curated movements, most with start and end photos, including an optional barbell and EZ-bar pack that's planned only when the gym's equipment lists that gear. Movements can be marked Favourite, Avoid, or Can't do at the gym or at home, and the generator respects those marks.
+- **History and library:** per-movement history with an estimated-1RM trend, and a library of 215 curated movements, most with start and end photos. It includes an optional barbell and EZ-bar pack, planned only when the gym's equipment lists that gear, and a home pack of kettlebell, band and bodyweight movements that fills a home-only kit. Movements can be marked Favourite, Avoid, or Can't do at the gym or at home, and the generator respects those marks.
 - **Sync and backup:** each device keeps a full offline copy and syncs with the server whenever it has signal, so a phone and a desktop browser share one plan and history. Settings › Export my data saves a full JSON backup (restorable, and a restore never removes sets) or the logged sets as CSV.
 - **Updates:** a new release installs in the background and takes over on the next launch, or straight away with the **Update** button. The app never reloads a screen mid-workout.
 
@@ -68,7 +68,7 @@ CI (`.github/workflows/ci.yml`) runs typecheck, unit tests, the build and the Pl
 The engine is released as a tarball attached to a GitHub release named `core-v<version>`, and installs by URL:
 
 ```sh
-npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.2.0/orca-solutions-get-fit-core-0.2.0.tgz
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.4.0/orca-solutions-get-fit-core-0.4.0.tgz
 ```
 
 To cut a release: bump `version` in `packages/core/package.json`, merge, then run the **Release core** workflow on `main` from the Actions tab (or push a tag `core-v<version>`). The workflow tests the workspace, packs the package and creates the release.
@@ -90,7 +90,7 @@ See [docs/README.md](docs/README.md) for the full index: the product spec, the t
 
 ## Credits
 
-Exercise instructions and photos for 139 movements come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db). free-exercise-db releases its data under the Unlicense, but its upstream project, [wrkout/exercises.json](https://github.com/wrkout/exercises.json), says the photos were collected from the internet, that it does not own their copyright, and that they should not be used in commercial projects. The photos and instruction text therefore have no known license; see [docs/exercise-database.md §8](docs/exercise-database.md#8-licensing-notes). Tags, cues, the curated selection and the 47 movements written for this project are this project's own.
+The start and end photos for 139 movements come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db). free-exercise-db releases its data under the Unlicense, but its upstream project, [wrkout/exercises.json](https://github.com/wrkout/exercises.json), says the photos were collected from the internet, that it does not own their copyright, and that they should not be used in commercial projects. The photos therefore have no known license, and the catalog marks them `imageLicense: 'unverified'`; see [docs/exercise-database.md §8](docs/exercise-database.md#8-licensing-notes). Everything else in the catalog, including every movement's instructions, is this project's own.
 
 ## License
 

@@ -1,6 +1,6 @@
 # Training logic: "strange periodization", made explicit
 
-The rules get-fit's plan generator follows, with the research behind them. The numbers live in `STRANGE_PERIODIZATION` (version 1.2.0) in [`packages/core/src/program.ts`](../packages/core/src/program.ts); the method (rotation, balancing, fallbacks) lives in [`packages/core/src/generator/`](../packages/core/src/generator). Code comments cite this document by section number, so keep the numbering stable.
+The rules get-fit's plan generator follows, with the research behind them. The numbers live in `STRANGE_PERIODIZATION` (version 1.3.0) in [`packages/core/src/program.ts`](../packages/core/src/program.ts); the method (rotation, balancing, fallbacks) lives in [`packages/core/src/generator/`](../packages/core/src/generator). Code comments cite this document by section number, so keep the numbering stable.
 
 Each rule below is implemented unless it is marked **Not yet implemented**. Those are collected in [§4.8](#48-not-yet-implemented).
 
@@ -205,7 +205,7 @@ A missed session just means fewer sets that week; nothing carries over. Forearms
 
 ### 4.3 Exercise selection and variety
 
-Candidate filter for a slot: the exercise is tagged for that slot, all of its equipment is available at the day's location, its level is beginner or intermediate, it suits the zone, and it isn't marked Avoid (anywhere) or Can't do (at that location).
+Candidate filter for a slot: the exercise is tagged for that slot, all of its equipment is available at the day's location, its level is beginner or intermediate, it suits the zone, and it isn't marked Avoid (anywhere) or Can't do (at that location). Home-pack movements (kettlebell, band and bodyweight stand-ins, tagged `home-pack`) join the candidates only when no other candidate for the slot needs gym equipment, so they fill a home-only kit without displacing machines, cables, dumbbells or barbells in a gym.
 
 The highest-scoring candidate wins. Scoring:
 - \+ in block 1, a movement marked as a starter
