@@ -54,6 +54,7 @@ const scenarios: Record<string, () => GeneratedBlock[]> = {
   'reference profile, flat core': () => chain({ ...reference, coreWave: 'flat' }, 2),
   'reference profile, a whole slot avoided': () => chain(reference, 2, () => ({ flags: Object.fromEntries(inSlot('legs:knee-flexion').map((id) => [id, { avoid: true }])) })),
   'dumbbells only, no step or plate': () => chain({ ...reference, equipmentByLocation: { gym: ['dumbbell', 'bench', 'mat', 'none'], home: ['dumbbell', 'mat', 'none'] } }, 2),
+  'reference gym plus a barbell and rack': () => chain({ ...reference, equipmentByLocation: { ...reference.equipmentByLocation, gym: [...reference.equipmentByLocation.gym, 'barbell', 'rack'] } }, 8),
   'home kit only (bands, kettlebells, bodyweight)': () => chain({ ...reference, equipmentByLocation: { gym: ['band', 'kettlebell', 'mat', 'none'], home: ['band', 'kettlebell', 'ab-wheel', 'mat', 'none'] } }, 2),
 };
 

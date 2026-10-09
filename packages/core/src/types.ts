@@ -20,9 +20,11 @@ export type Muscle =
 
 export type Equipment =
   | 'dumbbell' | 'kettlebell' | 'cable' | 'machine' | 'smith-machine' | 'bench'
-  | 'pull-up-bar' | 'back-extension-bench' | 'plate' | 'band' | 'ab-wheel' | 'mat' | 'none';
+  | 'pull-up-bar' | 'back-extension-bench' | 'plate' | 'band' | 'ab-wheel' | 'mat' | 'none'
+  /** A free barbell with plates, an EZ curl bar, and a squat or power rack to start a barbell from. */
+  | 'barbell' | 'ez-bar' | 'rack';
 
-export type LoadType = 'smith' | 'dumbbell' | 'kettlebell' | 'machine' | 'cable' | 'bodyweight' | 'assisted' | 'band' | 'plate';
+export type LoadType = 'smith' | 'barbell' | 'ez-bar' | 'dumbbell' | 'kettlebell' | 'machine' | 'cable' | 'bodyweight' | 'assisted' | 'band' | 'plate';
 export type WeightConvention = 'total' | 'per-hand' | 'added' | 'assist' | 'band' | 'none';
 
 /** The 8 core dynamics the weekend core day always covers (periodization §4.2). */

@@ -8,7 +8,7 @@ import { addDays } from '../dates.js';
 import { hash } from '../ids.js';
 import { ZONE_NAME, compoundReps, coreTargets, isolationReps, restFor, rirFor, setsFor } from './templates.js';
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
-import { STRANGE_PERIODIZATION, coreDayType, liftDays, type BaseSlot, type CoreDay, type LiftDay, type Program, type TrainingParams } from '../program.js';
+import { STRANGE_PERIODIZATION, coreDayType, liftDays, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type TrainingParams } from '../program.js';
 
 export const GENERATOR_VERSION = '1.2.0';
 export const BLOCK_WEEKS = 4;
@@ -65,6 +65,11 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
   const prev = input.previousBlock;
   const blockIndex = prev ? prev.index + 1 : 1;
   const program = input.program ?? STRANGE_PERIODIZATION;
+  if (input.program) {
+    // A program passed in is checked up front, so a mistake in it reads as one, not as an odd plan.
+    const errors = validateProgram(program, input.exercises, input.profile.schedule.map((s) => s.type));
+    if (errors.length) throw new Error(`Program ${program.id} is invalid: ${errors.join('; ')}`);
+  }
   const ctx: Ctx = {
     input,
     program,
@@ -209,10 +214,15 @@ function fillEmptySlot(ctx: Ctx, slot: SlotKey, location: Location, taken: Exerc
     // Prefer the same pattern, a family the day doesn't already have, and a lighter movement.
     (e) => jitter(ctx, e.id, slot) + (e.movementPattern === pattern ? 1 : 0) - (taken.some((t) => t.family === e.family) ? 3 : 0) - e.fatigueCost * 0.5,
   );
-  // Flags emptied the slot if an unflagged copy of the day would still have had a movement for it.
-  const flaggedOnly = ctx.input.exercises.some((e) => free(e) && e.slots.includes(slot) && usable(ctx, e, location, true));
+  // Why the slot's own movements are out: flags, the day already using the ones that fit, or the equipment.
+  const fits = ctx.input.exercises.filter((e) => e.slots.includes(slot) && usable(ctx, e, location, true));
+  const why = fits.some((e) => free(e))
+    ? `Every ${label} movement is flagged`
+    : fits.length
+      ? `Every ${label} movement that fits your equipment is already on this day`
+      : `No ${label} movement fits your equipment`;
   if (related) {
-    ctx.notices.push(flaggedOnly ? `Every ${label} movement is flagged, so ${related.name} fills that slot.` : `No ${label} movement fits your equipment, so ${related.name} fills that slot.`);
+    ctx.notices.push(`${why}, so ${related.name} fills that slot.`);
     return related;
   }
   const flagged = best(ctx.input.exercises.filter((e) => free(e) && e.slots.includes(slot) && usable(ctx, e, location, true)), (e) => jitter(ctx, e.id, slot));

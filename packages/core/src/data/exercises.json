@@ -10452,5 +10452,1886 @@
       "sourceId": "Kettlebell_Windmill"
     },
     "license": "Unlicense"
+  },
+  {
+    "id": "barbell-back-squat",
+    "name": "Barbell Back Squat",
+    "aliases": [
+      "Back squat",
+      "Squat"
+    ],
+    "family": "barbell-squat",
+    "movementPattern": "squat",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "adductors",
+      "lower-back"
+    ],
+    "mechanic": "compound",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "rack"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 4,
+      "max": 12
+    },
+    "perSide": false,
+    "fatigueCost": 3,
+    "axialLoad": true,
+    "runImpact": "low",
+    "level": "beginner",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [
+      "goblet-squat"
+    ],
+    "progressions": [
+      "barbell-front-squat"
+    ],
+    "slots": [
+      "legs:squat"
+    ],
+    "tags": [],
+    "cues": [
+      "Bar on the upper back, hands just outside the shoulders",
+      "Brace, then sit down between your heels",
+      "Knees track over toes, drive up through mid-foot"
+    ],
+    "instructions": [
+      "This exercise is best performed inside a squat rack for safety purposes. To begin, first set the bar on a rack to just below shoulder level. Once the correct height is chosen and the bar is loaded, step under the bar and place the back of your shoulders (slightly below the neck) across it.",
+      "Hold on to the bar using both arms at each side and lift it off the rack by first pushing with your legs and at the same time straightening your torso.",
+      "Step away from the rack and position your legs using a shoulder width medium stance with the toes slightly pointed out. Keep your head up at all times and also maintain a straight back. This will be your starting position. (Note: For the purposes of this discussion we will use the medium stance described above which targets overall development; however you can choose any of the three stances discussed in the foot stances section).",
+      "Begin to slowly lower the bar by bending the knees and hips as you maintain a straight posture with the head up. Continue down until the angle between the upper leg and the calves becomes slightly less than 90-degrees. Inhale as you perform this portion of the movement. Tip: If you performed the exercise correctly, the front of the knees should make an imaginary straight line with the toes that is perpendicular to the front. If your knees are past that imaginary line (if they are past your toes) then you are placing undue stress on the knee and the exercise has been performed incorrectly.",
+      "Begin to raise the bar as you exhale by pushing the floor with the heel of your foot as you straighten the legs again and go back to the starting position.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/barbell-back-squat/0.jpg",
+      "exercises/barbell-back-squat/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Squat"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-front-squat",
+    "name": "Barbell Front Squat",
+    "aliases": [
+      "Front squat"
+    ],
+    "family": "barbell-squat",
+    "movementPattern": "squat",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "adductors",
+      "upper-back"
+    ],
+    "mechanic": "compound",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "rack"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 4,
+      "max": 10
+    },
+    "perSide": false,
+    "fatigueCost": 3,
+    "axialLoad": true,
+    "runImpact": "low",
+    "level": "intermediate",
+    "difficultyRank": 3,
+    "starter": false,
+    "regressions": [
+      "barbell-back-squat"
+    ],
+    "progressions": [],
+    "slots": [
+      "legs:squat"
+    ],
+    "tags": [],
+    "cues": [
+      "Elbows high the whole time",
+      "Chest tall, sit straight down",
+      "Drive up through mid-foot"
+    ],
+    "instructions": [
+      "Set the bar in the rack at upper-chest height. Step under it so it rests on the front of your shoulders, fingertips under the bar and elbows high.",
+      "Unrack it, step back and set your feet about shoulder width.",
+      "Keeping the elbows up and the chest tall, squat down as far as you can with a flat back.",
+      "Drive back up to standing, then rack the bar when the set is done."
+    ],
+    "images": [
+      "exercises/barbell-front-squat/0.jpg",
+      "exercises/barbell-front-squat/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Front_Barbell_Squat"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-deadlift",
+    "name": "Barbell Deadlift",
+    "aliases": [
+      "Deadlift",
+      "Conventional deadlift"
+    ],
+    "family": "barbell-deadlift",
+    "movementPattern": "hinge",
+    "primaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "lower-back",
+      "quads",
+      "traps",
+      "forearms"
+    ],
+    "mechanic": "compound",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 3,
+      "max": 8
+    },
+    "perSide": false,
+    "fatigueCost": 3,
+    "axialLoad": true,
+    "runImpact": "low",
+    "level": "intermediate",
+    "difficultyRank": 3,
+    "starter": false,
+    "regressions": [
+      "barbell-romanian-deadlift"
+    ],
+    "progressions": [],
+    "slots": [
+      "legs:hinge"
+    ],
+    "tags": [],
+    "cues": [
+      "Bar over mid-foot, shins touch it",
+      "Flat back, chest up, push the floor away",
+      "Lock out with the glutes, no leaning back"
+    ],
+    "instructions": [
+      "Stand in front of a loaded barbell.",
+      "While keeping the back as straight as possible, bend your knees, bend forward and grasp the bar using a medium (shoulder width) overhand grip. This will be the starting position of the exercise. Tip: If it is difficult to hold on to the bar with this grip, alternate your grip or use wrist straps.",
+      "While holding the bar, start the lift by pushing with your legs while simultaneously getting your torso to the upright position as you breathe out. In the upright position, stick your chest out and contract the back by bringing the shoulder blades back. Think of how the soldiers in the military look when they are in standing in attention.",
+      "Go back to the starting position by bending at the knees while simultaneously leaning the torso forward at the waist while keeping the back straight. When the weights on the bar touch the floor you are back at the starting position and ready to perform another repetition.",
+      "Perform the amount of repetitions prescribed in the program."
+    ],
+    "images": [
+      "exercises/barbell-deadlift/0.jpg",
+      "exercises/barbell-deadlift/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Deadlift"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-romanian-deadlift",
+    "name": "Barbell Romanian Deadlift",
+    "aliases": [
+      "RDL",
+      "Barbell RDL"
+    ],
+    "family": "romanian-deadlift",
+    "movementPattern": "hinge",
+    "primaryMuscles": [
+      "hamstrings",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "lower-back",
+      "forearms"
+    ],
+    "mechanic": "compound",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "lengthBias": "lengthened",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 6,
+      "max": 12
+    },
+    "perSide": false,
+    "fatigueCost": 3,
+    "axialLoad": true,
+    "runImpact": "low",
+    "level": "intermediate",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [
+      "barbell-deadlift"
+    ],
+    "slots": [
+      "legs:hinge"
+    ],
+    "tags": [],
+    "cues": [
+      "Soft knees, push the hips back",
+      "Bar slides down the thighs",
+      "Stop when the hamstrings are stretched, back flat"
+    ],
+    "instructions": [
+      "Put a barbell in front of you on the ground and grab it using a pronated (palms facing down) grip that a little wider than shoulder width. Tip: Depending on the weight used, you may need wrist wraps to perform the exercise and also a raised platform in order to allow for better range of motion.",
+      "Bend the knees slightly and keep the shins vertical, hips back and back straight. This will be your starting position.",
+      "Keeping your back and arms completely straight at all times, use your hips to lift the bar as you exhale. Tip: The movement should not be fast but steady and under control.",
+      "Once you are standing completely straight up, lower the bar by pushing the hips back, only slightly bending the knees, unlike when squatting. Tip: Take a deep breath at the start of the movement and keep your chest up. Hold your breath as you lower and exhale as you complete the movement.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/barbell-romanian-deadlift/0.jpg",
+      "exercises/barbell-romanian-deadlift/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Romanian_Deadlift"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-hip-thrust",
+    "name": "Barbell Hip Thrust",
+    "aliases": [
+      "Hip thrust"
+    ],
+    "family": "hip-thrust",
+    "movementPattern": "hip-extension",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "mechanic": "compound",
+    "laterality": "bilateral",
+    "stance": "supine",
+    "lengthBias": "shortened",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "bench"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 6,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "intermediate",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "legs:v:hip-extension"
+    ],
+    "tags": [],
+    "cues": [
+      "Upper back on the bench, pad on the bar",
+      "Chin tucked, ribs down",
+      "Squeeze the glutes hard at the top"
+    ],
+    "instructions": [
+      "Begin seated on the ground with a bench directly behind you. Have a loaded barbell over your legs. Using a fat bar or having a pad on the bar can greatly reduce the discomfort caused by this exercise.",
+      "Roll the bar so that it is directly above your hips, and lean back against the bench so that your shoulder blades are near the top of it.",
+      "Begin the movement by driving through your feet, extending your hips vertically through the bar. Your weight should be supported by your shoulder blades and your feet. Extend as far as possible, then reverse the motion to return to the starting position."
+    ],
+    "images": [
+      "exercises/barbell-hip-thrust/0.jpg",
+      "exercises/barbell-hip-thrust/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Hip_Thrust"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-calf-raise",
+    "name": "Barbell Calf Raise",
+    "aliases": [
+      "Standing barbell calf raise"
+    ],
+    "family": "straight-leg-calf-raise",
+    "movementPattern": "calf",
+    "primaryMuscles": [
+      "calves"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "lengthBias": "lengthened",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "rack"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 20
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": true,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "legs:calf"
+    ],
+    "tags": [
+      "runner-support"
+    ],
+    "cues": [
+      "Balls of the feet on a plate for range",
+      "Straight knees, full stretch",
+      "Pause at the top"
+    ],
+    "instructions": [
+      "This exercise is best performed inside a squat rack for safety purposes. To begin, first set the bar on a rack that best matches your height. Once the correct height is chosen and the bar is loaded, step under the bar and place the bar on the back of your shoulders (slightly below the neck).",
+      "Hold on to the bar using both arms at each side and lift it off the rack by first pushing with your legs and at the same time straightening your torso.",
+      "Step away from the rack and position your legs using a shoulder width medium stance with the toes slightly pointed out. Keep your head up at all times as looking down will get you off balance and also maintain a straight back. The knees should be kept with a slight bend; never locked. This will be your starting position. Tip: For better range of motion you may also place the ball of your feet on a wooden block but be careful as this option requires more balance and a sturdy block.",
+      "Raise your heels as you breathe out by extending your ankles as high as possible and flexing your calf. Ensure that the knee is kept stationary at all times. There should be no bending at any time. Hold the contracted position by a second before you start to go back down.",
+      "Go back slowly to the starting position as you breathe in by lowering your heels as you bend the ankles until calves are stretched.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/barbell-calf-raise/0.jpg",
+      "exercises/barbell-calf-raise/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Standing_Barbell_Calf_Raise"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-bench-press",
+    "name": "Barbell Bench Press",
+    "aliases": [
+      "Bench press",
+      "Bench"
+    ],
+    "family": "bench-press",
+    "movementPattern": "push-horizontal",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "front-delts",
+      "triceps"
+    ],
+    "mechanic": "compound",
+    "angle": "flat",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "lying",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "bench",
+      "rack"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 4,
+      "max": 12
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "chest:flat-press"
+    ],
+    "tags": [],
+    "cues": [
+      "Shoulder blades pinched, feet planted",
+      "Lower to mid-chest, elbows about 45°",
+      "Use a spotter or safeties near failure"
+    ],
+    "instructions": [
+      "Lie back on a flat bench. Using a medium width grip (a grip that creates a 90-degree angle in the middle of the movement between the forearms and the upper arms), lift the bar from the rack and hold it straight over you with your arms locked. This will be your starting position.",
+      "From the starting position, breathe in and begin coming down slowly until the bar touches your middle chest.",
+      "After a brief pause, push the bar back to the starting position as you breathe out. Focus on pushing the bar using your chest muscles. Lock your arms and squeeze your chest in the contracted position at the top of the motion, hold for a second and then start coming down slowly again. Tip: Ideally, lowering the weight should take about twice as long as raising it.",
+      "Repeat the movement for the prescribed amount of repetitions.",
+      "When you are done, place the bar back in the rack."
+    ],
+    "images": [
+      "exercises/barbell-bench-press/0.jpg",
+      "exercises/barbell-bench-press/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Bench_Press_-_Medium_Grip"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "incline-barbell-bench-press",
+    "name": "Incline Barbell Bench Press",
+    "aliases": [
+      "Incline bench"
+    ],
+    "family": "incline-press",
+    "movementPattern": "push-horizontal",
+    "primaryMuscles": [
+      "chest",
+      "front-delts"
+    ],
+    "secondaryMuscles": [
+      "triceps"
+    ],
+    "mechanic": "compound",
+    "angle": "incline",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "lying",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "bench",
+      "rack"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 6,
+      "max": 12
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "chest:incline-press"
+    ],
+    "tags": [],
+    "cues": [
+      "Bench at 30–45°",
+      "Lower to the upper chest",
+      "Shoulder blades back and down"
+    ],
+    "instructions": [
+      "Lie back on an incline bench. Using a medium-width grip (a grip that creates a 90-degree angle in the middle of the movement between the forearms and the upper arms), lift the bar from the rack and hold it straight over you with your arms locked. This will be your starting position.",
+      "As you breathe in, come down slowly until you feel the bar on you upper chest.",
+      "After a second pause, bring the bar back to the starting position as you breathe out and push the bar using your chest muscles. Lock your arms in the contracted position, squeeze your chest, hold for a second and then start coming down slowly again. Tip: it should take at least twice as long to go down than to come up.",
+      "Repeat the movement for the prescribed amount of repetitions.",
+      "When you are done, place the bar back in the rack."
+    ],
+    "images": [
+      "exercises/incline-barbell-bench-press/0.jpg",
+      "exercises/incline-barbell-bench-press/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Incline_Bench_Press_-_Medium_Grip"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "close-grip-barbell-bench-press",
+    "name": "Close-Grip Barbell Bench Press",
+    "aliases": [
+      "Close-grip bench"
+    ],
+    "family": "close-grip-press",
+    "movementPattern": "push-horizontal",
+    "primaryMuscles": [
+      "triceps",
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "front-delts"
+    ],
+    "mechanic": "compound",
+    "angle": "flat",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "lying",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "bench",
+      "rack"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 6,
+      "max": 12
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "chest:v:press-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Hands about shoulder width",
+      "Elbows tucked close to the body",
+      "Touch the lower chest, press up"
+    ],
+    "instructions": [
+      "Lie back on a flat bench. Using a close grip (around shoulder width), lift the bar from the rack and hold it straight over you with your arms locked. This will be your starting position.",
+      "As you breathe in, come down slowly until you feel the bar on your middle chest. Tip: Make sure that - as opposed to a regular bench press - you keep the elbows close to the torso at all times in order to maximize triceps involvement.",
+      "After a second pause, bring the bar back to the starting position as you breathe out and push the bar using your triceps muscles. Lock your arms in the contracted position, hold for a second and then start coming down slowly again. Tip: It should take at least twice as long to go down than to come up.",
+      "Repeat the movement for the prescribed amount of repetitions.",
+      "When you are done, place the bar back in the rack."
+    ],
+    "images": [
+      "exercises/close-grip-barbell-bench-press/0.jpg",
+      "exercises/close-grip-barbell-bench-press/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Close-Grip_Barbell_Bench_Press"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-overhead-press",
+    "name": "Barbell Overhead Press",
+    "aliases": [
+      "Overhead press",
+      "Military press",
+      "OHP"
+    ],
+    "family": "overhead-press",
+    "movementPattern": "push-vertical",
+    "primaryMuscles": [
+      "front-delts"
+    ],
+    "secondaryMuscles": [
+      "side-delts",
+      "triceps",
+      "upper-back"
+    ],
+    "mechanic": "compound",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "rack"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 4,
+      "max": 10
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": true,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "shoulders:vertical-press"
+    ],
+    "tags": [],
+    "cues": [
+      "Squeeze glutes and brace",
+      "Press straight up, head through at the top",
+      "Lower to the upper chest"
+    ],
+    "instructions": [
+      "Start by placing a barbell that is about chest high on a squat rack. Once you have selected the weights, grab the barbell using a pronated (palms facing forward) grip. Make sure to grip the bar wider than shoulder width apart from each other.",
+      "Slightly bend the knees and place the barbell on your collar bone. Lift the barbell up keeping it lying on your chest. Take a step back and position your feet shoulder width apart from each other.",
+      "Once you pick up the barbell with the correct grip length, lift the bar up over your head by locking your arms. Hold at about shoulder level and slightly in front of your head. This is your starting position.",
+      "Lower the bar down to the collarbone slowly as you inhale.",
+      "Lift the bar back up to the starting position as you exhale.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/barbell-overhead-press/0.jpg",
+      "exercises/barbell-overhead-press/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Standing_Military_Press"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-bent-over-row",
+    "name": "Barbell Bent-Over Row",
+    "aliases": [
+      "Barbell row",
+      "Bent-over row"
+    ],
+    "family": "barbell-row",
+    "movementPattern": "pull-horizontal",
+    "primaryMuscles": [
+      "lats",
+      "upper-back"
+    ],
+    "secondaryMuscles": [
+      "rear-delts",
+      "biceps",
+      "lower-back"
+    ],
+    "mechanic": "compound",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 6,
+      "max": 12
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": true,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "back:horizontal-pull",
+      "back:v:row-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Hinge to about 45°, back flat",
+      "Pull to the lower ribs",
+      "No heaving: torso stays still"
+    ],
+    "instructions": [
+      "Holding a barbell with a pronated grip (palms facing down), bend your knees slightly and bring your torso forward, by bending at the waist, while keeping the back straight until it is almost parallel to the floor. Tip: Make sure that you keep the head up. The barbell should hang directly in front of you as your arms hang perpendicular to the floor and your torso. This is your starting position.",
+      "Now, while keeping the torso stationary, breathe out and lift the barbell to you. Keep the elbows close to the body and only use the forearms to hold the weight. At the top contracted position, squeeze the back muscles and hold for a brief pause.",
+      "Then inhale and slowly lower the barbell back to the starting position.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/barbell-bent-over-row/0.jpg",
+      "exercises/barbell-bent-over-row/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Bent_Over_Barbell_Row"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-curl",
+    "name": "Barbell Curl",
+    "aliases": [
+      "Standing barbell curl"
+    ],
+    "family": "barbell-curl",
+    "movementPattern": "elbow-flexion",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "mechanic": "isolation",
+    "grip": "supinated",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 6,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "biceps:supinated",
+      "biceps:v:curl-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Elbows pinned at your sides",
+      "No swinging",
+      "Lower slowly all the way"
+    ],
+    "instructions": [
+      "Stand up with your torso upright while holding a barbell at a shoulder-width grip. The palm of your hands should be facing forward and the elbows should be close to the torso. This will be your starting position.",
+      "While holding the upper arms stationary, curl the weights forward while contracting the biceps as you breathe out. Tip: Only the forearms should move.",
+      "Continue the movement until your biceps are fully contracted and the bar is at shoulder level. Hold the contracted position for a second and squeeze the biceps hard.",
+      "Slowly begin to bring the bar back to starting position as your breathe in.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/barbell-curl/0.jpg",
+      "exercises/barbell-curl/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Curl"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-shrug",
+    "name": "Barbell Shrug",
+    "aliases": [
+      "Shrug"
+    ],
+    "family": "shrug",
+    "movementPattern": "shrug",
+    "primaryMuscles": [
+      "traps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "mechanic": "isolation",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "back:v:shrug"
+    ],
+    "tags": [],
+    "cues": [
+      "Shoulders straight up to the ears",
+      "Pause at the top",
+      "No rolling"
+    ],
+    "instructions": [
+      "Stand up straight with your feet at shoulder width as you hold a barbell with both hands in front of you using a pronated grip (palms facing the thighs). Tip: Your hands should be a little wider than shoulder width apart. You can use wrist wraps for this exercise for a better grip. This will be your starting position.",
+      "Raise your shoulders up as far as you can go as you breathe out and hold the contraction for a second. Tip: Refrain from trying to lift the barbell by using your biceps.",
+      "Slowly return to the starting position as you breathe in.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/barbell-shrug/0.jpg",
+      "exercises/barbell-shrug/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Shrug"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "sumo-deadlift",
+    "name": "Sumo Deadlift",
+    "aliases": [
+      "Sumo pull"
+    ],
+    "family": "barbell-deadlift",
+    "movementPattern": "hinge",
+    "primaryMuscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondaryMuscles": [
+      "adductors",
+      "quads",
+      "lower-back",
+      "traps"
+    ],
+    "mechanic": "compound",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 3,
+      "max": 8
+    },
+    "perSide": false,
+    "fatigueCost": 3,
+    "axialLoad": true,
+    "runImpact": "low",
+    "level": "intermediate",
+    "difficultyRank": 3,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "legs:v:hinge-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Wide stance, toes out, hands inside the knees",
+      "Knees push out over the toes",
+      "Chest up, stand tall with the glutes"
+    ],
+    "instructions": [
+      "Begin with a bar loaded on the ground. Approach the bar so that the bar intersects the middle of the feet. The feet should be set very wide, near the collars. Bend at the hips to grip the bar. The arms should be directly below the shoulders, inside the legs, and you can use a pronated grip, a mixed grip, or hook grip. Relax the shoulders, which in effect lengthens your arms.",
+      "Take a breath, and then lower your hips, looking forward with your head with your chest up. Drive through the floor, spreading your feet apart, with your weight on the back half of your feet. Extend through the hips and knees.",
+      "As the bar passes through the knees, lean back and drive the hips into the bar, pulling your shoulder blades together.",
+      "Return the weight to the ground by bending at the hips and controlling the weight on the way down."
+    ],
+    "images": [
+      "exercises/sumo-deadlift/0.jpg",
+      "exercises/sumo-deadlift/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Sumo_Deadlift"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-good-morning",
+    "name": "Barbell Good Morning",
+    "aliases": [
+      "Good morning"
+    ],
+    "family": "good-morning",
+    "movementPattern": "hinge",
+    "primaryMuscles": [
+      "hamstrings",
+      "lower-back"
+    ],
+    "secondaryMuscles": [
+      "glutes"
+    ],
+    "mechanic": "compound",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "lengthBias": "lengthened",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "rack"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 12
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": true,
+    "runImpact": "low",
+    "level": "intermediate",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "legs:v:hinge-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Light bar on the upper back",
+      "Soft knees, push the hips back",
+      "Flat back; stop at the hamstring stretch"
+    ],
+    "instructions": [
+      "Begin with a bar on a rack at shoulder height. Rack the bar across the rear of your shoulders as you would a power squat, not on top of your shoulders. Keep your back tight, shoulder blades pinched together, and your knees slightly bent. Step back from the rack.",
+      "Begin by bending at the hips, moving them back as you bend over to near parallel. Keep your back arched and your cervical spine in proper alignment.",
+      "Reverse the motion by extending through the hips with your glutes and hamstrings. Continue until you have returned to the starting position."
+    ],
+    "images": [
+      "exercises/barbell-good-morning/0.jpg",
+      "exercises/barbell-good-morning/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Good_Morning"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-glute-bridge",
+    "name": "Barbell Glute Bridge",
+    "aliases": [
+      "Loaded glute bridge"
+    ],
+    "family": "glute-bridge",
+    "movementPattern": "hip-extension",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "hamstrings"
+    ],
+    "mechanic": "isolation",
+    "laterality": "bilateral",
+    "stance": "supine",
+    "lengthBias": "shortened",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "mat"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "legs:v:hip-extension"
+    ],
+    "tags": [],
+    "cues": [
+      "Pad the bar across the hips",
+      "Drive through the heels",
+      "Squeeze at the top, ribs down"
+    ],
+    "instructions": [
+      "Begin seated on the ground with a loaded barbell over your legs. Using a fat bar or having a pad on the bar can greatly reduce the discomfort caused by this exercise. Roll the bar so that it is directly above your hips, and lay down flat on the floor.",
+      "Begin the movement by driving through with your heels, extending your hips vertically through the bar. Your weight should be supported by your upper back and the heels of your feet.",
+      "Extend as far as possible, then reverse the motion to return to the starting position."
+    ],
+    "images": [
+      "exercises/barbell-glute-bridge/0.jpg",
+      "exercises/barbell-glute-bridge/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Glute_Bridge"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-walking-lunge",
+    "name": "Barbell Walking Lunge",
+    "aliases": [
+      "Barbell lunge"
+    ],
+    "family": "lunge",
+    "movementPattern": "lunge",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "adductors",
+      "glute-med"
+    ],
+    "mechanic": "compound",
+    "laterality": "alternating",
+    "stance": "split",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "rack"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 14
+    },
+    "perSide": true,
+    "fatigueCost": 2,
+    "axialLoad": true,
+    "runImpact": "low",
+    "level": "intermediate",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "legs:single-leg"
+    ],
+    "tags": [
+      "runner-support",
+      "balance"
+    ],
+    "cues": [
+      "Bar on the upper back, eyes forward",
+      "Long step, back knee toward the floor",
+      "Drive through the front heel"
+    ],
+    "instructions": [
+      "Begin standing with your feet shoulder width apart and a barbell across your upper back.",
+      "Step forward with one leg, flexing the knees to drop your hips. Descend until your rear knee nearly touches the ground. Your posture should remain upright, and your front knee should stay above the front foot.",
+      "Drive through the heel of your lead foot and extend both knees to raise yourself back up.",
+      "Step forward with your rear foot, repeating the lunge on the opposite leg."
+    ],
+    "images": [
+      "exercises/barbell-walking-lunge/0.jpg",
+      "exercises/barbell-walking-lunge/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Walking_Lunge"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-step-up",
+    "name": "Barbell Step-Up",
+    "aliases": [
+      "Step-up"
+    ],
+    "family": "step-up",
+    "movementPattern": "lunge",
+    "primaryMuscles": [
+      "quads",
+      "glutes"
+    ],
+    "secondaryMuscles": [
+      "glute-med",
+      "hamstrings"
+    ],
+    "mechanic": "compound",
+    "laterality": "unilateral",
+    "stance": "single-leg",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "rack",
+      "bench"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 6,
+      "max": 12
+    },
+    "perSide": true,
+    "fatigueCost": 2,
+    "axialLoad": true,
+    "runImpact": "low",
+    "level": "intermediate",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "legs:single-leg"
+    ],
+    "tags": [
+      "runner-support",
+      "balance"
+    ],
+    "cues": [
+      "Whole foot on the box",
+      "Push up through the top leg, not the back foot",
+      "Lower under control"
+    ],
+    "instructions": [
+      "Stand up straight while holding a barbell placed on the back of your shoulders (slightly below the neck) and stand upright behind an elevated platform (such as the one used for spotting behind a flat bench). This is your starting position.",
+      "Place the right foot on the elevated platform. Step on the platform by extending the hip and the knee of your right leg. Use the heel mainly to lift the rest of your body up and place the foot of the left leg on the platform as well. Breathe out as you execute the force required to come up.",
+      "Step down with the left leg by flexing the hip and knee of the right leg as you inhale. Return to the original standing position by placing the right foot of to next to the left foot on the initial position.",
+      "Repeat with the right leg for the recommended amount of repetitions and then perform with the left leg."
+    ],
+    "images": [
+      "exercises/barbell-step-up/0.jpg",
+      "exercises/barbell-step-up/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Step_Ups"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "decline-barbell-bench-press",
+    "name": "Decline Barbell Bench Press",
+    "aliases": [
+      "Decline bench"
+    ],
+    "family": "decline-press",
+    "movementPattern": "push-horizontal",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [
+      "triceps",
+      "front-delts"
+    ],
+    "mechanic": "compound",
+    "angle": "decline",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "lying",
+    "stability": "free",
+    "equipment": [
+      "barbell",
+      "bench",
+      "rack"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 6,
+      "max": 12
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "chest:v:press-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Feet locked under the pads",
+      "Lower to the lower chest",
+      "Use a spotter or safeties near failure"
+    ],
+    "instructions": [
+      "Secure your legs at the end of the decline bench and slowly lay down on the bench.",
+      "Using a medium width grip (a grip that creates a 90-degree angle in the middle of the movement between the forearms and the upper arms), lift the bar from the rack and hold it straight over you with your arms locked. The arms should be perpendicular to the floor. This will be your starting position. Tip: In order to protect your rotator cuff, it is best if you have a spotter help you lift the barbell off the rack.",
+      "As you breathe in, come down slowly until you feel the bar on your lower chest.",
+      "After a second pause, bring the bar back to the starting position as you breathe out and push the bar using your chest muscles. Lock your arms and squeeze your chest in the contracted position, hold for a second and then start coming down slowly again. Tip: It should take at least twice as long to go down than to come up).",
+      "Repeat the movement for the prescribed amount of repetitions.",
+      "When you are done, place the bar back in the rack."
+    ],
+    "images": [
+      "exercises/decline-barbell-bench-press/0.jpg",
+      "exercises/decline-barbell-bench-press/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Decline_Barbell_Bench_Press"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-upright-row",
+    "name": "Barbell Upright Row",
+    "aliases": [
+      "Upright row"
+    ],
+    "family": "upright-row",
+    "movementPattern": "shoulder-raise",
+    "primaryMuscles": [
+      "side-delts"
+    ],
+    "secondaryMuscles": [
+      "traps",
+      "front-delts"
+    ],
+    "mechanic": "compound",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "shoulders:side-delt"
+    ],
+    "tags": [],
+    "cues": [
+      "Hands wider than shoulders",
+      "Lead with the elbows, stop at chest height",
+      "Skip it if your shoulders pinch"
+    ],
+    "instructions": [
+      "Grasp a barbell with an overhand grip that is slightly less than shoulder width. The bar should be resting on the top of your thighs with your arms extended and a slight bend in your elbows. Your back should also be straight. This will be your starting position.",
+      "Now exhale and use the sides of your shoulders to lift the bar, raising your elbows up and to the side. Keep the bar close to your body as you raise it. Continue to lift the bar until it nearly touches your chin. Tip: Your elbows should drive the motion, and should always be higher than your forearms. Remember to keep your torso stationary and pause for a second at the top of the movement.",
+      "Lower the bar back down slowly to the starting position. Inhale as you perform this portion of the movement.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/barbell-upright-row/0.jpg",
+      "exercises/barbell-upright-row/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Upright_Barbell_Row"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-rear-delt-row",
+    "name": "Barbell Rear Delt Row",
+    "aliases": [
+      "Wide-grip rear delt row"
+    ],
+    "family": "rear-delt-row",
+    "movementPattern": "rear-delt",
+    "primaryMuscles": [
+      "rear-delts"
+    ],
+    "secondaryMuscles": [
+      "upper-back",
+      "traps"
+    ],
+    "mechanic": "compound",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 10,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": true,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "shoulders:v:rear-delt"
+    ],
+    "tags": [],
+    "cues": [
+      "Wide grip, hinge forward",
+      "Pull to the upper chest, elbows out",
+      "Light weight, slow lowering"
+    ],
+    "instructions": [
+      "Stand up straight while holding a barbell using a wide (higher than shoulder width) and overhand (palms facing your body) grip.",
+      "Bend knees slightly and bend over as you keep the natural arch of your back. Let the arms hang in front of you as they hold the bar. Once your torso is parallel to the floor, flare the elbows out and away from your body. Tip: Your torso and your arms should resemble the letter \"T\". Now you are ready to begin the exercise.",
+      "While keeping the upper arms perpendicular to the torso, pull the barbell up towards your upper chest as you squeeze the rear delts and you breathe out. Tip: When performed correctly, this exercise should resemble a bench press in reverse. Also, refrain from using your biceps to do the work. Focus on targeting the rear delts; the arms should only act as hooks.",
+      "Slowly go back to the initial position as you breathe in.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/barbell-rear-delt-row/0.jpg",
+      "exercises/barbell-rear-delt-row/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Barbell_Rear_Delt_Row"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "reverse-grip-barbell-row",
+    "name": "Reverse-Grip Barbell Row",
+    "aliases": [
+      "Underhand barbell row"
+    ],
+    "family": "barbell-row",
+    "movementPattern": "pull-horizontal",
+    "primaryMuscles": [
+      "lats",
+      "upper-back"
+    ],
+    "secondaryMuscles": [
+      "biceps",
+      "rear-delts",
+      "lower-back"
+    ],
+    "mechanic": "compound",
+    "grip": "supinated",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 6,
+      "max": 12
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": true,
+    "runImpact": "none",
+    "level": "intermediate",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "back:v:row-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Palms up, hinge to about 45°",
+      "Pull to the belly button",
+      "Elbows close to the body"
+    ],
+    "instructions": [
+      "Stand erect while holding a barbell with a supinated grip (palms facing up).",
+      "Bend your knees slightly and bring your torso forward, by bending at the waist, while keeping the back straight until it is almost parallel to the floor. Tip: Make sure that you keep the head up. The barbell should hang directly in front of you as your arms hang perpendicular to the floor and your torso. This is your starting position.",
+      "While keeping the torso stationary, lift the barbell as you breathe out, keeping the elbows close to the body and not doing any force with the forearm other than holding the weights. On the top contracted position, squeeze the back muscles and hold for a second.",
+      "Slowly lower the weight again to the starting position as you inhale.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/reverse-grip-barbell-row/0.jpg",
+      "exercises/reverse-grip-barbell-row/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Reverse_Grip_Bent-Over_Rows"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "pendlay-row",
+    "name": "Pendlay Row",
+    "aliases": [
+      "Dead-stop barbell row"
+    ],
+    "family": "barbell-row",
+    "movementPattern": "pull-horizontal",
+    "primaryMuscles": [
+      "lats",
+      "upper-back"
+    ],
+    "secondaryMuscles": [
+      "rear-delts",
+      "biceps",
+      "lower-back"
+    ],
+    "mechanic": "compound",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 5,
+      "max": 10
+    },
+    "perSide": false,
+    "fatigueCost": 2,
+    "axialLoad": true,
+    "runImpact": "none",
+    "level": "intermediate",
+    "difficultyRank": 2,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "back:horizontal-pull"
+    ],
+    "tags": [],
+    "cues": [
+      "Back near parallel, flat",
+      "Every rep starts from the floor",
+      "Pull to the lower chest without standing up"
+    ],
+    "instructions": [
+      "Stand over a loaded barbell with feet hip width. Hinge until your back is nearly parallel to the floor and grip the bar just outside the knees.",
+      "With a flat back, row the bar explosively from the floor to your lower chest.",
+      "Lower it back to the floor and let it settle before the next rep."
+    ],
+    "images": [],
+    "source": {
+      "name": "get-fit"
+    },
+    "license": "FSL-1.1-MIT"
+  },
+  {
+    "id": "ez-bar-curl",
+    "name": "EZ-Bar Curl",
+    "aliases": [
+      "EZ curl"
+    ],
+    "family": "barbell-curl",
+    "movementPattern": "elbow-flexion",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "mechanic": "isolation",
+    "grip": "supinated",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "ez-bar"
+    ],
+    "metric": "reps",
+    "loadType": "ez-bar",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "biceps:supinated",
+      "biceps:v:curl-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Grip the angled part of the bar",
+      "Elbows pinned at your sides",
+      "Lower slowly all the way"
+    ],
+    "instructions": [
+      "Stand up straight while holding an EZ curl bar at the wide outer handle. The palms of your hands should be facing forward and slightly tilted inward due to the shape of the bar. Keep your elbows close to your torso. This will be your starting position.",
+      "Now, while keeping your upper arms stationary, exhale and curl the weights forward while contracting the biceps. Focus on only moving your forearms.",
+      "Continue to raise the weight until your biceps are fully contracted and the bar is at shoulder level. Hold the top contracted position for a moment and squeeze the biceps.",
+      "Then inhale and slowly lower the bar back to the starting position.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/ez-bar-curl/0.jpg",
+      "exercises/ez-bar-curl/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "EZ-Bar_Curl"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "ez-bar-preacher-curl",
+    "name": "EZ-Bar Preacher Curl",
+    "aliases": [
+      "Preacher curl"
+    ],
+    "family": "preacher-curl",
+    "movementPattern": "elbow-flexion",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [
+      "forearms"
+    ],
+    "mechanic": "isolation",
+    "grip": "supinated",
+    "laterality": "bilateral",
+    "stance": "seated",
+    "lengthBias": "lengthened",
+    "stability": "free",
+    "equipment": [
+      "ez-bar",
+      "bench"
+    ],
+    "metric": "reps",
+    "loadType": "ez-bar",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "biceps:v:curl-variant"
+    ],
+    "tags": [],
+    "cues": [
+      "Armpits snug to the pad",
+      "Stop just short of locking out",
+      "No bouncing at the bottom"
+    ],
+    "instructions": [
+      "Sit at a preacher bench with the backs of your upper arms on the pad, holding an EZ bar with an underhand grip.",
+      "Curl the bar up until the forearms are nearly vertical, keeping the upper arms on the pad.",
+      "Lower slowly until the arms are almost straight."
+    ],
+    "images": [
+      "exercises/ez-bar-preacher-curl/0.jpg",
+      "exercises/ez-bar-preacher-curl/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Preacher_Curl"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "ez-bar-skull-crusher",
+    "name": "EZ-Bar Skull Crusher",
+    "aliases": [
+      "Lying triceps extension",
+      "Skull crusher"
+    ],
+    "family": "skull-crusher",
+    "movementPattern": "elbow-extension",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "lying",
+    "lengthBias": "lengthened",
+    "stability": "free",
+    "equipment": [
+      "ez-bar",
+      "bench"
+    ],
+    "metric": "reps",
+    "loadType": "ez-bar",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "triceps:overhead"
+    ],
+    "tags": [],
+    "cues": [
+      "Upper arms stay still",
+      "Lower toward the forehead or just behind it",
+      "Start light: elbows dislike big jumps"
+    ],
+    "instructions": [
+      "Using a close grip, lift the EZ bar and hold it with your elbows in as you lie on the bench. Your arms should be perpendicular to the floor. This will be your starting position.",
+      "Keeping the upper arms stationary, lower the bar by allowing the elbows to flex. Inhale as you perform this portion of the movement. Pause once the bar is directly above the forehead.",
+      "Lift the bar back to the starting position by extending the elbow and exhaling.",
+      "Repeat."
+    ],
+    "images": [
+      "exercises/ez-bar-skull-crusher/0.jpg",
+      "exercises/ez-bar-skull-crusher/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "EZ-Bar_Skullcrusher"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "barbell-overhead-triceps-extension",
+    "name": "Barbell Overhead Triceps Extension",
+    "aliases": [
+      "Standing French press"
+    ],
+    "family": "overhead-extension",
+    "movementPattern": "elbow-extension",
+    "primaryMuscles": [
+      "triceps"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "lengthBias": "lengthened",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 8,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "triceps:overhead"
+    ],
+    "tags": [],
+    "cues": [
+      "Elbows point up and stay in",
+      "Lower behind the head for a deep stretch",
+      "Ribs down, no arching"
+    ],
+    "instructions": [
+      "To begin, stand up holding a barbell or e-z bar using a pronated grip (palms facing forward) with your hands closer than shoulder width apart from each other. Your feet should be about shoulder width apart.",
+      "Now elevate the barbell above your head until your arms are fully extended. Keep your elbows in. This will be your starting position.",
+      "Keeping your upper arms close to your head and elbows in, perpendicular to the floor, lower the resistance in a semicircular motion behind your head until your forearms touch your biceps. Tip: The upper arms should remain stationary and only the forearms should move. Breathe in as you perform this step.",
+      "Go back to the starting position by using the triceps to raise the barbell. Breathe out as you perform this step.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/barbell-overhead-triceps-extension/0.jpg",
+      "exercises/barbell-overhead-triceps-extension/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Standing_Overhead_Barbell_Triceps_Extension"
+    },
+    "license": "Unlicense"
+  },
+  {
+    "id": "reverse-barbell-curl",
+    "name": "Reverse Barbell Curl",
+    "aliases": [
+      "Reverse curl"
+    ],
+    "family": "reverse-curl",
+    "movementPattern": "elbow-flexion",
+    "primaryMuscles": [
+      "forearms",
+      "biceps"
+    ],
+    "secondaryMuscles": [],
+    "mechanic": "isolation",
+    "grip": "pronated",
+    "laterality": "bilateral",
+    "stance": "standing",
+    "stability": "free",
+    "equipment": [
+      "barbell"
+    ],
+    "metric": "reps",
+    "loadType": "barbell",
+    "weightConvention": "total",
+    "loadIncrementLb": 5,
+    "repRange": {
+      "min": 10,
+      "max": 15
+    },
+    "perSide": false,
+    "fatigueCost": 1,
+    "axialLoad": false,
+    "runImpact": "none",
+    "level": "beginner",
+    "difficultyRank": 1,
+    "starter": false,
+    "regressions": [],
+    "progressions": [],
+    "slots": [
+      "biceps:v:curl-variant"
+    ],
+    "tags": [
+      "grip"
+    ],
+    "cues": [
+      "Overhand grip, thumbs over the bar",
+      "Elbows pinned",
+      "Lighter than a normal curl"
+    ],
+    "instructions": [
+      "Stand up with your torso upright while holding a barbell at shoulder width with the elbows close to the torso. The palm of your hands should be facing down (pronated grip). This will be your starting position.",
+      "While holding the upper arms stationary, curl the weights while contracting the biceps as you breathe out. Only the forearms should move. Continue the movement until your biceps are fully contracted and the bar is at shoulder level. Hold the contracted position for a second as you squeeze the muscle.",
+      "Slowly begin to bring the bar back to starting position as your breathe in.",
+      "Repeat for the recommended amount of repetitions."
+    ],
+    "images": [
+      "exercises/reverse-barbell-curl/0.jpg",
+      "exercises/reverse-barbell-curl/1.jpg"
+    ],
+    "source": {
+      "name": "free-exercise-db",
+      "sourceId": "Reverse_Barbell_Curl"
+    },
+    "license": "Unlicense"
   }
 ]

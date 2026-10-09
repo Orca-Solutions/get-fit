@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CATALOG } from '../src/catalog';
 import { generateBlock } from '../src/generator/generateBlock';
 import { referenceProfile } from '../src/profiles';
-import { STRANGE_PERIODIZATION, validateProgram, type Program } from '../src/program';
+import { STRANGE_PERIODIZATION, validateProgram, type LiftDay, type Program } from '../src/program';
 
 const NOW = '2026-10-07T00:00:00Z';
 const profile = referenceProfile(NOW);
@@ -53,6 +53,12 @@ describe('Program', () => {
 
   it('says which day type is missing instead of planning around it', () => {
     const { core: _, ...lifts } = STRANGE_PERIODIZATION.days;
-    expect(() => gen({ ...STRANGE_PERIODIZATION, days: lifts })).toThrow('The schedule has a "core" day, which program strange-periodization doesn\'t define.');
+    expect(() => gen({ ...STRANGE_PERIODIZATION, days: lifts })).toThrow('schedule: day type "core" is not in program strange-periodization');
+  });
+
+  it('checks a program passed in, and names the slot no movement is tagged for', () => {
+    const legs = STRANGE_PERIODIZATION.days.legs as LiftDay;
+    const days = { ...STRANGE_PERIODIZATION.days, legs: { ...legs, base: [...legs.base, { key: 'legs:sled-push', role: 'I' as const }] } };
+    expect(() => gen({ ...STRANGE_PERIODIZATION, days })).toThrow('legs base: no movement is tagged for slot "legs:sled-push"');
   });
 });

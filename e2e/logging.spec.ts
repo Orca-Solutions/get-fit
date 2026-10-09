@@ -150,3 +150,35 @@ test('an edit in progress survives other writes to the workout', async ({ page, 
   await expect(page.getByRole('button', { name: 'Undo set 2' })).toBeVisible();
   await expect(reps1).toHaveValue('4');
 });
+
+test('a day with nothing planned says so instead of crashing', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Start workout|Do it today/ }).first().click();
+  await expect(page).toHaveURL(/\/workout\//);
+  const id = decodeURIComponent(new URL(page.url()).pathname.split('/').pop()!);
+  // What the planner produces when no movement fits the equipment: a workout with no movements.
+  await page.evaluate(
+    (plannedId) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('get-fit');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const store = open.result.transaction('plannedWorkouts', 'readwrite').objectStore('plannedWorkouts');
+          const get = store.get(plannedId);
+          get.onsuccess = () => {
+            const put = store.put({ ...get.result, exercises: [] });
+            put.onerror = () => reject(put.error);
+            put.onsuccess = () => {
+              open.result.close();
+              resolve();
+            };
+          };
+        };
+      }),
+    id,
+  );
+  await page.reload();
+  await expect(page.getByText('Nothing is planned for this day')).toBeVisible();
+  await page.getByRole('button', { name: '‹ Today' }).click();
+  await expect(page).toHaveURL(/\/$/);
+});

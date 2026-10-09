@@ -50,7 +50,11 @@ const getMeta = async <T>(db: GetFitDB, key: string) => (await db.meta.get(key))
 const setMeta = (db: GetFitDB, key: string, value: unknown) => db.meta.put({ key, value });
 const newer = (a: string, b: string) => Date.parse(a) > Date.parse(b);
 
-export async function setSyncToken(token: string | null, db: GetFitDB = defaultDb) {
+/** The database a call works on: its own, else the one configureSync set, else the module default. */
+const dbOf = (db?: GetFitDB) => db ?? defaults.db ?? defaultDb;
+
+export async function setSyncToken(token: string | null, database?: GetFitDB) {
+  const db = dbOf(database);
   if (token?.trim()) await setMeta(db, 'syncToken', token.trim());
   else await db.meta.delete('syncToken');
 }
@@ -59,14 +63,16 @@ export async function setSyncToken(token: string | null, db: GetFitDB = defaultD
  * Whether this device syncs with a server: it has a sync token, signs in through the configured headers
  * (cookies or an account session), or has synced before.
  */
-export async function isSyncConnected(db: GetFitDB = defaultDb): Promise<boolean> {
+export async function isSyncConnected(database?: GetFitDB): Promise<boolean> {
+  const db = dbOf(database);
   const signedIn = await Promise.resolve(defaults.headers?.()).catch(() => undefined);
   if (signedIn) return true;
   const [token, joined, lastPushedAt] = await Promise.all([getMeta<string>(db, 'syncToken'), getMeta<boolean>(db, 'joined'), getMeta<string>(db, 'lastPushedAt')]);
   return !!token || !!joined || !!lastPushedAt;
 }
 
-export async function getSyncStatus(db: GetFitDB = defaultDb): Promise<SyncStatus> {
+export async function getSyncStatus(database?: GetFitDB): Promise<SyncStatus> {
+  const db = dbOf(database);
   const [token, lastSyncedAt, lastError] = await Promise.all([
     getMeta<string>(db, 'syncToken'),
     getMeta<string>(db, 'lastSyncedAt'),

@@ -5,7 +5,7 @@ import { changedFields, mergeSession } from '../src/session';
 import type { Session } from '../src/types';
 import { db, GetFitDB, setDefaultDb } from '../src/client/db';
 import { getProfile, put } from '../src/client/repo';
-import { configureSync, syncNow } from '../src/client/sync';
+import { configureSync, getSyncStatus, isSyncConnected, setSyncToken, syncNow } from '../src/client/sync';
 
 const empty = { cursor: 0, epoch: 'e1', changes: [], accepted: 0 };
 const ok = () => new Response(JSON.stringify(empty), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -25,6 +25,16 @@ describe('client for many accounts', () => {
     } finally {
       setDefaultDb(original);
     }
+  });
+
+  it('keeps the sync token and status in the database configureSync names', async () => {
+    const d = new GetFitDB('get-fit:configured');
+    configureSync({ db: d });
+    await setSyncToken('token-1');
+    expect((await d.meta.get('syncToken'))?.value).toBe('token-1');
+    expect(await db.meta.get('syncToken')).toBeUndefined();
+    expect((await getSyncStatus()).configured).toBe(true);
+    expect(await isSyncConnected()).toBe(true);
   });
 
   it('syncs with caller-supplied headers and credentials instead of a stored token', async () => {
