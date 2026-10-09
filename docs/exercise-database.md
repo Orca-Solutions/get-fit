@@ -6,7 +6,7 @@ Where the exercise catalog comes from, the schema each movement follows, what's 
 
 ## 1. Summary
 
-get-fit ships **its own curated catalog of 158 movements**. 112 are seeded from **free-exercise-db** (public domain, 876 entries, one static JSON file plus photos), keeping its names, instructions and start/end photos; 46 that it lacks (Bulgarian split squat, bird dog, suitcase carry, band movements and others) are written for this project. Every entry carries a hand-written tag layer that no source provides: movement pattern, angle, grip, laterality, the generator slots it can fill, a sensible rep range, fatigue cost and running impact. Everything is vendored into the repo as static data: no live API, nothing that can break at the gym. wger was consulted only as a checklist of commonly done movements and is never copied, so the data carries no share-alike terms.
+get-fit ships **its own curated catalog of 186 movements**. 139 are seeded from **free-exercise-db** (public domain, 876 entries, one static JSON file plus photos), keeping its names, instructions and start/end photos; 47 that it lacks (Bulgarian split squat, bird dog, suitcase carry, Pendlay row, band movements and others) are written for this project. Every entry carries a hand-written tag layer that no source provides: movement pattern, angle, grip, laterality, the generator slots it can fill, a sensible rep range, fatigue cost and running impact. Everything is vendored into the repo as static data: no live API, nothing that can break at the gym. wger was consulted only as a checklist of commonly done movements and is never copied, so the data carries no share-alike terms.
 
 ---
 
@@ -77,7 +77,7 @@ type Exercise = {
   // Equipment and logging
   equipment: Equipment[];     // everything needed, e.g. ["dumbbell", "bench"]
   metric: 'reps' | 'time';
-  loadType: 'smith' | 'dumbbell' | 'kettlebell' | 'machine' | 'cable' | 'bodyweight' | 'assisted' | 'band' | 'plate';
+  loadType: 'smith' | 'barbell' | 'ez-bar' | 'dumbbell' | 'kettlebell' | 'machine' | 'cable' | 'bodyweight' | 'assisted' | 'band' | 'plate';
   weightConvention: 'total' | 'per-hand' | 'added' | 'assist' | 'band' | 'none';
   loadIncrementLb?: number;   // smallest sensible jump: 5 for the Smith machine and most dumbbells, a stack step for machines
 
@@ -112,7 +112,7 @@ The muscle, equipment and movement-pattern enums are in `types.ts`. A separate l
 
 | Convention | Logged as | Example |
 |---|---|---|
-| `total` | the whole load | machine, cable |
+| `total` | the whole load, bar included for a barbell or EZ bar | machine, cable, barbell bench press |
 | `per-hand` | one dumbbell or kettlebell | dumbbell curl |
 | `added` | plates on top of the bar or body (the Smith bar weight from Settings is added back) | Smith squat, weighted push-up |
 | `assist` | the assistance; effective load is bodyweight minus assistance | assisted pull-up |
@@ -187,9 +187,9 @@ This entry is from the generated `exercises.json` (instructions shortened). It m
 
 ## 6. The catalog
 
-158 movements: 136 beginner, 21 intermediate, 1 advanced (the generator picks only beginner and intermediate). ★ = starter, preferred in block 1. + = written for this project (no free-exercise-db entry, so no photos). Everything else maps to a free-exercise-db entry and has start and end photos.
+186 movements: 154 beginner, 31 intermediate, 1 advanced (the generator picks only beginner and intermediate). ★ = starter, preferred in block 1. + = written for this project (no free-exercise-db entry, so no photos). Everything else maps to a free-exercise-db entry and has start and end photos.
 
-The catalog targets a **Planet Fitness-style gym**: no free barbells, racks, EZ bars, trap bar or landmine, so squats, deadlifts, bench and overhead presses are **Smith machine** versions. It has assisted pull-up and dip machines, a hack squat, hip abduction and adduction, and the usual machines. Free-barbell variants are left out; if a gym has them, they're easy to add. Planet Fitness dumbbells usually top out around 60–75 lb (inferred, not checked), which caps dumbbell progressions; past that, a movement moves to its Smith or machine sibling.
+The catalog's base targets a **Planet Fitness-style gym**: no free barbells, racks, EZ bars, trap bar or landmine, so the starter squat, deadlift, bench and overhead press are **Smith machine** versions. It has assisted pull-up and dip machines, a hack squat, hip abduction and adduction, and the usual machines. For a gym with free bars, an optional **barbell pack** (listed after the main tables) adds 28 movements. They need the `barbell`, `ez-bar` or `rack` equipment, so the generator plans them only at a location whose equipment lists that gear, and the lifts that start from a rack (marked in the table) only when a rack is listed too. Trap bar and landmine movements are still left out. Planet Fitness dumbbells usually top out around 60–75 lb (inferred, not checked), which caps dumbbell progressions; past that, a movement moves to its Smith or machine sibling.
 
 **Legs**
 
@@ -229,6 +229,26 @@ The catalog targets a **Planet Fitness-style gym**: no free barbells, racks, EZ 
 
 The grip-heavy curls (hammer, reverse, Zottman) also serve the reverse-curl grip finisher.
 
+**Barbell pack** (planned only where the profile lists `barbell`, `ez-bar` or `rack`; none are starters)
+
+| Pattern | Movements |
+|---|---|
+| Squat | Barbell Back Squat, Barbell Front Squat (rack) |
+| Lunge / single-leg | Barbell Walking Lunge, Barbell Step-Up (rack) |
+| Hinge | Barbell Deadlift, Barbell Romanian Deadlift, Sumo Deadlift, Barbell Good Morning (rack) |
+| Hip extension | Barbell Hip Thrust, Barbell Glute Bridge |
+| Calf | Barbell Calf Raise (rack) |
+| Push, horizontal | Barbell Bench Press, Incline Barbell Bench Press, Close-Grip Barbell Bench Press, Decline Barbell Bench Press (rack and bench) |
+| Push, vertical | Barbell Overhead Press (rack) |
+| Pull, horizontal | Barbell Bent-Over Row, Reverse-Grip Barbell Row, Pendlay Row + |
+| Shrug | Barbell Shrug |
+| Side delt | Barbell Upright Row |
+| Rear delt | Barbell Rear Delt Row |
+| Biceps | Barbell Curl, Reverse Barbell Curl, EZ-Bar Curl, EZ-Bar Preacher Curl |
+| Triceps | EZ-Bar Skull Crusher, Barbell Overhead Triceps Extension |
+
+Barbell and EZ-bar weights are logged as the total on the bar, bar included (`weightConvention: total`), with 5 lb steps.
+
 **Core** (done at home with bands, kettlebells, an ab wheel and bodyweight)
 
 | Dynamic | Movements |
@@ -252,7 +272,7 @@ Stretching, plyometrics, Olympic lifts and strongman are left out. Plyometrics i
 
 1. [`packages/core/scripts/curation.ts`](../packages/core/scripts/curation.ts) lists every movement: its id, name and tags, plus a `sourceId` pointing at a free-exercise-db entry, or its own `instructions` when it has none.
 2. `npm run build:exercises` runs [`build-exercises.ts`](../packages/core/scripts/build-exercises.ts), which downloads free-exercise-db at a **pinned commit** (so the seed never changes underneath the catalog; downloads are cached in `.cache/`), joins it with the curation file and validates every entry: enum values, unique kebab-case ids, regressions and progressions that point at real ids, 2–4 cues, rep ranges in sensible bounds, slots usable with the equipment at their location, one core slot per core dynamic, one grip slot per grip type, and licenses that match the source.
-3. It writes `packages/core/src/data/exercises.json` and copies the photos for the sourced entries (two per movement, about 7 MB in all) into `apps/web/public/exercises/<id>/`, so they work offline.
+3. It writes `packages/core/src/data/exercises.json` and copies the photos for the sourced entries (two per movement, about 8 MB in all) into `apps/web/public/exercises/<id>/`, so they work offline.
 4. `packages/core/tests/exercises.test.ts` runs the same validation against the committed JSON in CI.
 
 Ids are permanent: rename a movement's `name`, never its `id`, because logged sets reference ids forever.
@@ -261,7 +281,7 @@ Ids are permanent: rename a movement's `name`, never its `id`, because logged se
 
 ## 8. Licensing notes
 
-- **The catalog's own work** (tags, cues and the 46 entries written here) is under the project license, FSL-1.1-MIT. Entries that copy free-exercise-db text or photos are public domain under the Unlicense, which can sit in the repo with no conditions. The README credits free-exercise-db as a courtesy.
+- **The catalog's own work** (tags, cues and the 47 entries written here) is under the project license, FSL-1.1-MIT. Entries that copy free-exercise-db text or photos are public domain under the Unlicense, which can sit in the repo with no conditions. The README credits free-exercise-db as a courtesy.
 - The per-entry `license` field reads `Unlicense` for entries drawn from free-exercise-db and `FSL-1.1-MIT` for the project's own entries.
 - **Provenance caveat (inferred, not confirmed):** free-exercise-db's instructions and photos read as though they came from an older commercial site's exercise library, and the repo doesn't say where they came from. The Unlicense is the repo author's statement. Anyone who wants zero doubt can ship only the project's own cues and drop the photos.
 - **wger** is never copied, only consulted for which movements are common. Exercise names aren't copyrightable, so writing entries for movements wger also lists is fine.
@@ -271,8 +291,8 @@ Ids are permanent: rename a movement's `name`, never its `id`, because logged se
 
 ## 9. Choices made
 
-1. **Catalog size:** about 150 curated movements, seeded from free-exercise-db, limited to what fits the target gym and home kit.
+1. **Catalog size:** about 160 curated movements, seeded from free-exercise-db, limited to what fits the target gym and home kit, plus the 28-movement barbell pack.
 2. **Photos:** bundled. free-exercise-db has two photos per movement (start and end), and the app shows them as a simple looping demo. Video is out of scope.
-3. **Gym:** a Planet Fitness-style gym: Smith machine for squat, deadlift, bench and overhead press; assisted pull-up and dip, hack squat, hip adduction and abduction, and most typical machines.
+3. **Gym:** a Planet Fitness-style gym: Smith machine for squat, deadlift, bench and overhead press; assisted pull-up and dip, hack squat, hip adduction and abduction, and most typical machines. Free barbells, EZ bars and racks are an optional pack for gyms that have them.
 4. **Smith lifts from block 1** (blocks are 4 weeks: 3 loading weeks and a deload; see [periodization.md](periodization.md)).
 5. **Home core kit** in the reference profile: resistance bands with a door anchor, two 25 lb kettlebells and one 35 lb, and an ab wheel. The pair of 25s allows two-bell carries and holds; single-bell work progresses 25 → 35, then by reps, time and harder variants. Bands default to light, medium and heavy until the user names their own.

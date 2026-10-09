@@ -13,6 +13,10 @@ Notable changes to get-fit. Releases of the core package are tagged `core-v<vers
 - CI lints workflow files.
 - Rest timer on the workout screen: a large count and a thin bar in the thumb zone, −30 / +30, tap to dismiss, optional chime.
 - Documentation refreshed, with a new API reference for the core package and the sync server.
+- **License:** new work is source-available under FSL-1.1-MIT, which converts to MIT two years after each release. core-v0.1.0 and earlier stay MIT.
+- **Barbell pack:** 28 free-barbell and EZ-bar movements (squats, deadlifts, bench and overhead presses, rows, curls, skull crushers and more), with new equipment tags `barbell`, `ez-bar` and `rack` and load types `barbell` and `ez-bar`. They're planned only where the profile lists that gear. With a barbell, the barbell lifts take over the primary slot as it rotates, while block 1 keeps the Smith starters (program 1.1.0). Plans for a gym without a barbell are unchanged.
+- `generateBlock` validates a program passed to it and throws its errors, and the notice for an empty slot says when the movements that fit are already on that day.
+- The workout screen shows a message for a day with no movements instead of failing, and the sync token and status functions use the database `configureSync` names.
 
 ## 2026-10-08
 

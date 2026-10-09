@@ -1,6 +1,6 @@
 # Training logic: "strange periodization", made explicit
 
-The rules get-fit's plan generator follows, with the research behind them. The numbers live in `STRANGE_PERIODIZATION` (version 1.0.0) in [`packages/core/src/program.ts`](../packages/core/src/program.ts); the method (rotation, balancing, fallbacks) lives in [`packages/core/src/generator/`](../packages/core/src/generator). Code comments cite this document by section number, so keep the numbering stable.
+The rules get-fit's plan generator follows, with the research behind them. The numbers live in `STRANGE_PERIODIZATION` (version 1.1.0) in [`packages/core/src/program.ts`](../packages/core/src/program.ts); the method (rotation, balancing, fallbacks) lives in [`packages/core/src/generator/`](../packages/core/src/generator). Code comments cite this document by section number, so keep the numbering stable.
 
 Each rule below is implemented unless it is marked **Not yet implemented**. Those are collected in [§4.8](#48-not-yet-implemented).
 
@@ -79,7 +79,7 @@ The default schedule comes from `neutralProfile()` and `referenceProfile()` in [
 
 **Other defaults:**
 - **Goal:** muscle first, strength second.
-- **Gym:** the reference profile's gym is a Planet Fitness: no free barbell, trap bar or deadlift platform. Squats, deadlifts and presses are done on the **Smith machine**, from block 1. The gym also has dumbbells, cables, a leg press, a hack squat, hip adduction and abduction, and assisted pull-up and dip machines. Equipment per location is part of the profile, and the generator only picks what a day's location has.
+- **Gym:** the reference profile's gym is a Planet Fitness: no free barbell, trap bar or deadlift platform. Squats, deadlifts and presses are done on the **Smith machine**, from block 1. The gym also has dumbbells, cables, a leg press, a hack squat, hip adduction and abduction, and assisted pull-up and dip machines. Equipment per location is part of the profile, and the generator only picks what a day's location has. A gym that lists a free barbell (and a rack for the racked lifts) also gets the catalog's barbell pack: the Smith lifts still lead block 1, and the barbell versions take over the primary slot when it next rotates.
 - **Home:** resistance bands with a door anchor, an ab wheel, and kettlebells (the reference profile has two 25 lb and one 35 lb).
 - **Units:** lb.
 
@@ -211,7 +211,7 @@ The highest-scoring candidate wins. Scoring:
 - \+ in block 1, a movement marked as a starter
 - \+ beginner level; − intermediate (used when nothing beginner-friendly offers variety)
 - \+ marked Favourite
-- \+ on a P slot, a Smith machine lift (so the Smith squat, deadlift, bench and press lead from block 1)
+- \+ on a P slot, a Smith machine lift, and a little more for a free-barbell lift (so the Smith squat, deadlift, bench and press lead from block 1, because barbell movements are never starters, and with a barbell kit the barbell versions win the primary slot once it rotates)
 - − a second high-fatigue compound in the same session (keeps leg day recoverable for a daily runner)
 - − a high impact on running
 - − for a variety slot, a movement already used as variety this block, or one from the same family as the day's base movements
@@ -221,7 +221,7 @@ Rotation rules:
 - **Base slots keep the same exercise for the whole block,** so progress is measurable.
 - **V slots are where novelty lives.** They draw from the day's pool, avoid repeating a family already in the session, and can change every week. They only appear on M and L days, which is Anatoly's "wider variety when the bar gets lighter."
 - **At each block boundary,** each lifting day rotates one isolation slot, and on even-numbered blocks one compound slot too (secondary compounds before the primary lift, so the main lift sticks around longest). Any exercise that has **stalled** (no e1RM gain over its last 3 exposures) also rotates out.
-- **When nothing fits:** if every candidate for a slot is marked Avoid or Can't do, or none fits the available equipment, the slot takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of the block. The block's rationale says which, so a gap is never silent; adding equipment or removing a flag brings the slot back.
+- **When nothing fits:** if every candidate for a slot is marked Avoid or Can't do, none fits the available equipment, or the ones that fit are already on that day, the slot takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of the block. The block's rationale says which, so a gap is never silent; adding equipment or removing a flag brings the slot back.
 - **Mid-session swap:** the app offers movements tagged for the same slot first, then ones with the same movement pattern and muscles, limited to the equipment at that day's location. Logged sets attach to whatever was actually done.
 
 ### 4.4 Loads and progression (the feedback loop)
