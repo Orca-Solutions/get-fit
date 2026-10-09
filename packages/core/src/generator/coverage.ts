@@ -1,5 +1,6 @@
 // Weekly sets per muscle group across the 3 loading weeks (docs/periodization.md §4.2 balance targets).
 import type { Exercise, PlannedWorkout } from '../types.js';
+import { STRANGE_PERIODIZATION, type TrainingParams } from '../program.js';
 
 export const COVERAGE_GROUPS = [
   'quads', 'glutes-hamstrings', 'chest', 'back', 'side-delts', 'biceps', 'triceps',
@@ -20,27 +21,10 @@ export const GROUP_LABEL: Record<CoverageGroup, string> = {
   forearms: 'forearms',
 };
 
-/**
- * Target sets per week, the same every loading week, so every muscle grows at about the same rate.
- * Forearms have no band: the grip finishers and the pulling work cover them.
- */
-export const BANDS: Partial<Record<CoverageGroup, readonly [number, number]>> = {
-  quads: [9, 11],
-  'glutes-hamstrings': [10, 12],
-  chest: [9, 11],
-  back: [9, 11],
-  'side-delts': [6, 8],
-  biceps: [7, 9],
-  triceps: [7, 9],
-  calves: [3, 5],
-  'rear-delts': [3, 5],
-};
+/** The original program's weekly set bands (Program.params.bands). */
+export const BANDS: Partial<Record<CoverageGroup, readonly [number, number]>> = STRANGE_PERIODIZATION.params.bands;
 
 const MAJOR: CoverageGroup[] = ['quads', 'glutes-hamstrings', 'chest', 'back', 'side-delts', 'biceps', 'triceps'];
-const FLOOR: Record<CoverageGroup, number> = {
-  quads: 4, 'glutes-hamstrings': 4, chest: 4, back: 4, 'side-delts': 4, biceps: 4, triceps: 4,
-  calves: 2, 'rear-delts': 2, forearms: 2,
-};
 
 export function groupOf(m: string): CoverageGroup | undefined {
   if (m === 'lats' || m === 'upper-back') return 'back';
@@ -77,8 +61,10 @@ export type CoverageReport = {
 export function weeklySets(workouts: PlannedWorkout[], byId: Map<string, Exercise>): Record<CoverageGroup, number>[] {
   const weeks: Record<CoverageGroup, number>[] = [0, 1, 2].map(() => Object.fromEntries(COVERAGE_GROUPS.map((g) => [g, 0])) as Record<CoverageGroup, number>);
   for (const w of workouts) {
-    if (w.weekIndex > 2 || w.sessionType === 'core') continue;
+    if (w.weekIndex > 2) continue;
     for (const pe of w.exercises) {
+      // Core work isn't balanced against the lifting bands.
+      if (pe.role === 'K') continue;
       const ex = byId.get(pe.exerciseId);
       if (!ex) continue;
       for (const [g, c] of creditOf(ex)) weeks[w.weekIndex][g] += c * pe.sets.length;
@@ -87,7 +73,7 @@ export function weeklySets(workouts: PlannedWorkout[], byId: Map<string, Exercis
   return weeks;
 }
 
-export function coverageReport(workouts: PlannedWorkout[], byId: Map<string, Exercise>): CoverageReport {
+export function coverageReport(workouts: PlannedWorkout[], byId: Map<string, Exercise>, params: Pick<TrainingParams, 'bands' | 'floors'> = STRANGE_PERIODIZATION.params): CoverageReport {
   const weeks = weeklySets(workouts, byId);
   const average = Object.fromEntries(COVERAGE_GROUPS.map((g) => [g, Math.round((weeks.reduce((n, wk) => n + wk[g], 0) / 3) * 10) / 10])) as Record<CoverageGroup, number>;
   const under: WeekGroup[] = [];
@@ -95,10 +81,10 @@ export function coverageReport(workouts: PlannedWorkout[], byId: Map<string, Exe
   const warnings: string[] = [];
   weeks.forEach((wk, week) => {
     for (const g of COVERAGE_GROUPS) {
-      const band = BANDS[g];
+      const band = params.bands[g];
       if (band && wk[g] < band[0]) under.push({ week, group: g });
       if (band && wk[g] > band[1]) over.push({ week, group: g });
-      if (wk[g] < FLOOR[g]) warnings.push(`Week ${week + 1}: ${g} has ${wk[g]} sets (floor ${FLOOR[g]}).`);
+      if (wk[g] < params.floors[g]) warnings.push(`Week ${week + 1}: ${g} has ${wk[g]} sets (floor ${params.floors[g]}).`);
     }
   });
   return { weeks, average, under, over, warnings };

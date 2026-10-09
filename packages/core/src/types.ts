@@ -33,10 +33,11 @@ export type CoreDynamic =
 export type GripType = 'support' | 'crush' | 'pinch' | 'wrist-flexion' | 'wrist-extension' | 'rotation' | 'reverse-curl';
 
 /**
- * Slot keys: which generator slots an exercise may fill. Base slots are fixed per block;
- * "v:" slots are the variety pools that only appear on moderate and light days.
+ * The slot tags the curated catalog uses: which generator slots an exercise may fill. Base slots are
+ * fixed per block; "v:" slots are the variety pools that only appear on moderate and light days.
+ * scripts/build-exercises.ts checks every catalog entry against this list.
  */
-export type SlotKey =
+export type CatalogSlot =
   // Wednesday: legs
   | 'legs:squat' | 'legs:hinge' | 'legs:single-leg' | 'legs:knee-extension' | 'legs:knee-flexion' | 'legs:calf'
   | 'legs:v:hip-extension' | 'legs:v:squat-machine' | 'legs:v:adduction' | 'legs:v:abduction' | 'legs:v:hinge-variant'
@@ -52,6 +53,9 @@ export type SlotKey =
   | `core:${CoreDynamic}`
   // Grip finishers
   | `grip:${GripType}`;
+
+/** A slot a program's day templates name; validated against the program (see validateProgram). */
+export type SlotKey = string;
 
 export type Exercise = {
   id: string;
@@ -97,7 +101,8 @@ export type Exercise = {
 };
 
 export type Location = 'gym' | 'home';
-export type SessionType = 'legs' | 'chest-biceps' | 'back-tri-shoulders' | 'core';
+/** A day type the program defines, e.g. "legs" or "core" (see Program.days). */
+export type SessionType = string;
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Sunday, like Date#getDay
 export type Zone = 'H' | 'M' | 'L';
 export type SlotRole = 'P' | 'C' | 'I' | 'V' | 'G' | 'K'; // primary, compound, isolation, variety, grip, core
@@ -170,6 +175,9 @@ export type Block = SyncFields & {
   weeks: number;
   index: number; // 1-based block number
   generatorVersion: string;
+  /** The program that planned it (Program.id and version); missing on blocks planned before programs existed. */
+  programId?: string;
+  programVersion?: string;
   rationale: string;
   /** exerciseId chosen per base slot, by session type. Used to rotate next block. */
   baseSlots: Record<string, string>;

@@ -2,6 +2,7 @@
 // The IndexedDB client lives in "./client" and the SQLite sync store in "./sqlite".
 export type * from './types.js';
 export * from './protocol.js';
+export * from './program.js';
 export * from './profiles.js';
 export * from './catalog.js';
 export * from './data/muscleGroups.js';

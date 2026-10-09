@@ -1,4 +1,4 @@
-// Golden test: the plan Jason's profile gets for blocks 1 to 8 is pinned, so moving the training rules
+// Golden test: the plan the reference profile gets for blocks 1 to 8 is pinned, so moving the training rules
 // around (into a package, into a Program) can't change a single planned set. Regenerate the fixture
 // only for an intended rule change: GOLDEN_UPDATE=1 npx vitest run tests/golden.test.ts
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -13,7 +13,7 @@ import type { Exercise, Profile } from '../src/types';
 const FIXTURE = new URL('./golden/blocks.json', import.meta.url);
 const exercises = catalog as unknown as Exercise[];
 const NOW = '2026-10-07T00:00:00Z';
-const jason = referenceProfile(NOW);
+const reference = referenceProfile(NOW);
 
 type Lived = (prev: GeneratedBlock[]) => Partial<GeneratorInput>;
 
@@ -49,10 +49,10 @@ const lived: Lived = (prev) => {
 };
 
 const scenarios: Record<string, () => GeneratedBlock[]> = {
-  'jason, blocks 1-8': () => chain(jason, 8),
-  'jason, blocks 1-8, lived in': () => chain(jason, 8, lived),
-  'jason, flat core': () => chain({ ...jason, coreWave: 'flat' }, 2),
-  'jason, a whole slot avoided': () => chain(jason, 2, () => ({ flags: Object.fromEntries(inSlot('legs:knee-flexion').map((id) => [id, { avoid: true }])) })),
+  'reference profile, blocks 1-8': () => chain(reference, 8),
+  'reference profile, blocks 1-8, lived in': () => chain(reference, 8, lived),
+  'reference profile, flat core': () => chain({ ...reference, coreWave: 'flat' }, 2),
+  'reference profile, a whole slot avoided': () => chain(reference, 2, () => ({ flags: Object.fromEntries(inSlot('legs:knee-flexion').map((id) => [id, { avoid: true }])) })),
 };
 
 const digest = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex');
@@ -70,7 +70,9 @@ function summary(g: GeneratedBlock): string[] {
 }
 
 type Pinned = { digest: string; summary: string[] };
-const pin = (g: GeneratedBlock): Pinned => ({ digest: digest(g), summary: summary(g) });
+/** Which program planned a block is recorded alongside the plan, not part of it. */
+const plan = (g: GeneratedBlock) => ({ ...g, block: { ...g.block, programId: undefined, programVersion: undefined } });
+const pin = (g: GeneratedBlock): Pinned => ({ digest: digest(plan(g)), summary: summary(g) });
 
 describe('golden plans', () => {
   const actual = Object.fromEntries(Object.entries(scenarios).map(([name, run]) => [name, run().map(pin)]));

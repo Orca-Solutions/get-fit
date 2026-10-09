@@ -14,7 +14,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import type {
-  CoreDynamic, Equipment, Exercise, GripType, LoadType, MovementPattern, Muscle, SlotKey, WeightConvention,
+  CoreDynamic, Equipment, Exercise, GripType, LoadType, MovementPattern, Muscle, CatalogSlot, WeightConvention,
 } from '../src/types.js';
 import type { CuratedEntry } from './curation';
 
@@ -76,7 +76,7 @@ export const VARIETY_SLOTS = [
 ] as const;
 export const CORE_SLOTS = CORE_DYNAMICS.map((d) => `core:${d}` as const);
 export const GRIP_SLOTS = GRIP_TYPES.map((g) => `grip:${g}` as const);
-export const ALL_SLOTS: readonly SlotKey[] = [...BASE_SLOTS, ...VARIETY_SLOTS, ...CORE_SLOTS, ...GRIP_SLOTS];
+export const ALL_SLOTS: readonly CatalogSlot[] = [...BASE_SLOTS, ...VARIETY_SLOTS, ...CORE_SLOTS, ...GRIP_SLOTS];
 
 exact<Exact<(typeof MOVEMENT_PATTERNS)[number], MovementPattern>>(true);
 exact<Exact<(typeof MUSCLES)[number], Muscle>>(true);
@@ -86,7 +86,7 @@ exact<Exact<(typeof WEIGHT_CONVENTIONS)[number], WeightConvention>>(true);
 exact<Exact<(typeof CORE_DYNAMICS)[number], CoreDynamic>>(true);
 exact<Exact<(typeof GRIP_TYPES)[number], GripType>>(true);
 exact<
-  Exact<(typeof BASE_SLOTS)[number] | (typeof VARIETY_SLOTS)[number] | `core:${CoreDynamic}` | `grip:${GripType}`, SlotKey>
+  Exact<(typeof BASE_SLOTS)[number] | (typeof VARIETY_SLOTS)[number] | `core:${CoreDynamic}` | `grip:${GripType}`, CatalogSlot>
 >(true);
 
 const MECHANICS = ['compound', 'isolation'];
@@ -252,7 +252,7 @@ export function validateCatalog(exercises: readonly Exercise[]): string[] {
 /** Slot coverage rules (see periodization §4.2): enough usable candidates in every slot. */
 export function checkCoverage(exercises: readonly Exercise[]): string[] {
   const errors: string[] = [];
-  const inSlot = (slot: SlotKey, available: readonly Equipment[]) =>
+  const inSlot = (slot: CatalogSlot, available: readonly Equipment[]) =>
     exercises.filter((e) => e.slots.includes(slot) && usableWith(e, available));
 
   for (const slot of BASE_SLOTS) {

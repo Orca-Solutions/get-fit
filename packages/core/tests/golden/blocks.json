@@ -1,5 +1,5 @@
 {
- "jason, blocks 1-8": [
+ "reference profile, blocks 1-8": [
   {
    "digest": "9260354ca12f31a423c83535b25a7c35f65943c102d2d177c4d83c4dc60fba3d",
    "summary": [
@@ -1103,7 +1103,7 @@
    ]
   }
  ],
- "jason, blocks 1-8, lived in": [
+ "reference profile, blocks 1-8, lived in": [
   {
    "digest": "9260354ca12f31a423c83535b25a7c35f65943c102d2d177c4d83c4dc60fba3d",
    "summary": [
@@ -2207,7 +2207,7 @@
    ]
   }
  ],
- "jason, flat core": [
+ "reference profile, flat core": [
   {
    "digest": "97945d8acde082afdd40dc8f109d82ab2d1a54e047b20b0ed861b8db2914d4c9",
    "summary": [
@@ -2485,7 +2485,7 @@
    ]
   }
  ],
- "jason, a whole slot avoided": [
+ "reference profile, a whole slot avoided": [
   {
    "digest": "148d3bc609002a5be57d70f7bd90089819d8b1e7556169ee719346d4cc6d50a5",
    "summary": [

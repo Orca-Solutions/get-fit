@@ -6,12 +6,9 @@ import type {
 } from '../types.js';
 import { addDays } from '../dates.js';
 import { hash } from '../ids.js';
-import {
-  CORE_SUPERSETS, CORE_WAVE, GRIP_ROTATION, HEAVY_EXTRA, LIFT_TEMPLATES,
-  SESSION_LABEL, V_SLOTS, ZONE_NAME, ZONE_ROTATION, compoundReps, coreTargets, isolationReps, restFor,
-  rirFor, setsFor, type BaseSlot,
-} from './templates.js';
-import { BANDS, GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
+import { ZONE_NAME, compoundReps, coreTargets, isolationReps, restFor, rirFor, setsFor } from './templates.js';
+import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
+import { STRANGE_PERIODIZATION, coreDayType, liftDays, type BaseSlot, type CoreDay, type LiftDay, type Program, type TrainingParams } from '../program.js';
 
 export const GENERATOR_VERSION = '1.1.0';
 export const BLOCK_WEEKS = 4;
@@ -20,6 +17,8 @@ export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: bool
 
 export type GeneratorInput = {
   profile: Profile;
+  /** The training program; defaults to the original one. */
+  program?: Program;
   exercises: Exercise[];
   flags?: ExerciseFlags;
   /** Monday the block starts on. */
@@ -45,6 +44,10 @@ export type GeneratedBlock = { block: Block; workouts: PlannedWorkout[]; coverag
 
 type Ctx = {
   input: GeneratorInput;
+  program: Program;
+  p: TrainingParams;
+  /** The program's core day type, if it has one. */
+  coreType: string | undefined;
   blockIndex: number;
   byId: Map<string, Exercise>;
   now: string;
@@ -61,8 +64,12 @@ const WEEKDAY_OFFSET: Record<Weekday, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 
 export function generateBlock(input: GeneratorInput): GeneratedBlock {
   const prev = input.previousBlock;
   const blockIndex = prev ? prev.index + 1 : 1;
+  const program = input.program ?? STRANGE_PERIODIZATION;
   const ctx: Ctx = {
     input,
+    program,
+    p: program.params,
+    coreType: coreDayType(program),
     blockIndex,
     byId: new Map(input.exercises.map((e) => [e.id, e])),
     now: input.now ?? new Date().toISOString(),
@@ -75,29 +82,28 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
   const blockId = blockIdFor(input.startDate);
 
   // 1. Pick each day's base exercises once for the whole block (§4.3).
-  const liftTypes = Object.keys(LIFT_TEMPLATES) as Exclude<SessionType, 'core'>[];
   const base: Record<string, Exercise[]> = {};
-  for (const type of liftTypes) base[type] = pickBase(ctx, type);
+  for (const [type, day] of liftDays(program)) base[type] = pickBase(ctx, type, day);
   const coreBase = pickCoreBase(ctx);
 
   // 2. Base movements alone first: what each week gives every muscle before extra, variety and grip sets.
   const baseOnly = layOut(ctx, base, coreBase, null);
   const short = new Set<CoverageGroup>();
   const projected = weeklySets(baseOnly, ctx.byId);
-  projected.forEach((wk) => (Object.keys(BANDS) as CoverageGroup[]).forEach((g) => wk[g] < BANDS[g]![0] && short.add(g)));
+  projected.forEach((wk) => (Object.keys(ctx.p.bands) as CoverageGroup[]).forEach((g) => wk[g] < ctx.p.bands[g]![0] && short.add(g)));
 
   // 3. The real weeks: muscles under their band claim the extra sets first, every week (§4.2).
   const workouts = layOut(ctx, base, coreBase, projected);
 
   // 4. Coverage check, week by week: trim muscles over their band, then fill any still under it.
-  let coverage = coverageReport(workouts, ctx.byId);
+  let coverage = coverageReport(workouts, ctx.byId, ctx.p);
   for (let guard = 0; guard < 20 && coverage.over.length; guard++) {
-    if (!coverage.over.some((o) => removeCoverageSet(workouts, ctx.byId, o.group, o.week, coverage))) break;
-    coverage = coverageReport(workouts, ctx.byId);
+    if (!coverage.over.some((o) => removeCoverageSet(ctx, workouts, o.group, o.week, coverage))) break;
+    coverage = coverageReport(workouts, ctx.byId, ctx.p);
   }
   for (let guard = 0; guard < 20 && coverage.under.length; guard++) {
-    if (!coverage.under.some((u) => addCoverageSet(workouts, ctx.byId, u.group, u.week, coverage) || addCoverageMovement(ctx, workouts, u.group, u.week, coverage))) break;
-    coverage = coverageReport(workouts, ctx.byId);
+    if (!coverage.under.some((u) => addCoverageSet(ctx, workouts, u.group, u.week, coverage) || addCoverageMovement(ctx, workouts, u.group, u.week, coverage))) break;
+    coverage = coverageReport(workouts, ctx.byId, ctx.p);
   }
 
   const shortNames = [...short].map((g) => GROUP_LABEL[g]);
@@ -111,6 +117,8 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
     weeks: BLOCK_WEEKS,
     index: blockIndex,
     generatorVersion: GENERATOR_VERSION,
+    programId: program.id,
+    programVersion: program.version,
     baseSlots: ctx.baseSlots,
     rationale:
       `Block ${blockIndex}: 3 loading weeks and a deload. Each day rotates heavy, moderate and light, so every muscle gets all three. ` +
@@ -127,7 +135,7 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
  * alone) the variety slots and heavy-day extra sets go to muscles under their band; without it the
  * lifting days get their base movements only.
  */
-function layOut(ctx: Ctx, base: Record<string, Exercise[]>, coreBase: Record<CoreDynamic, Exercise>, projected: Record<CoverageGroup, number>[] | null): PlannedWorkout[] {
+function layOut(ctx: Ctx, base: Record<string, Exercise[]>, coreBase: Partial<Record<CoreDynamic, Exercise>>, projected: Record<CoverageGroup, number>[] | null): PlannedWorkout[] {
   const { input } = ctx;
   const blockId = blockIdFor(input.startDate);
   const workouts: PlannedWorkout[] = [];
@@ -141,10 +149,12 @@ function layOut(ctx: Ctx, base: Record<string, Exercise[]>, coreBase: Record<Cor
       const date = addDays(weekStart, offsets[0]);
       const windowEnd = offsets.length > 1 ? addDays(weekStart, offsets[offsets.length - 1]) : undefined;
       const common = { blockId, date, windowEnd, weekIndex: week, location: entry.location };
-      if (entry.type === 'core') {
-        workouts.push(buildCore(ctx, common, coreBase));
+      const day = ctx.program.days[entry.type];
+      if (!day) throw new Error(`The schedule has a "${entry.type}" day, which program ${ctx.program.id} doesn't define.`);
+      if (day.kind === 'core') {
+        workouts.push(buildCore(ctx, common, entry.type, day, coreBase));
       } else {
-        const zone: Zone | 'deload' = week === 3 ? 'deload' : ZONE_ROTATION[entry.type][week];
+        const zone: Zone | 'deload' = week === 3 ? 'deload' : day.zones[week];
         const used = usedV.get(entry.type) ?? new Set<string>();
         usedV.set(entry.type, used);
         const w = buildLift(ctx, common, entry.type, zone, base[entry.type], used, gripCounter, running?.[week] ?? null);
@@ -170,7 +180,7 @@ export function flaggedOut(flags: ExerciseFlags[string] | undefined, location: L
 
 function usable(ctx: Ctx, ex: Exercise, location: Location, ignoreFlags = false): boolean {
   if (!ignoreFlags && flaggedOut(ctx.input.flags?.[ex.id], location)) return false;
-  if (ex.level === 'advanced') return false;
+  if (!ctx.program.selection.allowedLevels.includes(ex.level)) return false;
   const have = ctx.input.profile.equipmentByLocation[location];
   if (ex.loadType === 'kettlebell' && ex.weightConvention === 'per-hand' && !ctx.input.profile.kettlebells.some((k) => k.count >= 2)) return false;
   return ex.equipment.every((e) => have.includes(e));
@@ -213,8 +223,7 @@ function jitter(ctx: Ctx, id: string, salt = ''): number {
   return (hash(`${id}|${ctx.blockIndex}|${salt}`) % 1000) / 1000;
 }
 
-function pickBase(ctx: Ctx, type: Exclude<SessionType, 'core'>): Exercise[] {
-  const tpl = LIFT_TEMPLATES[type];
+function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): Exercise[] {
   const prev = ctx.input.previousBlock?.baseSlots ?? {};
   // At each boundary rotate one isolation slot, and on even blocks one compound slot too (§4.3).
   const rotate = new Set<number>();
@@ -247,12 +256,11 @@ function scoreBase(ctx: Ctx, e: Exercise, slot: BaseSlot, prevId: string | undef
   const flags = ctx.input.flags?.[e.id];
   const prevFamily = prevId ? ctx.byId.get(prevId)?.family : undefined;
   let s = jitter(ctx, e.id, slot.key);
-  if (ctx.blockIndex === 1 && e.starter) s += 10;
-  // Jason already runs the Smith squat, deadlift, bench and press: they lead from block 1.
-  if (slot.role === 'P' && e.loadType === 'smith') s += 3;
-  if (e.level === 'beginner') s += 2;
-  else s -= 3; // intermediate: only when nothing beginner-friendly offers variety
-  if (flags?.favourite) s += 3;
+  const rules = ctx.program.selection;
+  if (ctx.blockIndex === 1 && e.starter) s += rules.starterBonus;
+  if (slot.role === 'P') s += rules.primaryLoadTypeBonus[e.loadType] ?? 0;
+  s += rules.levelBonus[e.level] ?? 0;
+  if (flags?.favourite) s += rules.favouriteBonus;
   if (prevId) {
     if (e.id === prevId) s -= 20;
     else if (e.family !== prevFamily) s += 4;
@@ -260,9 +268,9 @@ function scoreBase(ctx: Ctx, e: Exercise, slot: BaseSlot, prevId: string | undef
   if (chosen.some((c) => c.family === e.family)) s -= 6;
   // A second press or row should be loadable: push-ups and inverted rows stall on reps alone.
   if (slot.distinctFamily && e.loadType === 'bodyweight') s -= 4;
-  // Keep heavy leg day recoverable for the daily run: don't stack two fatigue-3 lifts (§4.6).
-  if (slot.role !== 'I' && e.fatigueCost === 3 && chosen.some((c) => c.fatigueCost === 3)) s -= 8;
-  if (e.runImpact === 'high') s -= 1;
+  // Don't stack two fatigue-3 lifts in one session (§4.6).
+  if (slot.role !== 'I' && e.fatigueCost === 3 && chosen.some((c) => c.fatigueCost === 3)) s -= rules.fatigueStackPenalty;
+  if (e.runImpact === 'high') s -= rules.highRunImpactPenalty;
   return s;
 }
 
@@ -310,7 +318,7 @@ function makeSets(n: number, reps: { min: number; max: number }, metric: Exercis
 function buildLift(
   ctx: Ctx,
   common: Common,
-  type: Exclude<SessionType, 'core'>,
+  type: SessionType,
   zone: Zone | 'deload',
   base: Exercise[],
   usedV: Set<string>,
@@ -318,7 +326,8 @@ function buildLift(
   /** Sets per muscle so far this week; extras and variety picks add to it. Null lays out base movements only. */
   proj: Record<CoverageGroup, number> | null,
 ): PlannedWorkout {
-  const tpl = LIFT_TEMPLATES[type];
+  const tpl = ctx.program.days[type] as LiftDay;
+  const { p } = ctx;
   const week = common.weekIndex;
   const workoutId = workoutIdFor(common.date, type);
   const effZone: Zone = zone === 'deload' ? 'M' : zone;
@@ -332,7 +341,7 @@ function buildLift(
 
   const add = (ex: Exercise, slot: SlotKey, role: SlotRole, nSets: number, want: { min: number; max: number }, note?: string) => {
     const reps = ex.metric === 'time' ? ex.repRange : repsFor(ex, want);
-    const sets = makeSets(nSets, reps, ex.metric, rirFor(week, role), restFor(role, zone));
+    const sets = makeSets(nSets, reps, ex.metric, rirFor(week, role, p), restFor(role, zone, p));
     const noteParts = [note];
     if (!ctx.known.has(ex.id) && role !== 'G') noteParts.push('First time: ramp up across sets to find a weight that leaves about 3 reps in the tank.');
     exercises.push({ id: `${workoutId}-${exercises.length}`, exerciseId: ex.id, slot, role, order: exercises.length, sets, note: noteParts.filter(Boolean).join(' ') || undefined });
@@ -341,20 +350,20 @@ function buildLift(
 
   tpl.base.forEach((slot, i) => {
     let ex = base[i];
-    const want = slot.role === 'I' ? isolationReps(effZone) : compoundReps(effZone, ctx.blockIndex);
+    const want = slot.role === 'I' ? isolationReps(effZone, p) : compoundReps(effZone, ctx.blockIndex, p);
     let note: string | undefined;
     if (!fitsZone(ex, zone, want)) {
       // Weekly stand-in for this slot (e.g. back extension instead of an RDL on a light day).
-      const pools: SlotKey[] = [slot.key, 'legs:v:hip-extension', 'legs:v:hinge-variant'];
+      const pools: SlotKey[] = [slot.key, ...p.lightDayStandIns];
       const alt = best(pools.flatMap((p) => candidates(ctx, p, 'gym')).filter((e) => !inSession.has(e.id) && !base.some((b) => b.id === e.id) && fitsZone(e, zone, want)), (e) => jitter(ctx, e.id, `alt${week}`) + (e.fatigueCost === 1 ? 1 : 0));
       if (alt) {
         note = `Stands in for ${ex.name} on the light day.`;
         ex = alt;
       }
     }
-    let n = setsFor(slot.role, zone, ctx.blockIndex);
+    let n = setsFor(slot.role, zone, ctx.blockIndex, p);
     // Heavy day: a muscle under its band gets one more set on its slot (§4.2 balance targets).
-    const short = zone === 'H' && proj ? (Object.keys(HEAVY_EXTRA) as CoverageGroup[]).find((g) => HEAVY_EXTRA[g] === slot.key && proj[g] < BANDS[g]![0]) : undefined;
+    const short = zone === 'H' && proj ? (Object.keys(p.heavyExtra) as CoverageGroup[]).find((g) => p.heavyExtra[g] === slot.key && proj[g] < p.bands[g]![0]) : undefined;
     if (short) {
       n += 1;
       extraFor.add(short);
@@ -363,35 +372,35 @@ function buildLift(
     add(ex, slot.key, slot.role, n, want, note);
   });
 
-  // Anatoly-style top set from block 3: P slot on a heavy day opens with one 3–5 rep set (§4.1).
-  if (zone === 'H' && ctx.blockIndex >= 3) {
-    const p = exercises.find((e) => e.role === 'P');
-    if (p && p.sets[0]?.targetReps) {
-      p.sets[0] = { ...p.sets[0], targetReps: { min: 3, max: 5 }, rir: 2 };
-      p.note = [p.note, 'Set 1 is a heavy top set; the rest are back-off sets about 10% lighter.'].filter(Boolean).join(' ');
+  // Anatoly-style top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1).
+  if (zone === 'H' && p.topSet && ctx.blockIndex >= p.topSet.fromBlock) {
+    const primary = exercises.find((e) => e.role === 'P');
+    if (primary && primary.sets[0]?.targetReps) {
+      primary.sets[0] = { ...primary.sets[0], targetReps: { ...p.topSet.reps }, rir: p.topSet.rir };
+      primary.note = [primary.note, 'Set 1 is a heavy top set; the rest are back-off sets about 10% lighter.'].filter(Boolean).join(' ');
     }
   }
 
-  // Volume ramp across blocks: +1 set on heavy-day isolation slots per block from block 3 (§4.1).
-  if (zone === 'H' && ctx.blockIndex >= 3 && ctx.input.recoveryOk !== false) {
-    const extra = Math.min(ctx.blockIndex - 2, 3);
+  // Volume ramp across blocks: +1 set on heavy-day isolation slots per block (§4.1).
+  if (zone === 'H' && p.volumeRamp && ctx.blockIndex >= p.volumeRamp.fromBlock && ctx.input.recoveryOk !== false) {
+    const extra = Math.min(ctx.blockIndex - p.volumeRamp.fromBlock + 1, p.volumeRamp.maxExtraSets);
     exercises.filter((e) => e.role === 'I').slice(0, extra).forEach((e) => addSet(e));
   }
 
   // Variety slots on moderate and light days. Only muscles under their band, or movements outside the
   // banded muscles (shrugs, adductors, forearm curls), can take them; otherwise the slot stays empty (§4.2, §4.3).
   if (zone !== 'deload' && proj) {
-    const nV = V_SLOTS[zone];
+    const nV = p.varietySlots[zone];
     const baseFamilies = new Set(base.map((b) => b.family));
     for (let v = 0; v < nV; v++) {
-      const pools = rotateList(tpl.vPool, week * 2 + v + ctx.blockIndex);
+      const pools = rotateList(tpl.varietyPool, week * 2 + v + ctx.blockIndex);
       let pick: Exercise | undefined;
       let pickSlot: SlotKey = pools[0];
       let top = -Infinity;
       pools.forEach((pool, rank) => {
         for (const e of candidates(ctx, pool, 'gym')) {
           if (inSession.has(e.id) || exercises.some((x) => x.role === 'V' && ctx.byId.get(x.exerciseId)?.family === e.family)) continue;
-          const need = needOf(e, proj);
+          const need = needOf(e, proj, p.bands);
           if (need === null) continue;
           const s = need * 10 + jitter(ctx, e.id, `v${week}${v}`) - rank * 0.1 - (usedV.has(e.id) ? 2 : 0) - (baseFamilies.has(e.family) ? 1.5 : 0) + (ctx.input.flags?.[e.id]?.favourite ? 2 : 0);
           if (s > top) {
@@ -402,21 +411,22 @@ function buildLift(
         }
       });
       if (!pick) continue;
-      const claimed = primaryGroups(pick).filter((g) => proj[g] < BANDS[g]![0]);
+      const claimed = primaryGroups(pick, p.bands).filter((g) => proj[g] < p.bands[g]![0]);
       claimed.forEach((g) => extraFor.add(g));
       usedV.add(pick.id);
       credit(pick, 2);
-      add(pick, pickSlot, 'V', 2, isolationReps(zone), claimed.length ? `Extra ${listNames(claimed.map((g) => GROUP_LABEL[g]))} sets.` : undefined);
+      add(pick, pickSlot, 'V', 2, isolationReps(zone, p), claimed.length ? `Extra ${listNames(claimed.map((g) => GROUP_LABEL[g]))} sets.` : undefined);
     }
   }
 
   // Grip finisher, last, on moderate and light days only (§4.1). Reverse curls also train biceps, so
   // they wait for a week with room in the biceps band.
   let gripName = '';
-  if (proj && (zone === 'M' || zone === 'L')) {
-    for (let k = 0; k < GRIP_ROTATION.length; k++) {
-      const g = GRIP_ROTATION[(gripCounter + k + (ctx.blockIndex - 1) * 3) % GRIP_ROTATION.length];
-      const pick = best(candidates(ctx, `grip:${g}`, 'gym').filter((e) => !inSession.has(e.id) && fitsBands(e, 2, proj)), (e) => jitter(ctx, e.id, `g${week}`));
+  const grip = p.grip;
+  if (proj && grip && zone !== 'deload' && grip.zones.includes(zone)) {
+    for (let k = 0; k < grip.rotation.length; k++) {
+      const g = grip.rotation[(gripCounter + k + (ctx.blockIndex - 1) * 3) % grip.rotation.length];
+      const pick = best(candidates(ctx, `grip:${g}`, 'gym').filter((e) => !inSession.has(e.id) && fitsBands(e, 2, proj, p.bands)), (e) => jitter(ctx, e.id, `g${week}`));
       if (pick) {
         credit(pick, 2);
         add(pick, `grip:${g}`, 'G', 2, pick.repRange, 'Grip finisher.');
@@ -426,11 +436,11 @@ function buildLift(
     }
   }
 
-  trimToCap(exercises, 22);
+  trimToCap(exercises, p.sessionCap.sets);
 
-  const label = SESSION_LABEL[type];
-  const reps = compoundReps(effZone, ctx.blockIndex);
-  if (zone === 'deload') notes.push('Deload week: base movements only, 2 sets each, about 10% lighter, stop with 4 or more reps in reserve.');
+  const label = tpl.label;
+  const reps = compoundReps(effZone, ctx.blockIndex, p);
+  if (zone === 'deload') notes.push(`Deload week: base movements only, ${p.sets.deload} sets each, about 10% lighter, stop with ${p.rir.deload} or more reps in reserve.`);
   else if (zone === 'H') notes.push(`Heavy day: fewer movements, more sets, ${reps.min}–${reps.max} reps on the big lifts.`);
   else {
     const nV = exercises.filter((e) => e.role === 'V').length;
@@ -475,8 +485,10 @@ function trimToCap(exercises: PlannedExercise[], cap: number) {
   }
 }
 
-function primaryGroups(ex: Exercise): CoverageGroup[] {
-  return [...creditOf(ex)].filter(([g, c]) => c === 1 && BANDS[g]).map(([g]) => g);
+type Bands = TrainingParams['bands'];
+
+function primaryGroups(ex: Exercise, bands: Bands): CoverageGroup[] {
+  return [...creditOf(ex)].filter(([g, c]) => c === 1 && bands[g]).map(([g]) => g);
 }
 
 /**
@@ -484,13 +496,13 @@ function primaryGroups(ex: Exercise): CoverageGroup[] {
  * neutral -0.5 for a movement outside the banded muscles (shrugs, adductors, forearm curls). Null when
  * a main muscle already reaches its band, or 2 sets would push any muscle it trains over its band.
  */
-function needOf(ex: Exercise, proj: Record<CoverageGroup, number>): number | null {
-  if (!fitsBands(ex, 2, proj)) return null;
-  const groups = primaryGroups(ex);
+function needOf(ex: Exercise, proj: Record<CoverageGroup, number>, bands: Bands): number | null {
+  if (!fitsBands(ex, 2, proj, bands)) return null;
+  const groups = primaryGroups(ex, bands);
   if (!groups.length) return -0.5;
   let need = -Infinity;
   for (const g of groups) {
-    const [min, max] = BANDS[g]!;
+    const [min, max] = bands[g]!;
     if (proj[g] >= min) return null;
     need = Math.max(need, (min - proj[g]) / (max - min));
   }
@@ -502,17 +514,18 @@ function needOf(ex: Exercise, proj: Record<CoverageGroup, number>): number | nul
  * compounds, never the primary lift, in a session with room under 22 sets.
  */
 /** True when `n` more sets of `ex` keep every banded muscle it trains within its band's ceiling. */
-function fitsBands(ex: Exercise, n: number, sets: Record<CoverageGroup, number>): boolean {
-  return [...creditOf(ex)].every(([g, c]) => !BANDS[g] || sets[g] + c * n <= BANDS[g]![1]);
+function fitsBands(ex: Exercise, n: number, sets: Record<CoverageGroup, number>, bands: Bands): boolean {
+  return [...creditOf(ex)].every(([g, c]) => !bands[g] || sets[g] + c * n <= bands[g]![1]);
 }
 
-function addCoverageSet(workouts: PlannedWorkout[], byId: Map<string, Exercise>, muscle: CoverageGroup, week: number, coverage: CoverageReport): boolean {
-  const fits = (ex: Exercise) => fitsBands(ex, 1, coverage.weeks[week]);
+function addCoverageSet(ctx: Ctx, workouts: PlannedWorkout[], muscle: CoverageGroup, week: number, coverage: CoverageReport): boolean {
+  const { byId, p } = ctx;
+  const fits = (ex: Exercise) => fitsBands(ex, 1, coverage.weeks[week], p.bands);
   const steps: [string[], 'primary' | 'any'][] = [[['I', 'V'], 'primary'], [['C'], 'primary'], [['C'], 'any']];
   for (const [roles, credit] of steps) {
     for (const w of workouts) {
-      if (w.weekIndex !== week || w.isDeload || w.sessionType === 'core') continue;
-      if (w.exercises.reduce((n, e) => n + e.sets.length, 0) >= 22) continue;
+      if (w.weekIndex !== week || w.isDeload || w.sessionType === ctx.coreType) continue;
+      if (w.exercises.reduce((n, e) => n + e.sets.length, 0) >= p.sessionCap.sets) continue;
       const target = w.exercises.find((e) => {
         const ex = byId.get(e.exerciseId);
         if (!ex || !roles.includes(e.role) || e.sets.length >= 4 || !fits(ex)) return false;
@@ -532,9 +545,10 @@ function addCoverageSet(workouts: PlannedWorkout[], byId: Map<string, Exercise>,
  * secondary compound's, then a variety movement whose main muscles are all over their bands. The primary
  * lift is never trimmed, and base movements keep 2 sets or more.
  */
-function removeCoverageSet(workouts: PlannedWorkout[], byId: Map<string, Exercise>, muscle: CoverageGroup, week: number, coverage: CoverageReport): boolean {
+function removeCoverageSet(ctx: Ctx, workouts: PlannedWorkout[], muscle: CoverageGroup, week: number, coverage: CoverageReport): boolean {
+  const { byId } = ctx;
   const hits = (e: PlannedExercise) => byId.get(e.exerciseId)?.primaryMuscles.some((m) => muscleGroupOf(m) === muscle);
-  const sessions = workouts.filter((w) => w.weekIndex === week && !w.isDeload && w.sessionType !== 'core');
+  const sessions = workouts.filter((w) => w.weekIndex === week && !w.isDeload && w.sessionType !== ctx.coreType);
   for (const roles of [['I', 'V'], ['C']]) {
     for (const w of sessions) {
       const target = [...w.exercises].reverse().find((e) => roles.includes(e.role) && e.sets.length > 2 && hits(e));
@@ -546,7 +560,7 @@ function removeCoverageSet(workouts: PlannedWorkout[], byId: Map<string, Exercis
   }
   for (const w of sessions) {
     const over = (g: CoverageGroup) => coverage.over.some((o) => o.week === week && o.group === g);
-    const i = w.exercises.findIndex((e) => e.role === 'V' && hits(e) && primaryGroups(byId.get(e.exerciseId)!).every(over));
+    const i = w.exercises.findIndex((e) => e.role === 'V' && hits(e) && primaryGroups(byId.get(e.exerciseId)!, ctx.p.bands).every(over));
     if (i >= 0) {
       w.exercises.splice(i, 1);
       w.exercises.forEach((e, k) => Object.assign(e, { id: `${w.id}-${k}`, order: k }));
@@ -562,18 +576,20 @@ function removeCoverageSet(workouts: PlannedWorkout[], byId: Map<string, Exercis
  */
 function addCoverageMovement(ctx: Ctx, workouts: PlannedWorkout[], muscle: CoverageGroup, week: number, coverage: CoverageReport): boolean {
   for (const w of workouts) {
-    if (w.weekIndex !== week || w.sessionType === 'core' || (w.zone !== 'M' && w.zone !== 'L')) continue;
-    if (w.exercises.filter((e) => e.role !== 'G').length >= 8 || w.exercises.reduce((n, e) => n + e.sets.length, 0) > 20) continue;
+    const { p } = ctx;
+    if (w.weekIndex !== week || w.sessionType === ctx.coreType || (w.zone !== 'M' && w.zone !== 'L')) continue;
+    // Room for one more movement and its 2 sets.
+    if (w.exercises.filter((e) => e.role !== 'G').length >= p.sessionCap.movements || w.exercises.reduce((n, e) => n + e.sets.length, 0) > p.sessionCap.sets - 2) continue;
     const inSession = w.exercises.map((e) => ctx.byId.get(e.exerciseId)!);
     const pick = best(
-      LIFT_TEMPLATES[w.sessionType].vPool.flatMap((pool) => candidates(ctx, pool, w.location).map((e) => [pool, e] as const))
-        .filter(([, e]) => primaryGroups(e).includes(muscle) && fitsBands(e, 2, coverage.weeks[week]) && !inSession.some((x) => x.id === e.id || x.family === e.family)),
+      (ctx.program.days[w.sessionType] as LiftDay).varietyPool.flatMap((pool) => candidates(ctx, pool, w.location).map((e) => [pool, e] as const))
+        .filter(([, e]) => primaryGroups(e, p.bands).includes(muscle) && fitsBands(e, 2, coverage.weeks[week], p.bands) && !inSession.some((x) => x.id === e.id || x.family === e.family)),
       ([, e]) => jitter(ctx, e.id, `cov${week}`),
     );
     if (!pick) continue;
     const [slot, ex] = pick;
     const zone = w.zone as Zone;
-    const sets = makeSets(2, ex.metric === 'time' ? ex.repRange : repsFor(ex, isolationReps(zone)), ex.metric, rirFor(week, 'V'), restFor('V', zone));
+    const sets = makeSets(2, ex.metric === 'time' ? ex.repRange : repsFor(ex, isolationReps(zone, p)), ex.metric, rirFor(week, 'V', p), restFor('V', zone, p));
     const at = w.exercises[w.exercises.length - 1]?.role === 'G' ? w.exercises.length - 1 : w.exercises.length;
     const note = [`Extra ${GROUP_LABEL[muscle]} sets.`, ctx.known.has(ex.id) ? '' : 'First time: ramp up across sets to find a weight that leaves about 3 reps in the tank.'].filter(Boolean).join(' ');
     w.exercises.splice(at, 0, { id: '', exerciseId: ex.id, slot, role: 'V', order: at, sets, note });
@@ -591,16 +607,18 @@ function muscleGroupOf(m: string): string {
 
 // ---------- core day (home) ----------
 
-function pickCoreBase(ctx: Ctx): Record<CoreDynamic, Exercise> {
+function pickCoreBase(ctx: Ctx): Partial<Record<CoreDynamic, Exercise>> {
   const prev = ctx.input.previousBlock?.baseSlots ?? {};
-  const out = {} as Record<CoreDynamic, Exercise>;
+  const out: Partial<Record<CoreDynamic, Exercise>> = {};
+  if (!ctx.coreType) return out;
+  const day = ctx.program.days[ctx.coreType] as CoreDay;
   const location = coreLocation(ctx);
-  for (const [, a, b] of CORE_SUPERSETS) {
+  for (const [, a, b] of day.supersets) {
     for (const dyn of [a, b]) {
-      const key = `core|core:${dyn}`;
+      const key = `${ctx.coreType}|core:${dyn}`;
       const prevId = prev[key];
       const prevEx = prevId ? ctx.byId.get(prevId) : undefined;
-      const pool = candidates(ctx, `core:${dyn}`, location).filter((e) => !Object.values(out).some((o) => o.id === e.id));
+      const pool = candidates(ctx, `core:${dyn}`, location).filter((e) => !Object.values(out).some((o) => o!.id === e.id));
       // Variants rotate every block within each dynamic, preferring one step up the ladder.
       const pick = best(pool, (e) => {
         let s = jitter(ctx, e.id, dyn);
@@ -614,7 +632,7 @@ function pickCoreBase(ctx: Ctx): Record<CoreDynamic, Exercise> {
         if (ctx.input.flags?.[e.id]?.favourite) s += 2;
         return s;
       });
-      const chosen = pick ?? fillEmptySlot(ctx, `core:${dyn}`, location, Object.values(out));
+      const chosen = pick ?? fillEmptySlot(ctx, `core:${dyn}`, location, Object.values(out) as Exercise[]);
       ctx.baseSlots[key] = chosen.id;
       out[dyn] = chosen;
     }
@@ -623,20 +641,21 @@ function pickCoreBase(ctx: Ctx): Record<CoreDynamic, Exercise> {
 }
 
 function coreLocation(ctx: Ctx): Location {
-  return ctx.input.profile.schedule.find((s) => s.type === 'core')?.location ?? 'home';
+  return ctx.input.profile.schedule.find((s) => s.type === ctx.coreType)?.location ?? 'home';
 }
 
-function buildCore(ctx: Ctx, common: Common, base: Record<CoreDynamic, Exercise>): PlannedWorkout {
+function buildCore(ctx: Ctx, common: Common, type: SessionType, day: CoreDay, base: Partial<Record<CoreDynamic, Exercise>>): PlannedWorkout {
   const week = common.weekIndex;
   const deload = week === 3;
-  const workoutId = workoutIdFor(common.date, 'core');
-  const zone: Zone = ctx.input.profile.coreWave === 'flat' ? 'M' : CORE_WAVE[Math.min(week, 2)];
-  const targets = coreTargets(deload ? 'M' : zone);
+  const core = ctx.p.core;
+  const workoutId = workoutIdFor(common.date, type);
+  const zone: Zone = ctx.input.profile.coreWave === 'flat' ? 'M' : core.wave[Math.min(week, 2)];
+  const targets = coreTargets(deload ? 'M' : zone, ctx.p);
   const exercises: PlannedExercise[] = [];
   const location = coreLocation(ctx);
-  for (const [group, a, b] of CORE_SUPERSETS) {
+  for (const [group, a, b] of day.supersets) {
     for (const dyn of [a, b]) {
-      let ex = base[dyn];
+      let ex = base[dyn]!;
       let note: string | undefined;
       if (!deload && zone === 'H') {
         // Heavy core week: one step up each movement's ladder (§4.2 core day).
@@ -650,31 +669,37 @@ function buildCore(ctx: Ctx, common: Common, base: Record<CoreDynamic, Exercise>
       }
       const want = ex.metric === 'time' ? targets.seconds : targets.reps;
       const range = repsFor(ex, want);
-      const sets = makeSets(deload ? 1 : 2, range, ex.metric, deload ? 4 : 2, 45);
+      const sets = makeSets(deload ? core.deloadSets : core.sets, range, ex.metric, deload ? core.deloadRir : core.rir, ctx.p.rest.core);
       exercises.push({ id: `${workoutId}-${exercises.length}`, exerciseId: ex.id, slot: `core:${dyn}`, role: 'K', order: exercises.length, supersetGroup: group, sets, note });
     }
   }
   const zoneName = deload ? 'Deload' : ZONE_NAME[zone];
+  const t = core.targets[zone];
+  const range = `${t.reps.min}–${t.reps.max} reps or ${t.seconds.min}–${t.seconds.max} s holds`;
   const rationale = deload
-    ? 'Deload week: all 8 core dynamics, 1 set each.'
+    ? `Deload week: all ${day.supersets.length * 2} core dynamics, ${core.deloadSets} set${core.deloadSets === 1 ? '' : 's'} each.`
     : zone === 'H'
-      ? 'Heavy core week: the harder variant, heavier kettlebell or next band, 6–10 reps or 15–25 s holds.'
+      ? `Heavy core week: the harder variant, heavier kettlebell or next band, ${range}.`
       : zone === 'L'
-        ? 'Light core week: 15–25 reps or 45–60 s holds.'
-        : 'Moderate core week: 10–15 reps or 30–40 s holds. Four supersets, every core dynamic once.';
+        ? `Light core week: ${range}.`
+        : `Moderate core week: ${range}. ${countWord(day.supersets.length)} supersets, every core dynamic once.`;
   return {
     id: workoutId,
     createdAt: ctx.now,
     updatedAt: ctx.now,
     deletedAt: null,
     ...common,
-    sessionType: 'core',
+    sessionType: type,
     zone: deload ? 'deload' : zone,
     isDeload: deload,
     focus: `Core · ${zoneName}`,
     rationale,
     exercises,
   };
+}
+
+function countWord(n: number): string {
+  return ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'][n] ?? String(n);
 }
 
 function heavyNote(ctx: Ctx, ex: Exercise): string {
