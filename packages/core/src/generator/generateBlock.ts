@@ -26,6 +26,8 @@ export type GeneratorInput = {
   previousBlock?: Block;
   /** Exercises with no e1RM gain over 3 exposures, or rated down: rotated out at the boundary (§4.3). */
   stalled?: string[];
+  /** Exercises whose load can't go up any more (see isOutgrown): slots with a step-up rule move past them (§4.8). */
+  outgrown?: string[];
   /** Exercises with any logged history; others get a calibration note (§4.4.4). */
   known?: string[];
   /** False after an early deload in the last block: skip the volume ramp (§4.1). */
@@ -71,6 +73,7 @@ type Ctx = {
   unfilled: UnfilledSlot[];
   stalled: Set<string>;
   known: Set<string>;
+  outgrown: Set<string>;
 };
 
 const WEEKDAY_OFFSET: Record<Weekday, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 };
@@ -98,6 +101,7 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
     unfilled: [],
     stalled: new Set(input.stalled ?? []),
     known: new Set(input.known ?? []),
+    outgrown: new Set(input.outgrown ?? []),
   };
   const blockId = blockIdFor(input.startDate);
 
@@ -265,6 +269,18 @@ function jitter(ctx: Ctx, id: string, salt = ''): number {
   return (hash(`${id}|${ctx.blockIndex}|${salt}`) % 1000) / 1000;
 }
 
+/**
+ * The movements in `pool` that are the lowest rung still in use: none of their regressions is in the pool
+ * and not yet outgrown, and they aren't outgrown themselves while a progression is in the pool. A dumbbell
+ * sumo squat comes first, and the Smith one takes over once the dumbbell is outgrown (§4.8).
+ */
+function lowestRungs(ctx: Ctx, pool: Exercise[]): Exercise[] {
+  const inPool = (id: string) => pool.some((e) => e.id === id);
+  const rungs = pool.filter((e) =>
+    !e.regressions.some((r) => inPool(r) && !ctx.outgrown.has(r)) && !(ctx.outgrown.has(e.id) && e.progressions.some(inPool)));
+  return rungs.length ? rungs : pool;
+}
+
 /** Blocks where slots with `alternateLaterality` take their bilateral movements (§4.8). */
 function bilateralBlock(ctx: Ctx): boolean {
   return ctx.blockIndex % 2 === 0;
@@ -291,6 +307,7 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefi
     if (slot.alternateLaterality) {
       const turn = pool.filter((e) => (e.laterality === 'bilateral') === bilateralBlock(ctx));
       if (turn.length) pool = turn;
+      if (slot.alternateLaterality.stepUp && bilateralBlock(ctx)) pool = lowestRungs(ctx, pool);
     }
     if (slot.distinctFamily) {
       const fresh = pool.filter((e) => !chosen.some((c) => c.family === e.family));
@@ -450,7 +467,8 @@ function buildLift(
     const nV = p.varietySlots[zone];
     const baseFamilies = new Set(base.flatMap((b) => (b ? [b.family] : [])));
     // In a bilateral block of an alternating slot, its varietyFirst movements claim the first variety slot
-    // while they fit under every band's ceiling (the leg press on sumo-squat leg days, §4.8).
+    // while they keep every muscle within one set of its band's ceiling (the leg press on sumo-squat leg
+    // days, §4.8).
     const first = tpl.base.flatMap((slot, i) => (slot.alternateLaterality && base[i]?.laterality === 'bilateral' ? slot.alternateLaterality.varietyFirst ?? [] : []));
     for (let v = 0; v < nV; v++) {
       const pools = rotateList(tpl.varietyPool, week * 2 + v + ctx.blockIndex);
@@ -461,7 +479,7 @@ function buildLift(
         for (const id of first) {
           const pool = tpl.varietyPool.find((k) => candidates(ctx, k, 'gym').some((e) => e.id === id));
           const e = pool && ctx.byId.get(id);
-          if (!pool || !e || inSession.has(e.id) || !fitsBands(e, 2, proj, p.bands)) continue;
+          if (!pool || !e || inSession.has(e.id) || !fitsBands(e, 2, proj, p.bands, 1)) continue;
           pick = e;
           pickSlot = pool;
           break;
@@ -584,8 +602,8 @@ function needOf(ex: Exercise, proj: Record<CoverageGroup, number>, bands: Bands)
  * compounds, never the primary lift, in a session with room under 22 sets.
  */
 /** True when `n` more sets of `ex` keep every banded muscle it trains within its band's ceiling. */
-function fitsBands(ex: Exercise, n: number, sets: Record<CoverageGroup, number>, bands: Bands): boolean {
-  return [...creditOf(ex)].every(([g, c]) => !bands[g] || sets[g] + c * n <= bands[g]![1]);
+function fitsBands(ex: Exercise, n: number, sets: Record<CoverageGroup, number>, bands: Bands, slack = 0): boolean {
+  return [...creditOf(ex)].every(([g, c]) => !bands[g] || sets[g] + c * n <= bands[g]![1] + slack);
 }
 
 function addCoverageSet(ctx: Ctx, workouts: PlannedWorkout[], muscle: CoverageGroup, week: number, coverage: CoverageReport): boolean {

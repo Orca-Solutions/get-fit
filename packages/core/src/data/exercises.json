@@ -214,10 +214,10 @@
     "family": "leg-press",
     "movementPattern": "squat",
     "primaryMuscles": [
-      "quads",
-      "glutes"
+      "quads"
     ],
     "secondaryMuscles": [
+      "glutes",
       "adductors",
       "hamstrings"
     ],

@@ -15,9 +15,11 @@ export type BaseSlot = {
   /**
    * Alternate block by block between the slot's single-leg movements (odd blocks) and its bilateral ones (even
    * blocks), e.g. split squats and lunges one block, sumo squats the next (§4.8). Falls back to whatever fits
-   * the kit. In bilateral blocks the day's first variety slot offers `varietyFirst` (exercise ids) first.
+   * the kit. In bilateral blocks the day's first variety slot offers `varietyFirst` (exercise ids) first, and
+   * with `stepUp` the slot starts on the lowest rung of each ladder (regressions and progressions), moving
+   * up only past movements the lifter has outgrown.
    */
-  alternateLaterality?: { varietyFirst?: string[] };
+  alternateLaterality?: { varietyFirst?: string[]; stepUp?: boolean };
 };
 
 export type LiftDay = {
@@ -131,9 +133,9 @@ export const STRANGE_PERIODIZATION: Program = {
       base: [
         { key: 'legs:squat', role: 'P' },
         { key: 'legs:hinge', role: 'C' },
-        // Knee-dominant: single-leg one block, a sumo squat the next, with the leg press, then the hack squat, first in line for the
-        // variety slot in sumo blocks (§4.8).
-        { key: 'legs:single-leg', role: 'C', alternateLaterality: { varietyFirst: ['leg-press', 'hack-squat'] } },
+        // Knee-dominant: single-leg one block, a sumo squat the next (dumbbell first, Smith once the dumbbell is
+        // outgrown), with the leg press, then the hack squat, first in line for the variety slot (§4.8).
+        { key: 'legs:single-leg', role: 'C', alternateLaterality: { varietyFirst: ['leg-press', 'hack-squat'], stepUp: true } },
         { key: 'legs:knee-extension', role: 'I' },
         { key: 'legs:knee-flexion', role: 'I' },
         { key: 'legs:calf', role: 'I' },

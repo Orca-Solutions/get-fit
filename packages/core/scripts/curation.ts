@@ -105,7 +105,8 @@ export const curation: CuratedEntry[] = [
   x({
     id: 'leg-press', name: 'Leg Press', aliases: ['Seated leg press'], family: 'leg-press',
     sourceId: 'Leg_Press',
-    movementPattern: 'squat', primaryMuscles: ['quads', 'glutes'], secondaryMuscles: ['adductors', 'hamstrings'],
+    // Quad-dominant: glutes work partly and hamstrings barely, so they count half (§4.8).
+    movementPattern: 'squat', primaryMuscles: ['quads'], secondaryMuscles: ['glutes', 'adductors', 'hamstrings'],
     mechanic: 'compound', laterality: 'bilateral', stance: 'seated', ...MACHINE,
     repRange: { min: 8, max: 20 }, fatigueCost: 2, runImpact: 'low', starter: true,
     slots: ['legs:squat', 'legs:v:squat-machine'],

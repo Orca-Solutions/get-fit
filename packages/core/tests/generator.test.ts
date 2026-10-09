@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import catalog from '../src/data/exercises.json';
 import { BANDS, groupOf, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
-import { e1rm, effectiveLoad, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
+import { e1rm, effectiveLoad, isOutgrown, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
 import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
@@ -206,6 +206,18 @@ describe('generateBlock: later blocks', () => {
     const heavy = b2.workouts.find((w) => w.zone === 'H' && w.sessionType === 'legs')!;
     const sumo = heavy.exercises.find((e) => e.exerciseId === slot3[1].id)!;
     expect(sumo.sets[0].targetReps).toEqual({ min: 8, max: 10 });
+  });
+
+  it('starts sumo blocks on the dumbbell sumo squat and steps up to the Smith one once it is outgrown (§4.8)', () => {
+    expect(b2.block.baseSlots['legs|legs:single-leg']).toBe('dumbbell-sumo-squat');
+    const stepped = gen({ previousBlock: b1.block, startDate: '2026-11-09', outgrown: ['dumbbell-sumo-squat'] });
+    expect(stepped.block.baseSlots['legs|legs:single-leg']).toBe('smith-sumo-squat');
+  });
+
+  it('puts the leg press on light days of sumo blocks, and leaves moderate days at squat plus sumo squat', () => {
+    const legs = (zone: string) => b2.workouts.find((w) => w.sessionType === 'legs' && w.zone === zone)!;
+    expect(legs('L').exercises.find((e) => e.role === 'V')?.exerciseId).toBe('leg-press');
+    expect(legs('M').exercises.some((e) => e.role === 'V')).toBe(false);
   });
 
   it('gives the varietyFirst movements first claim on the variety slot in bilateral blocks only', () => {
@@ -457,6 +469,18 @@ describe('progression', () => {
   it('falls back to the newest session when no rep count is close', () => {
     const history = summarizeHistory(curl, [set('a', '2026-10-01', 25, 12)], profile);
     expect(lastTimeHint(curl, history, { min: 3, max: 5 })!.text).toBe('Last time: 25 lb each × 12');
+  });
+
+  it('calls a movement outgrown after two topped-out sessions at Right or Easy with the same top weight', () => {
+    const top = (w: number, reps: number, effort: 'easy' | 'right' | 'hard') => ({ weight: w, reps, effort, setIndex: 0 }) as LoggedSet;
+    const mk = (...sessions: LoggedSet[][]) => sessions.map((sets, i) => ({ sessionId: `${i}`, date: `2026-10-0${9 - i}`, sets, bestE1rm: null }));
+    const max = () => 10;
+    expect(isOutgrown(mk([top(50, 10, 'right')], [top(50, 10, 'easy')]), max)).toBe(true);
+    expect(isOutgrown(mk([top(50, 10, 'right')], [top(45, 10, 'right')]), max)).toBe(false);
+    expect(isOutgrown(mk([top(50, 10, 'hard')], [top(50, 10, 'right')]), max)).toBe(false);
+    expect(isOutgrown(mk([top(50, 9, 'right')], [top(50, 10, 'right')]), max)).toBe(false);
+    expect(isOutgrown(mk([top(50, 10, 'right')]), max)).toBe(false);
+    expect(isOutgrown(mk([top(50, 10, 'right')], [top(50, 10, 'right')]), () => undefined)).toBe(false);
   });
 
   it('flags a movement as stalled after 3 exposures without a gain', () => {

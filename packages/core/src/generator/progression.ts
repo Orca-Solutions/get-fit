@@ -129,3 +129,22 @@ export function isStalled(history: SessionSummary[]): boolean {
   if (vals.length < 4) return false;
   return Math.max(...vals.slice(0, 3)) <= Math.max(...vals.slice(3));
 }
+
+/**
+ * Outgrown (§4.8 step-up): in each of the last two exposures the heaviest set reached the top of its target
+ * reps at Right or Easy, at the same weight both times. A topped-out session suggests the next weight up, so
+ * a second one at the same weight reads as the next weight not being there, such as the heaviest dumbbell
+ * on the rack (inference: the app can't see the rack). `targetMax` gives a logged set's planned top rep.
+ */
+export function isOutgrown(history: SessionSummary[], targetMax: (s: LoggedSet) => number | undefined): boolean {
+  const last = history.slice(0, 2).map((h) => {
+    const weighted = h.sets.filter((s) => s.reps && s.weight != null);
+    const top = Math.max(...weighted.map((s) => s.weight!));
+    return weighted.filter((s) => s.weight === top);
+  });
+  if (last.length < 2 || last.some((sets) => !sets.length) || last[0][0].weight !== last[1][0].weight) return false;
+  return last.every((sets) => sets.some((s) => {
+    const max = targetMax(s);
+    return max != null && s.reps! >= max && (s.effort === 'right' || s.effort === 'easy');
+  }));
+}
