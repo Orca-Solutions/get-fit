@@ -102,7 +102,7 @@ type Exercise = {
   instructions: string[];
   images: string[];           // relative paths, vendored
   source: { name: 'free-exercise-db' | 'get-fit'; sourceId?: string };
-  license: 'Unlicense' | 'MIT';
+  license: 'Unlicense' | 'FSL-1.1-MIT';
 };
 ```
 
@@ -262,7 +262,7 @@ Ids are permanent: rename a movement's `name`, never its `id`, because logged se
 ## 8. Licensing notes
 
 - **The catalog's own work** (tags, cues and the 44 entries written here) is under the project license, FSL-1.1-MIT. Entries that copy free-exercise-db text or photos are public domain under the Unlicense, which can sit in the repo with no conditions. The README credits free-exercise-db as a courtesy.
-- The per-entry `license` field reads `Unlicense` for entries drawn from free-exercise-db and `MIT` for the project's own entries, which were written before the project moved to FSL-1.1-MIT.
+- The per-entry `license` field reads `Unlicense` for entries drawn from free-exercise-db and `FSL-1.1-MIT` for the project's own entries.
 - **Provenance caveat (inferred, not confirmed):** free-exercise-db's instructions and photos read as though they came from an older commercial site's exercise library, and the repo doesn't say where they came from. The Unlicense is the repo author's statement. Anyone who wants zero doubt can ship only the project's own cues and drop the photos.
 - **wger** is never copied, only consulted for which movements are common. Exercise names aren't copyrightable, so writing entries for movements wger also lists is fine.
 - **Nothing in the app calls an exercise API at runtime.**

@@ -100,7 +100,7 @@ A catalog entry or a custom movement. The catalog schema and tagging rules are d
 | `coreDynamic`, `gripType` | optional | For core and grip movements. |
 | `tags`, `cues`, `instructions`, `images` | `string[]` | |
 | `source` | `{ name: 'free-exercise-db' \| 'get-fit'; sourceId?: string }` | |
-| `license` | `'Unlicense' \| 'MIT'` | |
+| `license` | `'Unlicense' \| 'FSL-1.1-MIT'` | `Unlicense` for entries drawn from free-exercise-db, `FSL-1.1-MIT` for the project's own. |
 
 Related enumerations: `MovementPattern`, `Muscle` (20 muscles), `Equipment` (13 values), `LoadType`, `WeightConvention`, `CoreDynamic` (the 8 dynamics the core day covers), `GripType` (7 grip finishers), and `CatalogSlot`, the slot tags the curated catalog uses (`'legs:squat'`, `'chest:v:press-variant'`, `` `core:${CoreDynamic}` ``, `` `grip:${GripType}` ``, ...). `SlotKey` is `string`, so a custom program can define its own slots.
 
