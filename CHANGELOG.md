@@ -4,10 +4,7 @@ Notable changes to get-fit. Releases of the core package are tagged `core-v<vers
 
 ## 2026-10-09
 
-- **core-v0.2.0:** the first release under FSL-1.1-MIT (0.1.0 stays MIT). It includes everything below that came after 0.1.0, plus:
-  - A barbell and EZ-bar pack: 27 movements (squats, deadlifts, bench, overhead press, rows, curls, skull crushers and more) that the generator uses only when a location's equipment lists a barbell, EZ bar or rack. With a barbell, the barbell lifts take the primary slot as it rotates; block 1 still starts on the Smith machine. The program is now version 1.1.0, and plans for setups without a barbell are unchanged.
-  - The workout screen says "Nothing is planned for this day" instead of crashing on a day with no movements.
-  - The sync helpers use the database named by `configureSync({ db })`, and `generateBlock` validates a program passed to it.
+- **core-v0.2.0:** second release of `@orca-solutions/get-fit-core` and the first under FSL-1.1-MIT, with everything below that came after core-v0.1.0, including the barbell pack.
 - **core-v0.1.0:** first release of `@orca-solutions/get-fit-core`, attached to its GitHub release as an installable tarball.
 - The repo is now an npm workspace: the engine in `packages/core`, the app in `apps/web` and the sync server in `server`. The training program is data (`Program`, with `STRANGE_PERIODIZATION` as the original), and a golden test pins the reference profile's blocks 1 to 8.
 - Property tests run the generator over 300 random setups.
