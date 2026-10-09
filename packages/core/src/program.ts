@@ -91,6 +91,8 @@ export type SelectionRules = {
   favouriteBonus: number;
   /** Score added on primary (P) slots by load type, e.g. Smith machine lifts leading from block 1. */
   primaryLoadTypeBonus: Partial<Record<LoadType, number>>;
+  /** Score added on secondary compound (C) slots by load type, e.g. barbell presses and rows when the kit has a bar. */
+  compoundLoadTypeBonus?: Partial<Record<LoadType, number>>;
   /** Penalty for a second fatigue-3 compound in one session (kept low for a daily runner). */
   fatigueStackPenalty: number;
   /** Penalty for movements with a high impact on running. */
@@ -109,7 +111,7 @@ export type Program = {
 
 export const STRANGE_PERIODIZATION: Program = {
   id: 'strange-periodization',
-  version: '1.1.0',
+  version: '1.2.0',
   days: {
     legs: {
       kind: 'lift',
@@ -175,8 +177,8 @@ export const STRANGE_PERIODIZATION: Program = {
     },
     sets: {
       byRole: {
-        P: { H: 4, M: 3, L: 2 },
-        C: { H: 3, M: 3, L: 2 },
+        P: { H: 4, M: 3, L: 3 },
+        C: { H: 3, M: 3, L: 3 },
         I: { H: 3, M: 2, L: 2 },
         V: { H: 2, M: 2, L: 2 },
         G: { H: 2, M: 2, L: 2 },
@@ -192,18 +194,20 @@ export const STRANGE_PERIODIZATION: Program = {
       grip: 60,
       core: 45,
     },
-    // Anatoly's "wider variety when the bar gets lighter".
-    varietySlots: { H: 0, M: 1, L: 2 },
+    // Anatoly's "wider variety when the bar gets lighter", trimmed to one variety slot on light days so
+    // the main lifts keep 3 sets every session (more practice on the lifts that drive progress).
+    varietySlots: { H: 0, M: 1, L: 1 },
     // The same every loading week, so every muscle grows at about the same rate. Forearms have no band:
     // the grip finishers and the pulling work cover them.
     bands: {
-      quads: [9, 11],
+      quads: [9, 12],
       'glutes-hamstrings': [10, 12],
-      chest: [9, 11],
+      chest: [9, 12],
       back: [9, 11],
       'side-delts': [6, 8],
       biceps: [7, 9],
-      triceps: [7, 9],
+      // Quads, chest and triceps get one more: main lifts keep 3 sets on every loading day (§4.2).
+      triceps: [7, 10],
       calves: [3, 5],
       'rear-delts': [3, 5],
     },
@@ -250,8 +254,11 @@ export const STRANGE_PERIODIZATION: Program = {
     levelBonus: { beginner: 2, intermediate: -3 },
     favouriteBonus: 3,
     // The Smith squat, deadlift, bench and press lead from block 1 at a Planet Fitness-style gym; with a
-    // barbell, the barbell lifts take over the primary slot as it rotates.
+    // barbell and rack, the barbell squat and bench (starters too) lead instead.
     primaryLoadTypeBonus: { smith: 3, barbell: 4 },
+    // The barbell press and row beat their Smith and dumbbell starters too, so a kit with a bar and rack
+    // runs the barbell main lifts from block 1.
+    compoundLoadTypeBonus: { barbell: 4 },
     // Keeps heavy leg day recoverable for a daily run (§4.6).
     fatigueStackPenalty: 8,
     highRunImpactPenalty: 1,

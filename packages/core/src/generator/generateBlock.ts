@@ -40,7 +40,20 @@ export type GeneratorInput = {
 export const blockIdFor = (startDate: string) => `block-${startDate}`;
 export const workoutIdFor = (date: string, type: SessionType) => `w-${date}-${type}`;
 
-export type GeneratedBlock = { block: Block; workouts: PlannedWorkout[]; coverage: CoverageReport };
+/**
+ * A base slot the block leaves out because nothing usable fills it: no movement for it fits the equipment
+ * at that day's location, or every one that fits is already on that day. The block's rationale says so
+ * in words; this is the same fact for code, so a product can tell the user it can't plan that day fully.
+ */
+export type UnfilledSlot = { dayType: SessionType; slot: SlotKey; reason: 'equipment' | 'already-used' };
+
+export type GeneratedBlock = {
+  block: Block;
+  workouts: PlannedWorkout[];
+  coverage: CoverageReport;
+  /** Slots left out of every week of this block; empty when the plan is complete. */
+  unfilledSlots: UnfilledSlot[];
+};
 
 type Ctx = {
   input: GeneratorInput;
@@ -55,6 +68,7 @@ type Ctx = {
   rotated: string[];
   /** Slots whose whole pool was flagged, and what filled them (shown in the block rationale). */
   notices: string[];
+  unfilled: UnfilledSlot[];
   stalled: Set<string>;
   known: Set<string>;
 };
@@ -81,6 +95,7 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
     baseSlots: {},
     rotated: [],
     notices: [],
+    unfilled: [],
     stalled: new Set(input.stalled ?? []),
     known: new Set(input.known ?? []),
   };
@@ -132,7 +147,7 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
       (rotatedNames.length ? ` New this block: ${rotatedNames.join(', ')}; core variants rotate too.` : '') +
       (ctx.notices.length ? ` ${ctx.notices.join(' ')}` : ''),
   };
-  return { block, workouts, coverage };
+  return { block, workouts, coverage, unfilledSlots: ctx.unfilled };
 }
 
 /**
@@ -200,7 +215,7 @@ function candidates(ctx: Ctx, slot: SlotKey, location: Location): Exercise[] {
  * takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of
  * the block. Each fallback is explained in the block rationale.
  */
-function fillEmptySlot(ctx: Ctx, slot: SlotKey, location: Location, taken: Exercise[]): Exercise | undefined {
+function fillEmptySlot(ctx: Ctx, dayType: SessionType, slot: SlotKey, location: Location, taken: Exercise[]): Exercise | undefined {
   const label = slot.split(':').pop()!.replace(/-/g, ' ');
   const counts = new Map<Exercise['primaryMuscles'][number], number>();
   for (const e of ctx.input.exercises) if (e.slots.includes(slot)) counts.set(e.primaryMuscles[0], (counts.get(e.primaryMuscles[0]) ?? 0) + 1);
@@ -227,7 +242,12 @@ function fillEmptySlot(ctx: Ctx, slot: SlotKey, location: Location, taken: Exerc
   }
   const flagged = best(ctx.input.exercises.filter((e) => free(e) && e.slots.includes(slot) && usable(ctx, e, location, true)), (e) => jitter(ctx, e.id, slot));
   if (!flagged) {
-    ctx.notices.push(`No ${label} movement fits your equipment, so this block leaves that slot out; adding equipment brings it back.`);
+    ctx.notices.push(fits.length
+      ? `${why}, so this block leaves that slot out.`
+      : `No ${label} movement fits your equipment, so this block leaves that slot out; adding equipment brings it back.`);
+    if (!ctx.unfilled.some((u) => u.dayType === dayType && u.slot === slot)) {
+      ctx.unfilled.push({ dayType, slot, reason: fits.length ? 'already-used' : 'equipment' });
+    }
     return undefined;
   }
   ctx.notices.push(`Every ${label} movement is flagged and nothing similar is left, so ${flagged.name} stays in; swap it during the workout or unflag one in the Library.`);
@@ -262,7 +282,7 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefi
       if (fresh.length) pool = fresh;
     }
     const keep = prevId && !rotate.has(i) && !ctx.stalled.has(prevId) && pool.find((e) => e.id === prevId);
-    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen)) || fillEmptySlot(ctx, slot.key, 'gym', chosen);
+    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen)) || fillEmptySlot(ctx, type, slot.key, 'gym', chosen);
     out.push(pick);
     if (!pick) return;
     if (prevId && pick.id !== prevId) ctx.rotated.push(pick.id);
@@ -279,6 +299,7 @@ function scoreBase(ctx: Ctx, e: Exercise, slot: BaseSlot, prevId: string | undef
   const rules = ctx.program.selection;
   if (ctx.blockIndex === 1 && e.starter) s += rules.starterBonus;
   if (slot.role === 'P') s += rules.primaryLoadTypeBonus[e.loadType] ?? 0;
+  if (slot.role === 'C') s += rules.compoundLoadTypeBonus?.[e.loadType] ?? 0;
   s += rules.levelBonus[e.level] ?? 0;
   if (flags?.favourite) s += rules.favouriteBonus;
   if (prevId) {
@@ -562,17 +583,19 @@ function addCoverageSet(ctx: Ctx, workouts: PlannedWorkout[], muscle: CoverageGr
 }
 
 /**
- * Take one set off a muscle over its band in `week`: an isolation or variety set beyond 2 first, then a
- * secondary compound's, then a variety movement whose main muscles are all over their bands. The primary
- * lift is never trimmed, and base movements keep 2 sets or more.
+ * Take one set off a muscle over its band in `week`: an isolation set beyond 2 first, then a variety set
+ * beyond 2 (the third press and second row in ":v:" base slots count as variety here), then a variety
+ * movement whose main muscles are all over their bands. The other base compounds keep their sets (3 or
+ * more on a loading day, §4.2), so a muscle can stay over its band when only they carry it.
  */
 function removeCoverageSet(ctx: Ctx, workouts: PlannedWorkout[], muscle: CoverageGroup, week: number, coverage: CoverageReport): boolean {
   const { byId } = ctx;
   const hits = (e: PlannedExercise) => byId.get(e.exerciseId)?.primaryMuscles.some((m) => muscleGroupOf(m) === muscle);
   const sessions = workouts.filter((w) => w.weekIndex === week && !w.isDeload && w.sessionType !== ctx.coreType);
-  for (const roles of [['I', 'V'], ['C']]) {
+  const variety = (e: PlannedExercise) => e.role === 'V' || (e.role === 'C' && e.slot.includes(':v:'));
+  for (const trimmable of [(e: PlannedExercise) => e.role === 'I', variety]) {
     for (const w of sessions) {
-      const target = [...w.exercises].reverse().find((e) => roles.includes(e.role) && e.sets.length > 2 && hits(e));
+      const target = [...w.exercises].reverse().find((e) => trimmable(e) && e.sets.length > 2 && hits(e));
       if (target) {
         target.sets.pop();
         return true;
@@ -653,7 +676,7 @@ function pickCoreBase(ctx: Ctx): Partial<Record<CoreDynamic, Exercise>> {
         if (ctx.input.flags?.[e.id]?.favourite) s += 2;
         return s;
       });
-      const chosen = pick ?? fillEmptySlot(ctx, `core:${dyn}`, location, Object.values(out) as Exercise[]);
+      const chosen = pick ?? fillEmptySlot(ctx, ctx.coreType!, `core:${dyn}`, location, Object.values(out) as Exercise[]);
       if (!chosen) continue;
       ctx.baseSlots[key] = chosen.id;
       out[dyn] = chosen;

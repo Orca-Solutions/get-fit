@@ -212,7 +212,6 @@ export function validateCatalog(exercises: readonly Exercise[]): string[] {
     const liftingSlots = (ex.slots ?? []).filter((s) => !s.startsWith('core:'));
     if (liftingSlots.length > 0 && !usableWith(ex, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT])) err(id, 'gym slot but not usable with gym equipment');
     if ((ex.loadType === 'barbell' || ex.loadType === 'ez-bar') && !ex.equipment.includes(ex.loadType)) err(id, `${ex.loadType} load needs ${ex.loadType} equipment`);
-    if (ex.equipment.some((e) => BARBELL_EQUIPMENT.includes(e)) && ex.starter) err(id, 'barbell-pack movements are not starters');
     if (ex.starter && !(ex.slots ?? []).some((s) => (BASE_SLOTS as readonly string[]).includes(s) || s.startsWith('core:'))) {
       err(id, 'starter must fill a base slot or a core slot');
     }

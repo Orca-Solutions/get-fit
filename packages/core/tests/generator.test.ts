@@ -4,6 +4,7 @@ import { BANDS, groupOf, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
 import { e1rm, effectiveLoad, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
+import { STRANGE_PERIODIZATION } from '../src/program';
 import { addDays } from '../src/dates';
 import { parseKettlebells } from '../src/kettlebells';
 import type { Equipment, Exercise, LoggedSet, PlannedWorkout, Profile } from '../src/types';
@@ -57,14 +58,26 @@ describe('generateBlock: block 1', () => {
   it('shapes heavy, moderate and light days differently', () => {
     const legs = workouts.filter((w) => w.sessionType === 'legs');
     const [h, m, l, d] = legs;
-    // Variety slots: none on heavy days, up to 1 on moderate and 2 on light days, filled by need.
+    // Variety slots: none on heavy days, up to 1 on moderate and light days, filled by need.
     expect(h.exercises.filter((e) => e.role === 'V')).toHaveLength(0);
     expect(m.exercises.filter((e) => e.role === 'V').length).toBeLessThanOrEqual(1);
-    expect(l.exercises.filter((e) => e.role === 'V').length).toBeLessThanOrEqual(2);
+    expect(l.exercises.filter((e) => e.role === 'V').length).toBeLessThanOrEqual(1);
     expect(h.exercises[0].sets[0].targetReps).toEqual({ min: 6, max: 8 });
     expect(m.exercises[0].sets[0].targetReps).toEqual({ min: 8, max: 12 });
     expect(d.exercises).toHaveLength(6);
     expect(d.exercises.every((e) => e.sets.length === 2 && e.sets[0].rir === 4)).toBe(true);
+  });
+
+  it('gives the main lifts 3 sets or more on every loading day, light days included', () => {
+    const light = lifts(workouts).filter((w) => w.zone === 'L');
+    expect(light).toHaveLength(3);
+    for (const w of lifts(workouts).filter((w) => !w.isDeload)) {
+      // The third chest press and second back compound (":v:" slots) can give a set back for balance.
+      for (const e of w.exercises.filter((e) => (e.role === 'P' || e.role === 'C') && !e.slot.includes(':v:'))) {
+        expect(e.sets.length, `${w.date} ${e.exerciseId}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+    for (const w of light) expect(w.exercises.filter((e) => e.role !== 'G').length, w.date).toBeLessThanOrEqual(7);
   });
 
   it('adds a grip finisher, last, only on moderate and light days', () => {
@@ -304,11 +317,47 @@ describe('generateBlock: thin equipment never stops the plan', () => {
     expect(noRack.every((id) => !byId.get(id)!.equipment.includes('rack'))).toBe(true);
   });
 
+  it('keeps the main lifts at 3 sets or more on every loading day for 8 blocks, with or without a barbell', () => {
+    for (const p of [profile, kit([...profile.equipmentByLocation.gym, 'barbell', 'rack'])]) {
+      for (const g of chain(p, 8)) {
+        for (const w of g.workouts.filter((w) => !w.isDeload && w.sessionType !== 'core')) {
+          for (const e of w.exercises.filter((e) => (e.role === 'P' || e.role === 'C') && !e.slot.includes(':v:'))) {
+            expect(e.sets.length, `block ${g.block.index} ${w.date} ${e.exerciseId}`).toBeGreaterThanOrEqual(3);
+          }
+        }
+      }
+    }
+  });
+
+  it('runs the barbell squat, bench, overhead press and row from block 1 with a bar and rack', () => {
+    const { block } = gen({ profile: kit([...profile.equipmentByLocation.gym, 'barbell', 'rack']) });
+    expect(block.baseSlots['legs|legs:squat']).toBe('barbell-back-squat');
+    expect(block.baseSlots['chest-biceps|chest:flat-press']).toBe('barbell-bench-press');
+    expect(block.baseSlots['back-tri-shoulders|shoulders:vertical-press']).toBe('barbell-overhead-press');
+    expect(block.baseSlots['back-tri-shoulders|back:horizontal-pull']).toBe('barbell-bent-over-row');
+    // The hinge stays a dumbbell RDL: a barbell deadlift or RDL would stack two fatigue-3 lifts with the squat (§4.6).
+    expect(block.baseSlots['legs|legs:hinge']).toBe('dumbbell-romanian-deadlift');
+  });
+
   it('leaves a slot out, and says so, when nothing at all fits', () => {
     const { block, workouts } = gen({ profile: kit([]) });
     expect(block.rationale).toContain('No squat movement fits your equipment, so this block leaves that slot out');
     expect(block.baseSlots['legs|legs:squat']).toBeUndefined();
     expect(workouts.flatMap((w) => w.exercises).every((e) => byId.get(e.exerciseId)!.equipment.length === 0)).toBe(true);
+  });
+
+  it('lists the slots it leaves out, so a product can say it cannot plan them', () => {
+    const empty = gen({ profile: kit([]) });
+    expect(empty.unfilledSlots).toContainEqual({ dayType: 'legs', slot: 'legs:squat', reason: 'equipment' });
+    // One entry per day and slot, and exactly the base slots the block has no movement for.
+    const keys = empty.unfilledSlots.map((u) => `${u.dayType}|${u.slot}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    const days = Object.entries(STRANGE_PERIODIZATION.days).filter(([type]) => profile.schedule.some((s) => s.type === type));
+    const baseKeys = days.flatMap(([type, d]) => (d.kind === 'lift' ? d.base.map((b) => `${type}|${b.key}`) : d.supersets.flatMap(([, a, b]) => [`${type}|core:${a}`, `${type}|core:${b}`])));
+    expect(keys.sort()).toEqual(baseKeys.filter((k) => !empty.block.baseSlots[k]).sort());
+    // A full gym and the thin kits that still fill every slot report nothing.
+    expect(gen().unfilledSlots).toEqual([]);
+    expect(gen({ profile: kit([...profile.equipmentByLocation.gym, 'barbell', 'rack']) }).unfilledSlots).toEqual([]);
   });
 });
 
