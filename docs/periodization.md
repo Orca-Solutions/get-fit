@@ -221,7 +221,7 @@ Rotation rules:
 - **Base slots keep the same exercise for the whole block,** so progress is measurable.
 - **V slots are where novelty lives.** They draw from the day's pool, avoid repeating a family already in the session, and can change every week. They only appear on M and L days, which is Anatoly's "wider variety when the bar gets lighter."
 - **At each block boundary,** each lifting day rotates one isolation slot, and on even-numbered blocks one compound slot too (secondary compounds before the primary lift, so the main lift sticks around longest). Any exercise that has **stalled** (no e1RM gain over its last 3 exposures) also rotates out.
-- **When everything is flagged:** if every candidate for a slot is marked Avoid or Can't do, the flagged movement stays in and the block carries a notice suggesting a swap or an unflag.
+- **When nothing fits:** if every candidate for a slot is marked Avoid or Can't do, or none fits the available equipment, the slot takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of the block. The block's rationale says which, so a gap is never silent; adding equipment or removing a flag brings the slot back.
 - **Mid-session swap:** the app offers movements tagged for the same slot first, then ones with the same movement pattern and muscles, limited to the equipment at that day's location. Logged sets attach to whatever was actually done.
 
 ### 4.4 Loads and progression (the feedback loop)

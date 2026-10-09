@@ -7,6 +7,8 @@ Notable changes to get-fit. Releases of the core package are tagged `core-v<vers
 - **core-v0.1.0:** first release of `@orca-solutions/get-fit-core`, attached to its GitHub release as an installable tarball.
 - The repo is now an npm workspace: the engine in `packages/core`, the app in `apps/web` and the sync server in `server`. The training program is data (`Program`, with `STRANGE_PERIODIZATION` as the original), and a golden test pins the reference profile's blocks 1 to 8.
 - Property tests run the generator over 300 random setups.
+- The generator plans around thin equipment (for example dumbbells only, or a home kit only) instead of failing: a slot nothing fits takes a related movement or is left out, and the block's rationale says so. Two bodyweight movements fill common gaps: Bodyweight Split Squat and Single-Leg Calf Raise.
+- The sync server rejects a JSON array as a request body, and a device that signs in with cookies or headers counts as connected when restoring a backup.
 - The client can keep one database per account and sign in to a server with custom headers or cookies.
 - CI lints workflow files.
 - Rest timer on the workout screen: a large count and a thin bar in the thumb zone, −30 / +30, tap to dismiss, optional chime.

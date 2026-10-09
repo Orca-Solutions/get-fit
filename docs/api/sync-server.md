@@ -106,7 +106,7 @@ One request both pushes and pulls. The server stores the pushed changes first, t
 
 | Field | Rule | When it fails |
 |---|---|---|
-| body | A JSON object. (A JSON array passes this check and reads as an empty request.) | Not JSON: 400 `Body must be valid JSON.`; `null` or a primitive: 400 `body must be a JSON object`. |
+| body | A JSON object. | Not JSON: 400 `Body must be valid JSON.`; `null`, an array or a primitive: 400 `body must be a JSON object`. |
 | `cursor` | A safe non-negative integer. Default `0`. | 400 `cursor must be a non-negative integer` |
 | `changes` | An array of at most `MAX_CHANGES` (5000). Default `[]`. | 400 `changes must be an array` or `too many changes (max 5000 per request)` |
 | `cursorKey` | `table` and `id` strings and an ISO `updatedAt`. | Ignored (treated as absent). |

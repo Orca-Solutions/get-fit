@@ -6,7 +6,7 @@ Where the exercise catalog comes from, the schema each movement follows, what's 
 
 ## 1. Summary
 
-get-fit ships **its own curated catalog of 156 movements**. 112 are seeded from **free-exercise-db** (public domain, 876 entries, one static JSON file plus photos), keeping its names, instructions and start/end photos; 44 that it lacks (Bulgarian split squat, bird dog, suitcase carry, band movements and others) are written for this project. Every entry carries a hand-written tag layer that no source provides: movement pattern, angle, grip, laterality, the generator slots it can fill, a sensible rep range, fatigue cost and running impact. Everything is vendored into the repo as static data: no live API, nothing that can break at the gym. wger was consulted only as a checklist of commonly done movements and is never copied, so the data carries no share-alike terms.
+get-fit ships **its own curated catalog of 158 movements**. 112 are seeded from **free-exercise-db** (public domain, 876 entries, one static JSON file plus photos), keeping its names, instructions and start/end photos; 46 that it lacks (Bulgarian split squat, bird dog, suitcase carry, band movements and others) are written for this project. Every entry carries a hand-written tag layer that no source provides: movement pattern, angle, grip, laterality, the generator slots it can fill, a sensible rep range, fatigue cost and running impact. Everything is vendored into the repo as static data: no live API, nothing that can break at the gym. wger was consulted only as a checklist of commonly done movements and is never copied, so the data carries no share-alike terms.
 
 ---
 
@@ -187,7 +187,7 @@ This entry is from the generated `exercises.json` (instructions shortened). It m
 
 ## 6. The catalog
 
-156 movements: 134 beginner, 21 intermediate, 1 advanced (the generator picks only beginner and intermediate). ★ = starter, preferred in block 1. + = written for this project (no free-exercise-db entry, so no photos). Everything else maps to a free-exercise-db entry and has start and end photos.
+158 movements: 136 beginner, 21 intermediate, 1 advanced (the generator picks only beginner and intermediate). ★ = starter, preferred in block 1. + = written for this project (no free-exercise-db entry, so no photos). Everything else maps to a free-exercise-db entry and has start and end photos.
 
 The catalog targets a **Planet Fitness-style gym**: no free barbells, racks, EZ bars, trap bar or landmine, so squats, deadlifts, bench and overhead presses are **Smith machine** versions. It has assisted pull-up and dip machines, a hack squat, hip abduction and adduction, and the usual machines. Free-barbell variants are left out; if a gym has them, they're easy to add. Planet Fitness dumbbells usually top out around 60–75 lb (inferred, not checked), which caps dumbbell progressions; past that, a movement moves to its Smith or machine sibling.
 
@@ -196,12 +196,12 @@ The catalog targets a **Planet Fitness-style gym**: no free barbells, racks, EZ 
 | Pattern | Movements |
 |---|---|
 | Squat | Smith Machine Squat ★, Smith Machine Front Squat, Dumbbell Goblet Squat, Leg Press ★, Hack Squat Machine |
-| Lunge / single-leg | Dumbbell Split Squat ★, Smith Machine Split Squat +, Dumbbell Bulgarian Split Squat +, Dumbbell Reverse Lunge ★, Dumbbell Walking Lunge, Dumbbell Lateral Lunge +, Dumbbell Step-Up |
+| Lunge / single-leg | Bodyweight Split Squat +, Dumbbell Split Squat ★, Smith Machine Split Squat +, Dumbbell Bulgarian Split Squat +, Dumbbell Reverse Lunge ★, Dumbbell Walking Lunge, Dumbbell Lateral Lunge +, Dumbbell Step-Up |
 | Hinge | Smith Machine Deadlift ★, Smith Machine Romanian Deadlift, Dumbbell Romanian Deadlift ★, Dumbbell Deadlift +, Single-Leg Dumbbell Romanian Deadlift, Smith Machine Good Morning, Cable Pull-Through, Kettlebell Swing, Band Pull-Through + |
 | Hip extension | 45° Back Extension, Glute Bridge ★, Single-Leg Glute Bridge, Smith Machine Hip Thrust, Bird Dog ★ +, Superman Hold |
 | Knee extension | Leg Extension ★, Single-Leg Extension, Reverse Nordic + |
 | Knee flexion | Seated Leg Curl ★, Lying Leg Curl ★, Nordic Curl |
-| Calf | Standing Calf Raise Machine ★, Seated Calf Raise ★, Smith Machine Calf Raise, Single-Leg Dumbbell Calf Raise |
+| Calf | Standing Calf Raise Machine ★, Seated Calf Raise ★, Smith Machine Calf Raise, Single-Leg Calf Raise +, Single-Leg Dumbbell Calf Raise |
 | Hip adduction | Hip Adduction Machine, Cable Hip Adduction, Copenhagen Plank + |
 | Hip abduction | Hip Abduction Machine, Cable Hip Abduction +, Side-Lying Hip Abduction + |
 
@@ -261,7 +261,7 @@ Ids are permanent: rename a movement's `name`, never its `id`, because logged se
 
 ## 8. Licensing notes
 
-- **The catalog's own work** (tags, cues and the 44 entries written here) is under the project license, FSL-1.1-MIT. Entries that copy free-exercise-db text or photos are public domain under the Unlicense, which can sit in the repo with no conditions. The README credits free-exercise-db as a courtesy.
+- **The catalog's own work** (tags, cues and the 46 entries written here) is under the project license, FSL-1.1-MIT. Entries that copy free-exercise-db text or photos are public domain under the Unlicense, which can sit in the repo with no conditions. The README credits free-exercise-db as a courtesy.
 - The per-entry `license` field reads `Unlicense` for entries drawn from free-exercise-db and `FSL-1.1-MIT` for the project's own entries.
 - **Provenance caveat (inferred, not confirmed):** free-exercise-db's instructions and photos read as though they came from an older commercial site's exercise library, and the repo doesn't say where they came from. The Unlicense is the repo author's statement. Anyone who wants zero doubt can ship only the project's own cues and drop the photos.
 - **wger** is never copied, only consulted for which movements are common. Exercise names aren't copyrightable, so writing entries for movements wger also lists is fine.

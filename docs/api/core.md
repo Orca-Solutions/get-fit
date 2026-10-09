@@ -2,7 +2,7 @@
 
 The get-fit training engine as a library: domain types, the curated exercise catalog, training programs as data, the block generator, progression and coverage helpers, the sync protocol, an IndexedDB client and a SQLite sync store.
 
-Version documented: `0.1.0`. See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
+Version documented: `0.2.0` (the version on `main`; the latest release may be older). See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
 
 - [Install](#install)
 - [Entry points](#entry-points)
@@ -366,7 +366,7 @@ type GeneratedBlock = { block: Block; workouts: PlannedWorkout[]; coverage: Cove
 | `workouts` | Every session of the four weeks, sorted by date: one per schedule entry per week, with ids `w-<date>-<sessionType>`. |
 | `coverage` | The `CoverageReport` of the final plan for the three loading weeks (see [Coverage](#coverage)). |
 
-There is no separate notices field. When every candidate for a slot is flagged, the slot takes a related movement for the same main muscle (or, failing that, keeps a flagged one), and a sentence saying so is appended to `block.rationale`.
+There is no separate notices field. When no candidate for a slot is usable (every one is flagged, or none fits the equipment), the slot takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of the block. Each fallback appends a sentence to `block.rationale`.
 
 ### What the generator does
 
@@ -377,13 +377,13 @@ There is no separate notices field. When every candidate for a slot is flagged, 
 
 ### Errors
 
-`generateBlock` throws an `Error` when the profile's schedule names a day type the program doesn't define, or when no exercise at all is tagged for a slot the program uses. Run `validateProgram` first to catch both.
+`generateBlock` throws an `Error` only when the profile's schedule names a day type the program doesn't define. Thin equipment never throws: a slot nothing fits is left out (see above). Run `validateProgram` first to catch schedule mismatches and slots no movement is tagged for.
 
 ### Other generator exports
 
 | Export | Signature | Description |
 |---|---|---|
-| `GENERATOR_VERSION` | `'1.1.0'` | Recorded on every block. |
+| `GENERATOR_VERSION` | `'1.2.0'` | Recorded on every block. |
 | `BLOCK_WEEKS` | `4` | |
 | `blockIdFor` | `(startDate: string) => string` | `block-<startDate>`. |
 | `workoutIdFor` | `(date: string, type: SessionType) => string` | `w-<date>-<type>`. |
@@ -781,7 +781,7 @@ A rebuild (`plannedAhead` or `regenerateUpcoming`) updates the block's `baseSlot
 - Throws `Error('Not a get-fit backup.')` when `tables` is missing, `app` is present and not `'get-fit'`, or a table's value is not an array. Tables absent from the file are left alone; unknown tables are ignored. The sync server's `/api/export` output (which has no `app` field) is accepted.
 - Rows that fail `validRow` are skipped and counted in `skipped`.
 - Normally rows merge by id: a row is written only when it is new or its `updatedAt` is strictly newer than the local copy. Nothing local is removed, so logged sets on the device are kept.
-- When the device has no live logged sets and no stored sync token, the backup's plan replaces the device's own: `profile`, `blocks` and `plannedWorkouts` rows from the file are written with `updatedAt` set to now, so they win everywhere, and the device's own blocks and workouts not in the file are soft-deleted (so the deletion syncs too).
+- When the device has no live logged sets and isn't connected to sync (`isSyncConnected` is false), the backup's plan replaces the device's own: `profile`, `blocks` and `plannedWorkouts` rows from the file are written with `updatedAt` set to now, so they win everywhere, and the device's own blocks and workouts not in the file are soft-deleted (so the deletion syncs too).
 - Clears `lastPushedAt`, so the next sync pushes every record; then calls `getProfile`, `ensurePlan(today())` and schedules a sync.
 
 ### Sync engine
@@ -796,6 +796,7 @@ The engine pushes every local record whose `updatedAt` is past the push watermar
 | `startAutoSync` | `(opts?: SyncOptions) => void` | Browser only. Syncs on the window's `online` and `focus` events, on `visibilitychange` to visible, and every 60 s while the document is visible. The listeners and interval are not removable. |
 | `setSyncToken` | `(token: string \| null, db?) => Promise<void>` | Store the bearer token (trimmed), or clear it with `null` or a blank string. |
 | `getSyncStatus` | `(db?) => Promise<SyncStatus>` | |
+| `isSyncConnected` | `(db?) => Promise<boolean>` | True when the device syncs with a server: it has a stored token, the configured `headers` return a value (cookie or account sign-in), or it has synced before. |
 
 `SyncOptions`:
 
