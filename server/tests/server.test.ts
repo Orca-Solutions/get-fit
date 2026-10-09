@@ -51,7 +51,7 @@ describe('auth', () => {
 describe('validation', () => {
   it('rejects bad cursors and junk bodies', async () => {
     const { sync } = setup();
-    const bad = [{ cursor: -1, changes: [] }, { cursor: 0, changes: 'nope' }, 'not json'];
+    const bad = [{ cursor: -1, changes: [] }, { cursor: 0, changes: 'nope' }, 'not json', [], [{ cursor: 0, changes: [] }]];
     for (const body of bad) expect((await sync(body)).status).toBe(400);
   });
 

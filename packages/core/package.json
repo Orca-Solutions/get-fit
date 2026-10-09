@@ -1,6 +1,6 @@
 {
   "name": "@orca-solutions/get-fit-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The get-fit training engine: exercise library, plan generator, progression and sync.",
   "license": "MIT",
   "type": "module",
@@ -58,9 +58,6 @@
     "better-sqlite3": "^13.0.3",
     "dexie": "^4.4.6",
     "fake-indexeddb": "^6.2.5"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "engines": {
     "node": ">=22"
