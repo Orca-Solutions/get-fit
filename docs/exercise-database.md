@@ -6,7 +6,7 @@ Where the exercise catalog comes from, the schema each movement follows, what's 
 
 ## 1. Summary
 
-get-fit ships **its own curated catalog of 215 movements**. 139 are seeded from **free-exercise-db** (876 entries, one static JSON file plus photos) and use its start and end photos (see §8 for their license status); 76 that it lacks (Bulgarian split squat, bird dog, suitcase carry, Pendlay row, the home pack, band movements and others) are written for this project and have no photos. Every movement's instructions are written for this project; none are copied from free-exercise-db. Every entry carries a hand-written tag layer that no source provides: movement pattern, angle, grip, laterality, the generator slots it can fill, a sensible rep range, fatigue cost and running impact. Everything is vendored into the repo as static data: no live API, nothing that can break at the gym. wger was consulted only as a checklist of commonly done movements and is never copied, so the data carries no share-alike terms.
+get-fit ships **its own curated catalog of 220 movements**. 139 are seeded from **free-exercise-db** (876 entries, one static JSON file plus photos) and use its start and end photos (see §8 for their license status); 81 that it lacks (Bulgarian split squat, sumo squats, decline presses, bird dog, suitcase carry, Pendlay row, the home pack, band movements and others) are written for this project and have no photos. Every movement's instructions are written for this project; none are copied from free-exercise-db. Every entry carries a hand-written tag layer that no source provides: movement pattern, angle, grip, laterality, the generator slots it can fill, a sensible rep range, fatigue cost and running impact. Everything is vendored into the repo as static data: no live API, nothing that can break at the gym. wger was consulted only as a checklist of commonly done movements and is never copied, so the data carries no share-alike terms.
 
 ---
 
@@ -120,7 +120,7 @@ The muscle, equipment and movement-pattern enums are in `types.ts`. A separate l
 | `band` | which band, plus steps from the anchor | band Pallof press |
 | `none` | no load | plank |
 
-**Slots.** Each movement lists the generator slots it may fill, such as `chest:flat-press`, `legs:v:hip-extension` (a variety pool), `core:anti-rotation` or `grip:pinch`. The program's day templates name slots, and `validateProgram` checks that every slot a program uses has at least one movement tagged for it.
+**Slots.** Each movement lists the generator slots it may fill, such as `chest:flat-press`, `legs:v:hip-extension` (a variety pool), `back:deadlift` (a swap slot that takes a base slot's place on some weeks), `core:anti-rotation` or `grip:pinch`. The program's day templates name slots, and `validateProgram` checks that every slot a program uses has at least one movement tagged for it.
 
 **Home vs gym.** Rather than hand-tagging movements by place, the profile keeps an equipment list per location, and each planned day has a location (the weekend core day is at home). A movement is offered for a day only when all of its `equipment` is available there. Adding a pull-up bar or another kettlebell at home unlocks movements automatically, and Swap only suggests what can be done where the user is.
 
@@ -181,7 +181,7 @@ This entry is from the generated `exercises.json` (instructions shortened). It m
 - **Rotate within a family or pattern.** Block to block, change `angle` (flat → incline press), `grip` (pronated → neutral row), `laterality` (two arms → one), `stance` (squat → split squat) or `loadType` (Smith → cable). Same muscles, different stimulus.
 - **Respect each movement's `repRange`.** A low-rep day never prescribes 4-rep lateral raises, and a high-rep day never prescribes 20-rep deadlifts.
 - **Budget fatigue.** Avoid stacking two `fatigueCost: 3` lifts in one session, and penalise `runImpact: high` movements for a lifter who runs daily.
-- **Count volume per muscle** from `primaryMuscles` (1 set) and `secondaryMuscles` (0.5) to keep weekly sets per muscle in range.
+- **Count volume per muscle** from `primaryMuscles` (1 set) and `secondaryMuscles` (0.5) to keep weekly sets per muscle in range. Squat and lunge compounds list glutes as secondary, never primary (the build enforces it), so they count half toward glutes/hamstrings; hinges and hip extensions list glutes as primary. Lower back is primary on direct work (back extensions, good mornings, deadlifts, bird dogs, supermen) and secondary on Romanian deadlifts and swings.
 - **Swap** = same slot first, then same `movementPattern` and overlapping `primaryMuscles`, with the `equipment` available at that location.
 - **Core ladders:** `difficultyRank` and `progressions` give the next-harder variant for heavy core weeks.
 
@@ -189,9 +189,9 @@ This entry is from the generated `exercises.json` (instructions shortened). It m
 
 ## 6. The catalog
 
-215 movements: 183 beginner, 31 intermediate, 1 advanced (the generator picks only beginner and intermediate). ★ = starter, preferred in block 1. + = written for this project (no free-exercise-db entry, so no photos). Everything else maps to a free-exercise-db entry and has its start and end photos.
+220 movements: 188 beginner, 31 intermediate, 1 advanced (the generator picks only beginner and intermediate). ★ = starter, preferred in block 1. + = written for this project (no free-exercise-db entry, so no photos). Everything else maps to a free-exercise-db entry and has its start and end photos.
 
-The catalog's base targets a **Planet Fitness-style gym**: no free barbells, racks, EZ bars, trap bar or landmine, so the starter squat, deadlift, bench and overhead press are **Smith machine** versions. It has assisted pull-up and dip machines, a hack squat, hip abduction and adduction, and the usual machines. For a gym with free bars, an optional **barbell pack** (listed after the main tables) adds 28 movements. They need the `barbell`, `ez-bar` or `rack` equipment, so the generator plans them only at a location whose equipment lists that gear, and the lifts that start from a rack (marked in the table) only when a rack is listed too. Trap bar and landmine movements are still left out. Planet Fitness dumbbells usually top out around 60–75 lb (inferred, not checked), which caps dumbbell progressions; past that, a movement moves to its Smith or machine sibling.
+The catalog's base targets a **Planet Fitness-style gym**: no free barbells, racks, EZ bars, trap bar or landmine, so the starter squat, bench and overhead press are **Smith machine** versions, and the Friday deadlift moves to the Smith machine once the dumbbell deadlift is outgrown. It has assisted pull-up and dip machines, a hack squat, hip abduction and adduction, and the usual machines. For a gym with free bars, an optional **barbell pack** (listed after the main tables) adds 28 movements. They need the `barbell`, `ez-bar` or `rack` equipment, so the generator plans them only at a location whose equipment lists that gear, and the lifts that start from a rack (marked in the table) only when a rack is listed too. Trap bar and landmine movements are still left out. Planet Fitness dumbbells usually top out around 60–75 lb (inferred, not checked), which caps dumbbell progressions; past that, a movement moves to its Smith or machine sibling.
 
 **Legs**
 
@@ -199,7 +199,9 @@ The catalog's base targets a **Planet Fitness-style gym**: no free barbells, rac
 |---|---|
 | Squat | Smith Machine Squat ★, Smith Machine Front Squat, Dumbbell Goblet Squat, Leg Press ★, Hack Squat Machine |
 | Lunge / single-leg | Bodyweight Split Squat +, Dumbbell Split Squat ★, Smith Machine Split Squat +, Dumbbell Bulgarian Split Squat +, Dumbbell Reverse Lunge ★, Dumbbell Walking Lunge, Dumbbell Lateral Lunge +, Dumbbell Step-Up |
-| Hinge | Smith Machine Deadlift ★, Smith Machine Romanian Deadlift, Dumbbell Romanian Deadlift ★, Dumbbell Deadlift +, Single-Leg Dumbbell Romanian Deadlift, Smith Machine Good Morning, Cable Pull-Through, Kettlebell Swing, Band Pull-Through + |
+| Sumo squat (leg day slot 3 in even blocks) | Dumbbell Sumo Squat +, Smith Machine Sumo Squat + |
+| Hinge | Smith Machine Romanian Deadlift, Dumbbell Romanian Deadlift ★, Single-Leg Dumbbell Romanian Deadlift, Smith Machine Good Morning, Cable Pull-Through, Kettlebell Swing, Band Pull-Through + |
+| Deadlift (Friday, in place of the second row on some weeks) | Dumbbell Deadlift +, Smith Machine Deadlift |
 | Hip extension | 45° Back Extension, Glute Bridge ★, Single-Leg Glute Bridge, Smith Machine Hip Thrust, Bird Dog ★ +, Superman Hold |
 | Knee extension | Leg Extension ★, Single-Leg Extension, Reverse Nordic + |
 | Knee flexion | Seated Leg Curl ★, Lying Leg Curl ★, Nordic Curl |
@@ -211,7 +213,7 @@ The catalog's base targets a **Planet Fitness-style gym**: no free barbells, rac
 
 | Pattern | Movements |
 |---|---|
-| Push, horizontal | Smith Machine Bench Press ★, Dumbbell Bench Press ★, Machine Chest Press, Smith Machine Close-Grip Bench Press, Incline Dumbbell Press ★, Smith Machine Incline Bench Press, Incline Neutral-Grip Dumbbell Press, Assisted Dip Machine +, Incline Push-Up, Push-Up, Decline Push-Up |
+| Push, horizontal | Smith Machine Bench Press ★, Dumbbell Bench Press ★, Machine Chest Press, Smith Machine Close-Grip Bench Press, Incline Dumbbell Press ★, Smith Machine Incline Bench Press, Incline Neutral-Grip Dumbbell Press, Assisted Dip Machine +, Incline Push-Up, Push-Up, Decline Push-Up, Smith Machine Decline Press + (decline bench), Dumbbell Decline Press + (decline bench) |
 | Chest fly | Cable Crossover (High to Low) ★, Low-to-High Cable Fly, Pec Deck ★, Dumbbell Fly |
 | Push, vertical | Smith Machine Overhead Press ★, Seated Dumbbell Shoulder Press ★, Machine Shoulder Press, Arnold Press, Half-Kneeling Single-Arm Dumbbell Press + |
 | Pull, vertical | Wide-Grip Lat Pulldown ★, Close-Grip Lat Pulldown, Underhand Lat Pulldown, Single-Arm Cable Pulldown, Assisted Pull-Up Machine ★ +, Chin-Up, Pull-Up, Straight-Arm Cable Pulldown, Dumbbell Pullover |
@@ -231,16 +233,17 @@ The catalog's base targets a **Planet Fitness-style gym**: no free barbells, rac
 
 The grip-heavy curls (hammer, reverse, Zottman) also serve the reverse-curl grip finisher.
 
-**Barbell pack** (planned only where the profile lists `barbell`, `ez-bar` or `rack`; with a barbell and rack, the four ★ starters replace the Smith and dumbbell squat, bench, overhead press and row from block 1; the hinge stays a dumbbell Romanian deadlift)
+**Barbell pack** (planned only where the profile lists `barbell`, `ez-bar` or `rack`; with a barbell and rack, the four ★ starters replace the Smith and dumbbell squat, bench, overhead press and row from block 1; the barbell Romanian deadlift and the deadlifts are planned only when marked Favourite)
 
 | Pattern | Movements |
 |---|---|
 | Squat | Barbell Back Squat ★, Barbell Front Squat (rack) |
 | Lunge / single-leg | Barbell Walking Lunge, Barbell Step-Up (rack) |
-| Hinge | Barbell Deadlift, Barbell Romanian Deadlift, Sumo Deadlift, Barbell Good Morning (rack) |
+| Hinge | Barbell Romanian Deadlift, Barbell Good Morning (rack) |
+| Deadlift | Barbell Deadlift, Sumo Deadlift |
 | Hip extension | Barbell Hip Thrust, Barbell Glute Bridge |
 | Calf | Barbell Calf Raise (rack) |
-| Push, horizontal | Barbell Bench Press ★, Incline Barbell Bench Press, Close-Grip Barbell Bench Press, Decline Barbell Bench Press (rack and bench) |
+| Push, horizontal | Barbell Bench Press ★, Incline Barbell Bench Press, Close-Grip Barbell Bench Press, Decline Barbell Bench Press (rack and decline bench) |
 | Push, vertical | Barbell Overhead Press ★ (rack) |
 | Pull, horizontal | Barbell Bent-Over Row ★, Reverse-Grip Barbell Row, Pendlay Row + |
 | Shrug | Barbell Shrug |
@@ -249,13 +252,16 @@ The grip-heavy curls (hammer, reverse, Zottman) also serve the reverse-curl grip
 | Biceps | Barbell Curl, Reverse Barbell Curl, EZ-Bar Curl, EZ-Bar Preacher Curl |
 | Triceps | EZ-Bar Skull Crusher, Barbell Overhead Triceps Extension |
 
+**Decline bench.** The decline presses list `decline-bench` as equipment, so they are planned only where a location lists one. It is optional gear like the barbell pack's.
+
 Barbell and EZ-bar weights are logged as the total on the bar, bar included (`weightConvention: total`), with 5 lb steps.
 
-**Home pack** (29 movements, all +, tagged `home-pack`: kettlebells, bands with a door anchor and bodyweight, so a kit of only those fills every lifting slot)
+**Home pack** (30 movements, all +, tagged `home-pack`: kettlebells, bands with a door anchor and bodyweight, so a kit of only those fills every lifting slot)
 
 | Pattern | Movements |
 |---|---|
 | Squat | Kettlebell Goblet Squat |
+| Sumo squat | Kettlebell Sumo Squat |
 | Lunge / single-leg | Kettlebell Reverse Lunge |
 | Hinge | Kettlebell Romanian Deadlift |
 | Knee extension | Sissy Squat |
@@ -295,7 +301,7 @@ Stretching, plyometrics, Olympic lifts and strongman are left out. Plyometrics i
 ## 7. How it's built
 
 1. [`packages/core/scripts/curation.ts`](../packages/core/scripts/curation.ts) lists every movement: its id, name and tags, plus a `sourceId` pointing at the free-exercise-db entry whose photos it uses. Instructions for entries with photos are in [`instructions.ts`](../packages/core/scripts/instructions.ts); entries written for this project keep theirs in `curation.ts`.
-2. `npm run build:exercises` runs [`build-exercises.ts`](../packages/core/scripts/build-exercises.ts), which downloads free-exercise-db at a **pinned commit** (so the seed never changes underneath the catalog; downloads are cached in `.cache/`), joins it with the curation file and validates every entry: enum values, unique kebab-case ids, regressions and progressions that point at real ids, 2–4 cues, rep ranges in sensible bounds, slots usable with the equipment at their location, one core slot per core dynamic, one grip slot per grip type, `license` and `imageLicense` set to match the source, and own instructions for every entry. It never reads free-exercise-db's instruction text, and the build fails if any step matches one of its sentences.
+2. `npm run build:exercises` runs [`build-exercises.ts`](../packages/core/scripts/build-exercises.ts), which downloads free-exercise-db at a **pinned commit** (so the seed never changes underneath the catalog; downloads are cached in `.cache/`), joins it with the curation file and validates every entry: enum values, unique kebab-case ids, regressions and progressions that point at real ids, 2–4 cues, rep ranges in sensible bounds, slots usable with the equipment at their location, one core slot per core dynamic, one grip slot per grip type, squat and lunge compounds listing glutes as secondary, `license` and `imageLicense` set to match the source, and own instructions for every entry. It never reads free-exercise-db's instruction text, and the build fails if any step matches one of its sentences.
 3. It writes `packages/core/src/data/exercises.json` and copies the photos for the sourced entries (two per movement, about 8 MB in all) into `apps/web/public/exercises/<id>/`, so they work offline.
 4. `packages/core/tests/exercises.test.ts` runs the same validation against the committed JSON in CI.
 
@@ -305,7 +311,7 @@ Ids are permanent: rename a movement's `name`, never its `id`, because logged se
 
 ## 8. Licensing notes
 
-- **The catalog's own work** (every entry's tags, cues and instructions, the curated selection, and the 76 entries written here) is under the project license, FSL-1.1-MIT.
+- **The catalog's own work** (every entry's tags, cues and instructions, the curated selection, and the 81 entries written here) is under the project license, FSL-1.1-MIT.
 - **free-exercise-db's photos and instruction text have no known license.** The catalog uses only the photos; the instruction text is not used. free-exercise-db applies the Unlicense to its repository, but it is a restructured copy of [wrkout/exercises.json](https://github.com/wrkout/exercises.json), whose [CONTRIBUTING.md](https://github.com/wrkout/exercises.json/blob/master/CONTRIBUTING.md) says the images were scraped from the internet, that its author does not own their copyright, and advises against using them in commercial projects. The Unlicense can only cover what its author owns, which is the data structure, not the photos. The instruction text appears to come from a commercial fitness site: one entry checked matches that site's page word for word, and the rest are inferred to share its origin. Questions about the images' license and source are open upstream ([#305](https://github.com/wrkout/exercises.json/issues/305), [#308](https://github.com/wrkout/exercises.json/issues/308)).
 - The per-entry `license` field is `FSL-1.1-MIT` for every entry and covers its text and tags. Entries with free-exercise-db photos also carry `imageLicense: 'unverified'`, so an app can decide where showing them is acceptable.
 - To reuse the catalog without this question, keep everything except `images` and leave out the photos in `apps/web/public/exercises/`.
@@ -316,7 +322,7 @@ Ids are permanent: rename a movement's `name`, never its `id`, because logged se
 
 ## 9. Choices made
 
-1. **Catalog size:** about 160 curated movements, seeded from free-exercise-db, limited to what fits the target gym and home kit, plus the 28-movement barbell pack and the 29-movement home pack.
+1. **Catalog size:** about 160 curated movements, seeded from free-exercise-db, limited to what fits the target gym and home kit, plus the 28-movement barbell pack and the 30-movement home pack.
 2. **Photos:** bundled, with the licensing caveat in §8. free-exercise-db has two photos per movement (start and end), and the app shows them as a simple looping demo. Video is out of scope.
 3. **Gym:** a Planet Fitness-style gym: Smith machine for squat, deadlift, bench and overhead press; assisted pull-up and dip, hack squat, hip adduction and abduction, and most typical machines. Free barbells, EZ bars and racks are an optional pack for gyms that have them.
 4. **Smith lifts from block 1** (blocks are 4 weeks: 3 loading weeks and a deload; see [periodization.md](periodization.md)).

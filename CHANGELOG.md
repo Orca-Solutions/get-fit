@@ -2,6 +2,18 @@
 
 Notable changes to get-fit. Releases of the core package are tagged `core-v<version>`.
 
+## 2026-10-10
+
+- **core-v0.5.0:** released with program 1.4.0.
+- **Program 1.4.0** (core-v0.5.0):
+  - **Romanian deadlift twice per block:** leg day runs it on its heavy and moderate weeks; the light week and the deload take a back extension, hip thrust or cable pull-through instead.
+  - **Friday deadlift:** a 3-set deadlift takes the second row's place on Friday's heavy week, and on its moderate week only when every muscle stays inside its target. Dumbbells come first, then the Smith machine once the dumbbell deadlift is outgrown; a barbell or sumo deadlift is planned only when marked Favourite. Avoiding every deadlift keeps the row every week. Its suggested weight comes from its latest e1RM (`e1rmLoadHint`).
+  - **Sumo squats:** leg day's slot 3 alternates by block between single-leg work and a sumo squat (dumbbell, then Smith, kettlebell at home), with the leg press and hack squat first in line for the variety slot in sumo blocks.
+  - **Counting:** squats, lunges, the leg press and the hack squat count half toward glutes/hamstrings, and the deadlift half toward back. Lower back is tracked (target 3–5, floor 2), and the core day's hip-extension work counts toward it.
+  - **Decline presses:** Smith machine and dumbbell decline presses join Monday's chest press variants where a place lists the new `decline-bench` equipment. The barbell decline bench press needs one too.
+  - **Two-sided presses:** main press slots skip free-standing one-arm presses, so the shoulder press moves from the Smith overhead press to the seated dumbbell press at block 4.
+  - **API:** `BaseSlot` gains `alternateLaterality`, `stepUp` and `swap`; `GeneratorInput` gains `outgrown`; new `isOutgrown`, `e1rmLoadHint` and `swapSlotKeys`; new coverage group `lower-back` and catalog slot `back:deadlift`. The catalog is 220 movements.
+
 ## 2026-10-09
 
 - **core-v0.4.0:** released with program 1.3.0 and everything from program 1.2.0 below (0.3.0 was never released on its own).
