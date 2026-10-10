@@ -714,6 +714,20 @@ describe('progression', () => {
     expect(deloadHint(squat, last, profile)!.suggest).toBe(50);
   });
 
+  it('keys the deload off the moderate week, not the heavy week, and words the line from the same session', () => {
+    const week = (id: string, date: string, weight: number, reps: number[]) => reps.map((r, i) => set(id, date, weight, r, i));
+    // Heavy week's 8s at 70 overlap 8–12, but the moderate week at 55 × 10 is the one run at these reps.
+    const history = summarizeHistory(curl, [...week('m', '2026-10-14', 55, [10, 10, 9]), ...week('l', '2026-10-21', 40, [15, 14, 13]), ...week('h', '2026-10-28', 70, [8, 8, 7])], profile);
+    const target = { min: 8, max: 12 };
+    const last = lastTimeHint(curl, history, target)!;
+    expect(last.weight).toBe(70);
+    const deload = deloadHint(curl, last, profile, { history, target, date: '2026-11-04' })!;
+    expect(deload).toMatchObject({ text: 'Last time at 8–12: 55 lb each', date: '2026-10-14', weight: 55, suggest: 45 });
+    // A Hard hold doesn't carry into the deload line.
+    const held = { ...last, text: `${last.text} · that was Hard, so hold this weight` };
+    expect(deloadHint(curl, held, profile)!.text).toBe('Last time at 8–12: 70 lb each');
+  });
+
   it('holds the weight instead of suggesting more when a topped-out session had a Hard set', () => {
     const hardSet = (i: number, effort: LoggedSet['effort']) => ({ ...set('a', '2026-10-01', 80, 12, i), effort });
     const hard = lastTimeHint(curl, summarizeHistory(curl, [hardSet(0, 'hard'), hardSet(1, 'hard')], profile), { min: 8, max: 12 })!;
@@ -747,6 +761,16 @@ describe('progression', () => {
     expect(isStalled(...mk([['b1', false, 100], ['b1', false, 99], ['b1', false, 101]]))).toBe(false);
     expect(isStalled(...mk([['b2', false, 90], ['b2', true, 80], ['b1', false, 132], ['b1', false, 147]]))).toBe(false);
     expect(isStalled(mk([['b2', false, 90], ['b2', false, 91], ['b1', false, 132], ['b1', false, 147]])[0], () => undefined)).toBe(false);
+  });
+
+  it('orders blocks by their planned dates when an old workout is logged late', () => {
+    // Newest session first, but its workout was planned in block 1: block 2 (150) still beats block 1 (147).
+    const rows: [string, string, number][] = [['b1', '2026-10-01', 147], ['b2', '2026-11-05', 150], ['b2', '2026-10-29', 140], ['b1', '2026-10-08', 132]];
+    const history = rows.map(([, , v], i) => ({ sessionId: `${i}`, date: addDays('2026-12-31', -7 * i), sets: [], bestE1rm: v }));
+    const place = new Map(rows.map(([blockId, plannedDate], i) => [`${i}`, { blockId, deload: false, plannedDate }]));
+    expect(isStalled(history, (h) => place.get(h.sessionId))).toBe(false);
+    // Read by session dates alone, block 1 looks newest and fails to beat block 2.
+    expect(isStalled(history, (h) => ({ ...place.get(h.sessionId)!, plannedDate: undefined }))).toBe(true);
   });
 });
 
