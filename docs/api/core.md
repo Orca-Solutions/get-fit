@@ -2,7 +2,7 @@
 
 The get-fit training engine as a library: domain types, the curated exercise catalog, training programs as data, the block generator, progression and coverage helpers, the sync protocol, an IndexedDB client and a SQLite sync store.
 
-Version documented: `0.5.0` (the version on `main` and the latest release, `core-v0.5.0`). Additions in 0.5.0 are marked *(0.5.0)*. See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
+Version documented: `0.6.1` (the version on `main` and the latest release, `core-v0.6.1`; 0.5.1 and 0.6.0 were never released). Additions in 0.5.0 and 0.6.1 are marked *(0.5.0)* and *(0.6.1)*. See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
 
 - [Install](#install)
 - [Entry points](#entry-points)
@@ -26,7 +26,7 @@ Version documented: `0.5.0` (the version on `main` and the latest release, `core
 The package is distributed as a tarball attached to each `core-v<version>` GitHub release. It is not published to the npm registry.
 
 ```sh
-npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.5.0/orca-solutions-get-fit-core-0.5.0.tgz
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.6.1/orca-solutions-get-fit-core-0.6.1.tgz
 ```
 
 | Requirement | Needed for |
@@ -272,7 +272,7 @@ type BaseSlot = {
   distinctFamily?: boolean;
   alternateLaterality?: { varietyFirst?: string[] }; // 0.5.0
   stepUp?: StepUp;                                   // 0.5.0
-  swap?: { key: SlotKey; always: Zone[]; ifRoom: Zone[]; stepUp?: StepUp }; // 0.5.0
+  swap?: { key: SlotKey; always: Zone[]; ifRoom: Zone[]; stepUp?: StepUp; first?: boolean }; // 0.5.0; first 0.6.1
 };
 type StepUp = { optIn?: LoadType[] }; // 0.5.0
 ```
@@ -282,7 +282,7 @@ type StepUp = { optIn?: LoadType[] }; // 0.5.0
 | `distinctFamily` | Pick from a different movement family than the day's other base slots (a second press, a second row). |
 | `alternateLaterality` | *(0.5.0)* Alternate block by block between the slot's single-leg movements (odd blocks) and its bilateral ones (even blocks); falls back to whatever fits the kit. In a bilateral block, the day's first variety slot offers the `varietyFirst` exercise ids first, while they keep every muscle within one set of its band's ceiling. The original program uses it for leg day's slot 3 (single-leg work, then sumo squats) with the leg press and hack squat. |
 | `stepUp` | *(0.5.0)* The slot's equipment ladder: start on the lowest rung of the candidates' `regressions` and `progressions`, moving up only past movements listed in `GeneratorInput.outgrown`. Load types in `optIn` are planned only when the lifter marks one `favourite`, and then ahead of the ladder. In an alternating slot it applies to the bilateral turn only. |
-| `swap` | *(0.5.0)* Weeks the slot runs a movement from slot `key` instead: on `always` zones every block, on `ifRoom` zones only while every banded group stays inside its band after the swap. Never in the deload. The movement is picked once per block (with its own `stepUp`) and recorded in `baseSlots` as `<dayType>\|<key>`. A swap keeps the slot's sets, never takes the heavy-day extra set, and the balancer never adds sets to it. With no usable movement for `key` (all flagged, or none fits the kit), the slot keeps its own movement every week. The original program swaps Friday's second row for `back:deadlift` on `H` (always) and `M` (if room). |
+| `swap` | *(0.5.0)* Weeks the slot runs a movement from slot `key` instead: on `always` zones every block, on `ifRoom` zones only while every banded group stays inside its band after the swap. Never in the deload. The movement is picked once per block (with its own `stepUp`) and recorded in `baseSlots` as `<dayType>\|<key>`. A swap keeps the slot's sets, never takes the heavy-day extra set, and the balancer never adds sets to it. With no usable movement for `key` (all flagged, or none fits the kit), the slot keeps its own movement every week. *(0.6.1)* With `first`, the swapped-in movement opens the workout. The original program swaps Friday's second row for `back:deadlift` on `H` (always) and `M` (if room), first. |
 
 `CoreDay`:
 
@@ -309,7 +309,7 @@ type StepUp = { optIn?: LoadType[] }; // 0.5.0
 | `floors` | Below this a week gets a coverage warning. | 4 for major groups, 2 for calves, rear delts, forearms, lower back |
 | `heavyExtra` | Slot that takes an extra set on a heavy day when its group is under its band. | e.g. quads → `legs:knee-extension` |
 | `lightDayStandIns` | Slots searched for a stand-in when a base movement doesn't suit a light day or the deload (axial hinges). | hip extension, hinge variant |
-| `topSet` | `{ fromBlock, reps, rir } \| null`: one heavy opening set on the primary lift on heavy days. | from block 3, 3–5 reps, RIR 2 |
+| `topSet` | `{ fromBlock, reps, rir } \| null`: one heavy opening set on the primary lift on heavy days, only when that lift is in `known` and held the same slot in `previousBlock` *(0.6.1)*. | from block 3, 3–5 reps, RIR 2 |
 | `volumeRamp` | `{ fromBlock, maxExtraSets } \| null`: extra heavy-day isolation sets, one more per block. | from block 3, up to 3 |
 | `sessionCap` | `{ sets, movements }` a lifting session may hold (grip finisher aside for movements). | 22 sets, 8 movements |
 | `grip` | `{ rotation: GripType[]; zones: Zone[] } \| null`: grip finishers, last, on these zones. | all 7 grip types, M and L |
@@ -333,7 +333,7 @@ type StepUp = { optIn?: LoadType[] }; // 0.5.0
 
 | Export | Signature | Description |
 |---|---|---|
-| `STRANGE_PERIODIZATION` | `Program` | The original program: id `strange-periodization`, version `1.4.0`. |
+| `STRANGE_PERIODIZATION` | `Program` | The original program: id `strange-periodization`, version `1.5.0`. |
 | `liftDays` | `(p: Program) => [string, LiftDay][]` | The program's lifting days with their day types. |
 | `coreDayType` | `(p: Program) => string \| undefined` | The day type of its core day, if any. |
 | `swapSlotKeys` | `(p?: Program) => Set<SlotKey>` | *(0.5.0)* The slots base slots swap into on some weeks (`back:deadlift` in the original). Their loads come from e1RM (`e1rmLoadHint`). Defaults to `STRANGE_PERIODIZATION`. |
@@ -374,7 +374,7 @@ A pure function from a profile, a catalog and the previous block to one four-wee
 | `flags` | `ExerciseFlags` | no | `Record<exerciseId, { avoid?, unavailable?, unavailableAt?, favourite? }>`. `ExerciseFlag` records fit this shape. |
 | `startDate` | `string` | yes | The Monday the block starts on. Not checked: workout dates are laid out as if it were a Monday. |
 | `previousBlock` | `Block` | no | Chains blocks: sets `index`, keeps or rotates base movements, enables the top set and volume ramp from their `fromBlock`. |
-| `stalled` | `string[]` | no | Exercise ids to rotate out at this boundary (no e1RM gain over three exposures; see `isStalled`). |
+| `stalled` | `string[]` | no | Exercise ids to rotate out at this boundary (no block-on-block e1RM gain; see `isStalled`). |
 | `outgrown` | `string[]` | no | *(0.5.0)* Exercise ids whose load can't go up any more (see `isOutgrown`). Slots with a `stepUp` rule move past them. |
 | `known` | `string[]` | no | Exercise ids with any logged history. Others get a first-time calibration note. |
 | `recoveryOk` | `boolean` | no | `false` skips the volume ramp (e.g. after a beat-up week in the last block). |
@@ -400,7 +400,7 @@ When no candidate for a slot is usable (every one is flagged, none fits the equi
 
 1. Picks each lifting day's base movements once for the block, from the slot pools filtered by flags, `allowedLevels` and the profile's **gym** equipment. A movement from `previousBlock.baseSlots` is kept unless its slot rotates this block (one isolation slot at each boundary, and one compound slot on even blocks, secondary compounds before the primary) or it is listed in `stalled`. Slots with `alternateLaterality` switch between single-leg and bilateral movements by block, slots with `stepUp` follow their ladder, and press slots skip free-standing one-arm presses. A rotating compound whose candidates are all in the outgoing movement's family takes the next one in catalog order. Each `swap` movement is picked here too.
 2. Picks one core movement per dynamic for the block, using the equipment of the location the core day's schedule entry names, and steps variants along their family ladder from block to block.
-3. Lays out the weeks: zones follow each day's `zones` (week 4 is the deload), sets, reps, RIR and rest come from `params`, light days and the deload swap axial hinges for a stand-in, swap slots run their movement on their zones, heavy days add an extra set where a group is under its band, moderate and light days get variety movements and a grip finisher, and sessions are trimmed to `sessionCap.sets`.
+3. Lays out the weeks: zones follow each day's `zones` (week 4 is the deload), sets, reps, RIR and rest come from `params`, light days and the deload swap axial hinges for a stand-in, swap slots run their movement on their zones (moved to the front with `first`), heavy days add an extra set where a group is under its band, moderate and light days get variety movements and a grip finisher, and sessions are trimmed to `sessionCap.sets`.
 4. Balances coverage week by week: removes isolation and then variety sets (never below 2, and never from the primary lift or the other base compounds) from groups over their band, then adds sets (or a two-set variety movement) to groups under it.
 
 ### Errors
@@ -411,7 +411,7 @@ When no candidate for a slot is usable (every one is flagged, none fits the equi
 
 | Export | Signature | Description |
 |---|---|---|
-| `GENERATOR_VERSION` | `'1.4.0'` | Recorded on every block. |
+| `GENERATOR_VERSION` | `'1.5.0'` | Recorded on every block. |
 | `BLOCK_WEEKS` | `4` | |
 | `blockIdFor` | `(startDate: string) => string` | `block-<startDate>`. |
 | `workoutIdFor` | `(date: string, type: SessionType) => string` | `w-<date>-<type>`. |
@@ -491,13 +491,17 @@ Loads and progression from logged sets ([../periodization.md](../periodization.m
 | `effectiveLoad` | `(ex, weight: number \| null \| undefined, profile) => number \| null` | The load the muscles moved (see below). |
 | `setE1rm` | `(ex: Exercise, s: LoggedSet, profile) => number \| null` | e1RM of one set; `null` for time movements, sets without reps, or no positive load. `effort` maps to RIR `easy` 4, `right` 2, `hard` 0.5; no effort reads as 2. |
 | `summarizeHistory` | `(ex: Exercise, sets: LoggedSet[], profile) => SessionSummary[]` | Groups a movement's non-deleted sets by session, newest first. `SessionSummary` is `{ sessionId, date, sets, bestE1rm }`. |
-| `lastTimeHint` | `(ex, history: SessionSummary[], target: { min, max } \| undefined, bandName?: (id) => string, excludeSessionId?: string) => WeightHint \| null` | The newest session with a set within the target range (±1 rep), or else the newest session. |
+| `lastTimeHint` | `(ex, history: SessionSummary[], target: { min, max } \| undefined, bandName?: (id) => string, excludeSessionId?: string) => WeightHint \| null` | The newest session with a set within the target range (±1 rep), or else the newest session. When that session topped the range but a set was tapped `hard`, there is no `suggest` and the text ends `· that was Hard, so hold this weight` *(0.6.1)*. |
 | `e1rmLoadHint` | `(ex, history: SessionSummary[], target: { min, max } \| undefined, rir: number, date: string, profile: Pick<Profile, 'smithBarLb'>, bandName?) => WeightHint \| null` | *(0.5.0)* For a lift that comes round only some weeks (a swap slot). `lastTimeHint`'s line, with `suggest` set from the newest session's e1RM at `target.min` and `rir`: rounded down to `loadIncrementLb`, at most `nextLoad` of last time's top weight, and ×0.95 when that session was more than 21 days before `date`. For the Smith machine the bar weight is taken off. For time, band, assisted and bodyweight movements, or with no e1RM yet, it returns `lastTimeHint`'s result unchanged. |
+| `deloadHint` | `(ex, hint: WeightHint \| null, profile: Pick<Profile, 'bodyweightLb' \| 'smithBarLb'>, from?: { history: SessionSummary[]; target: { min, max } \| undefined; date: string }) => WeightHint \| null` | *(0.6.1)* A deload week's hint: `hint` without the Hard hold, with `suggest` = `lighterLoad(…, DELOAD_LOAD)`. With `from`, the line and the working weight come from the session in the 21 days before `date` whose median reps sit nearest the middle of `target` (the heavier on a tie), using its heaviest set inside `target`. |
+| `backOffLoad` | `(ex, topWeight: number \| null \| undefined, profile) => number \| null` | *(0.6.1)* The pre-filled weight for a back-off set after a top set: `lighterLoad(…, BACK_OFF_LOAD)`. |
+| `lighterLoad` | `(ex, weight: number \| null \| undefined, profile: Pick<Profile, 'bodyweightLb' \| 'smithBarLb'>, factor: number) => number \| null` | *(0.6.1)* `factor` of the effective load, rounded down to `loadIncrementLb` and given back as the weight to log: Smith lifts take the bar off, `assist` movements round the assistance up. Returns `weight` unchanged when the cut is under half an increment, and `null` with no increment, no weight or no positive load (band and bodyweight movements). |
+| `DELOAD_LOAD`, `BACK_OFF_LOAD` | `number` | *(0.6.1)* Both `0.9`: deload weeks and back-off sets are about 10% lighter. |
 | `nextLoad` | `(ex: Exercise, weight: number) => number` | One `loadIncrementLb` (default 5) up; down for `assist` movements, never below 0. |
 | `describeLoad` | `(ex, s: Pick<LoggedSet, 'weight' \| 'bandId' \| 'stanceSteps'>, bandName?) => string` | e.g. `"40 lb each"`, `"+10 lb"`, `"90 lb plates"`, `"30 lb assist"`, `"Medium, 2 steps"`, `"bodyweight"`. |
 | `fmtNum` | `(n: number) => string` | Integer as is, otherwise one decimal. |
 | `bestSet` | `(ex, history, profile) => { set: LoggedSet; date: string } \| null` | Best set by e1RM, or by reps/seconds for movements without a load. |
-| `isStalled` | `(history: SessionSummary[]) => boolean` | True when the best e1RM of the three newest sessions is no higher than the best before them. Needs at least four sessions with an e1RM. |
+| `isStalled` | `(history: SessionSummary[], placeOf: (h: SessionSummary) => SessionPlace \| undefined, gain?: number) => boolean` | *(0.6.1: new signature)* Groups sessions by block using `placeOf`, leaving out deloads and sessions with no place. True when the best e1RM of the newest block (by planned date) is not at least `gain` (default `0.01`, 1%) above the best of the block before. Needs 2 or more sessions with an e1RM in each of the two blocks; otherwise false. `SessionPlace` is `{ blockId: string; deload: boolean; plannedDate?: string }`, usually read from the session's planned workout. |
 | `isOutgrown` | `(history: SessionSummary[], targetMax: (s: LoggedSet) => number \| undefined) => boolean` | *(0.5.0)* True when, in each of the two newest sessions, a set at the heaviest weight reached the top of its planned reps (`targetMax`) at `right` or `easy`, at the same weight both times. |
 
 `effectiveLoad` by `weightConvention`:
@@ -509,10 +513,10 @@ Loads and progression from logged sets ([../periodization.md](../periodization.m
 | `assist` | `max(0, bodyweightLb − weight)`. |
 | `band`, `none` | `null`. |
 
-`WeightHint` is `{ text, date, weight?, bandId?, stanceSteps?, suggest? }`. `suggest` is set when every set of the matched session reached the top of the target range and the movement has a `loadIncrementLb` (double progression); it is `nextLoad` of the heaviest matching set. `e1rmLoadHint` sets it from e1RM instead.
+`WeightHint` is `{ text, date, weight?, bandId?, stanceSteps?, suggest? }`. `suggest` is set when every set of the matched session reached the top of the target range, none was tapped `hard`, and the movement has a `loadIncrementLb` (double progression); it is `nextLoad` of the heaviest matching set. `e1rmLoadHint` sets it from e1RM instead, and `deloadHint` about 10% lower.
 
 ```ts
-import { CATALOG, e1rm, effectiveLoad, isStalled, lastTimeHint, neutralProfile, summarizeHistory, type LoggedSet } from '@orca-solutions/get-fit-core';
+import { CATALOG, deloadHint, e1rm, effectiveLoad, lastTimeHint, neutralProfile, summarizeHistory, type LoggedSet } from '@orca-solutions/get-fit-core';
 
 declare const sets: LoggedSet[]; // e.g. historyFor('smith-machine-squat') from /client
 const profile = neutralProfile();
@@ -523,7 +527,8 @@ const estimate = load == null ? null : e1rm(load, 8, 2);
 
 const history = summarizeHistory(squat, sets, profile);
 const hint = lastTimeHint(squat, history, { min: 8, max: 12 });
-console.log(estimate, hint?.text, hint?.suggest, isStalled(history));
+const deload = deloadHint(squat, hint, profile); // suggest: about 10% under last time's weight
+console.log(estimate, hint?.text, hint?.suggest, deload?.suggest);
 ```
 
 ## Sessions
@@ -763,7 +768,7 @@ Keys the client keeps in `meta`:
 - The first block starts on the Monday of `date`'s week. A later block starts the day after the previous block ends, or on this week's Monday after a gap.
 - If the block covering `date` has no successor, the next block is generated and stored with `plannedAhead: true`. It was built before the current block's logs existed, so on the day it becomes current, its workouts without logged sets are rebuilt once from the latest logs (and `plannedAhead` is cleared) before the following block is planned.
 - If the only block found starts after `date` (a clock or timezone change), it is returned and nothing new is planned.
-- The generator input is built from the device: profile, `allExercises`, `flagMap`, `known` (every exercise with a logged set), `stalled` (known exercises for which `isStalled` holds), `outgrown` (known exercises for which `isOutgrown` holds, using each set's planned top rep) and `recoveryOk` (false when any session since the previous block's start is marked `beatUp`).
+- The generator input is built from the device: profile, `allExercises`, `flagMap`, `known` (every exercise with a logged set), `stalled` (known exercises for which `isStalled` holds, with each session placed by its planned workout's block, deload flag and date), `outgrown` (known exercises for which `isOutgrown` holds, using each set's planned top rep) and `recoveryOk` (false when any session since the previous block's start is marked `beatUp`).
 
 A rebuild (`plannedAhead` or `regenerateUpcoming`) updates the block's `baseSlots`, `rationale` and `generatorVersion`, and replaces each existing, unlogged workout on or after the start date with the newly generated workout of the same date and session type, keeping its id and `createdAt`. Workouts with logged sets, and dates before `date`, are not touched.
 
