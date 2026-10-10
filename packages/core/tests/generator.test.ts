@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import catalog from '../src/data/exercises.json';
 import { BANDS, creditOf, groupOf, weeklySets, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
-import { e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
+import { deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
 import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
@@ -651,6 +651,28 @@ describe('progression', () => {
     // Smith plates: 100 + the 20 lb bar × 6 at Right is an e1RM of 152; 123.2 at 5–8, less the bar, is 100.
     expect(e1rmLoadHint(smith, hist(smith, log(smith, '2026-10-02', 100, 6, 'right')), { min: 5, max: 8 }, 2, '2026-10-16', profile)!.suggest).toBe(100);
     expect(e1rmLoadHint(dl, [], { min: 5, max: 8 }, 2, '2026-10-16', profile)).toBeNull();
+  });
+
+  it('suggests about 10% under last time on deload weeks, rounded down to a real increment (§4.5)', () => {
+    const hint = (weight: number | null) => ({ text: 'Last time', date: '2026-10-28', weight, suggest: weight == null ? undefined : weight + 5 });
+    const lift = (id: string) => byId.get(id)!;
+    // Dumbbells per hand: 90% of 45 is 40.5, so 40.
+    expect(deloadHint(lift('dumbbell-romanian-deadlift'), hint(45), profile)!.suggest).toBe(40);
+    // A small weight still drops a whole step: 90% of 10 is 9, so 5.
+    expect(deloadHint(lift('dumbbell-romanian-deadlift'), hint(10), profile)!.suggest).toBe(5);
+    // Smith plates count the 20 lb bar: 90% of 100 + 20 is 108, less the bar is 88, so 85.
+    expect(deloadHint(lift('smith-machine-squat'), hint(100), profile)!.suggest).toBe(85);
+    // Machine stack in 10s: 90% of 120 is 108, so 100.
+    const machine = exercises.find((e) => e.weightConvention === 'total' && e.loadIncrementLb === 10 && e.loadType === 'machine')!;
+    expect(deloadHint(machine, hint(120), profile)!.suggest).toBe(100);
+    // Assisted: more assistance. 168 lb with 60 assist moves 108; 90% is 97.2, so at least 70.8 assist, rounded up.
+    const assisted = exercises.find((e) => e.weightConvention === 'assist')!;
+    const inc = assisted.loadIncrementLb!;
+    expect(deloadHint(assisted, hint(60), profile)!.suggest).toBe(Math.ceil((168 - 108 * 0.9) / inc) * inc);
+    // Bands and bodyweight: no suggestion, the line stays.
+    const band = exercises.find((e) => e.weightConvention === 'band')!;
+    expect(deloadHint(band, { text: 'Last time: red band', date: '2026-10-28', bandId: 'red' }, profile)).toEqual({ text: 'Last time: red band', date: '2026-10-28', bandId: 'red', suggest: undefined });
+    expect(deloadHint(lift('dumbbell-romanian-deadlift'), null, profile)).toBeNull();
   });
 
   it('flags a movement as stalled after 3 exposures without a gain', () => {

@@ -119,6 +119,27 @@ export function e1rmLoadHint(
   return { ...hint, suggest };
 }
 
+/** Deload weeks lift about 10% lighter (§4.5). */
+export const DELOAD_LOAD = 0.9;
+
+/**
+ * A deload week's hint: last time's line, with the suggestion about 10% under last time's weight (§4.5), rounded
+ * down to the lift's increment. Assisted machines add assistance instead, and Smith lifts count the bar. Band and
+ * bodyweight movements get no suggestion; the deload's fewer sets and extra reps in reserve do the work there.
+ */
+export function deloadHint(ex: Exercise, hint: WeightHint | null, profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>): WeightHint | null {
+  if (!hint) return null;
+  const inc = ex.loadIncrementLb;
+  const load = effectiveLoad(ex, hint.weight, profile);
+  if (!inc || load == null || load <= 0) return { ...hint, suggest: undefined };
+  const target = load * DELOAD_LOAD;
+  let suggest: number;
+  if (ex.weightConvention === 'assist') suggest = Math.ceil((profile.bodyweightLb - target) / inc) * inc;
+  else if (ex.weightConvention === 'added' && ex.loadType === 'smith') suggest = Math.floor((target - profile.smithBarLb) / inc) * inc;
+  else suggest = Math.floor(target / inc) * inc;
+  return { ...hint, suggest: Math.max(0, suggest) };
+}
+
 /** One increment up; assisted machines progress by taking assistance away. */
 export function nextLoad(ex: Exercise, weight: number): number {
   const inc = ex.loadIncrementLb ?? 5;
