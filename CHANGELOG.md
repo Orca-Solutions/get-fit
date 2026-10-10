@@ -4,7 +4,8 @@ Notable changes to get-fit. Releases of the core package are tagged `core-v<vers
 
 ## 2026-10-10
 
-- **Program 1.4.0** (core 0.5.0, not yet released):
+- **core-v0.5.0:** released with program 1.4.0.
+- **Program 1.4.0** (core-v0.5.0):
   - **Romanian deadlift twice per block:** leg day runs it on its heavy and moderate weeks; the light week and the deload take a back extension, hip thrust or cable pull-through instead.
   - **Friday deadlift:** a 3-set deadlift takes the second row's place on Friday's heavy week, and on its moderate week only when every muscle stays inside its target. Dumbbells come first, then the Smith machine once the dumbbell deadlift is outgrown; a barbell or sumo deadlift is planned only when marked Favourite. Avoiding every deadlift keeps the row every week. Its suggested weight comes from its latest e1RM (`e1rmLoadHint`).
   - **Sumo squats:** leg day's slot 3 alternates by block between single-leg work and a sumo squat (dumbbell, then Smith, kettlebell at home), with the leg press and hack squat first in line for the variety slot in sumo blocks.

@@ -68,7 +68,7 @@ CI (`.github/workflows/ci.yml`) runs typecheck, unit tests, the build and the Pl
 The engine is released as a tarball attached to a GitHub release named `core-v<version>`, and installs by URL:
 
 ```sh
-npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.4.0/orca-solutions-get-fit-core-0.4.0.tgz
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.5.0/orca-solutions-get-fit-core-0.5.0.tgz
 ```
 
 To cut a release: bump `version` in `packages/core/package.json`, merge, then run the **Release core** workflow on `main` from the Actions tab (or push a tag `core-v<version>`). The workflow tests the workspace, packs the package and creates the release.
