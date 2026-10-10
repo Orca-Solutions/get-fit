@@ -489,6 +489,8 @@ describe('generateBlock: deadlifts, RDLs and lower back (§4.8)', () => {
   it('runs a 3-set dumbbell deadlift in place of the second row on the heavy Friday, never on light or deload weeks', () => {
     for (const g of reference) {
       const h = deadlift(day(g, 'back-tri-shoulders', 'H'))!;
+      // Deadlifts always come first.
+      expect(day(g, 'back-tri-shoulders', 'H').exercises[0], `block ${g.block.index}`).toBe(h);
       expect(h.exerciseId, `block ${g.block.index}`).toBe('dumbbell-deadlift');
       expect(h.role).toBe('C');
       expect(h.sets).toHaveLength(3);
@@ -510,12 +512,25 @@ describe('generateBlock: deadlifts, RDLs and lower back (§4.8)', () => {
       if (!deadlift(w)) continue;
       moderate++;
       expect(deadlift(w)!.sets).toHaveLength(3);
+      expect(w.exercises[0], w.date).toBe(deadlift(w));
       expect(g.coverage.weeks[w.weekIndex].back, w.date).toBeGreaterThanOrEqual(9);
       expect(g.coverage.weeks[w.weekIndex]['glutes-hamstrings'], w.date).toBeLessThanOrEqual(12);
     }
     expect(moderate).toBeGreaterThan(0);
     // On the reference gym back sits too close to 9 for the swap: the moderate Friday keeps its row.
     expect(deadlift(day(reference[0], 'back-tri-shoulders', 'M'))).toBeUndefined();
+  });
+
+  it('opens the day with the deadlift and numbers the rest after it', () => {
+    for (const g of [...reference, ...barbell]) {
+      for (const w of g.workouts.filter(deadlift)) {
+        expect(w.exercises[0].slot, w.date).toBe('back:deadlift');
+        expect(w.exercises.map((e) => e.order)).toEqual(w.exercises.map((_, k) => k));
+        expect(w.exercises.map((e) => e.id)).toEqual(w.exercises.map((_, k) => `${w.id}-${k}`));
+        // The pull-up still leads the rest of the day.
+        expect(w.exercises[1].role, w.date).toBe('P');
+      }
+    }
   });
 
   it('keeps the row every week when every deadlift is avoided, or none fits the equipment', () => {

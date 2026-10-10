@@ -459,6 +459,8 @@ function buildLift(
   const exercises: PlannedExercise[] = [];
   const notes: string[] = [];
   const inSession = new Set<string>();
+  /** A swapped-in movement that opens the workout (the Friday deadlift). */
+  let leadKey: SlotKey | undefined;
 
   const add = (ex: Exercise, slot: SlotKey, role: SlotRole, nSets: number, want: { min: number; max: number }, note?: string) => {
     const reps = ex.metric === 'time' ? ex.repRange : repsFor(ex, want);
@@ -495,6 +497,7 @@ function buildLift(
       note = `Takes the place of ${ex.name} this week.`;
       ex = swap;
       slotKey = slot.swap!.key;
+      if (slot.swap!.first) leadKey = slotKey;
     }
     // Heavy day: a muscle under its band gets one more set on its slot (§4.2 balance targets). A swapped-in
     // movement keeps its own sets.
@@ -589,6 +592,12 @@ function buildLift(
   }
 
   trimToCap(exercises, p.sessionCap.sets);
+
+  const lead = exercises.findIndex((e) => e.slot === leadKey);
+  if (lead > 0) {
+    exercises.unshift(...exercises.splice(lead, 1));
+    exercises.forEach((e, k) => Object.assign(e, { id: `${workoutId}-${k}`, order: k }));
+  }
 
   const label = tpl.label;
   const reps = compoundReps(effZone, ctx.blockIndex, p);
