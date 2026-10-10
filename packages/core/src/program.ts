@@ -25,8 +25,9 @@ export type BaseSlot = {
    * row (§4.8): on `always` zones every block, on `ifRoom` zones only while every banded muscle stays inside
    * its band after the swap. The swap keeps the slot's sets and never takes the heavy-day extra set. With no
    * usable movement for `key` (all flagged, or none fits the kit), the slot keeps its own movement every week.
+   * With `first`, the swapped-in movement opens the workout: a heavy hinge goes while the lifter is fresh.
    */
-  swap?: { key: SlotKey; always: Zone[]; ifRoom: Zone[]; stepUp?: StepUp };
+  swap?: { key: SlotKey; always: Zone[]; ifRoom: Zone[]; stepUp?: StepUp; first?: boolean };
 };
 
 /**
@@ -139,7 +140,7 @@ export type Program = {
 
 export const STRANGE_PERIODIZATION: Program = {
   id: 'strange-periodization',
-  version: '1.4.0',
+  version: '1.5.0',
   days: {
     legs: {
       kind: 'lift',
@@ -184,10 +185,11 @@ export const STRANGE_PERIODIZATION: Program = {
         { key: 'shoulders:side-delt', role: 'I' },
         { key: 'triceps:overhead', role: 'I' },
         // A second row or pullover: back is the biggest upper-body muscle and was the least trained (§4.2).
-        // A deadlift takes its place on the heavy week, and on the moderate week when the bands have room (§4.8).
+        // A deadlift takes its place on the heavy week, and on the moderate week when the bands have room (§4.8),
+        // and comes first that day.
         {
           key: 'back:v:row-variant', role: 'C', distinctFamily: true,
-          swap: { key: 'back:deadlift', always: ['H'], ifRoom: ['M'], stepUp: { optIn: ['barbell'] } },
+          swap: { key: 'back:deadlift', always: ['H'], ifRoom: ['M'], stepUp: { optIn: ['barbell'] }, first: true },
         },
       ],
       varietyPool: ['triceps:pushdown', 'shoulders:side-delt', 'back:v:row-variant', 'shoulders:v:rear-delt', 'back:v:shrug'],

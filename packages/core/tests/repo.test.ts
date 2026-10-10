@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GetFitDB } from '../src/client/db';
 import { configureSync } from '../src/client/sync';
 import { ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/client/repo';
@@ -52,6 +52,51 @@ describe('repo', () => {
     const stamp = rebuilt!.updatedAt;
     await ensurePlan(nextStart, d);
     expect((await d.blocks.get(`block-${nextStart}`))!.updatedAt).toBe(stamp);
+  });
+
+  describe('stalls at block boundaries', () => {
+    afterEach(() => vi.useRealTimers());
+
+    /** Log the squat on every leg day of blocks 1 and 2 (heavy, moderate, light, deload weights), then start block 3. */
+    async function liveTwoBlocks(block2: number[]) {
+      const d = await fresh();
+      vi.useFakeTimers({ toFake: ['Date'] });
+      const start = mondayOf('2026-10-12');
+      vi.setSystemTime(new Date(`${start}T12:00:00Z`));
+      const b1 = await ensurePlan(start, d);
+      const squat = b1.baseSlots['legs|legs:squat'];
+      for (const [k, weights] of [[80, 65, 55, 55], block2].entries()) {
+        const blockStart = addDays(start, 28 * k);
+        vi.setSystemTime(new Date(`${blockStart}T12:00:00Z`));
+        await ensurePlan(blockStart, d);
+        const legs = (await d.plannedWorkouts.where('blockId').equals(`block-${blockStart}`).toArray()).filter((w) => w.sessionType === 'legs' && !w.deletedAt).sort((a, b) => a.date.localeCompare(b.date));
+        for (const [week, w] of legs.entries()) {
+          vi.setSystemTime(new Date(`${w.date}T17:00:00Z`));
+          const pe = w.exercises.find((e) => e.slot === 'legs:squat')!;
+          expect(pe.exerciseId).toBe(squat);
+          const session = await startSession(w.id, w.date, d);
+          for (const set of pe.sets) await logSet(session, pe.exerciseId, pe.id, set.setIndex, { weight: weights[week], reps: set.targetReps!.min }, d);
+        }
+      }
+      const third = addDays(start, 56);
+      vi.setSystemTime(new Date(`${third}T12:00:00Z`));
+      const { id } = await ensurePlan(third, d);
+      // Read it back: the block planned ahead is rebuilt from the logs when it starts.
+      const b3 = (await d.blocks.get(id))!;
+      expect(b3.plannedAhead).toBe(false);
+      return { squat, b3 };
+    }
+
+    it('keeps a main lift that gained weight block on block, though its light week and deload came in lower', async () => {
+      const { squat, b3 } = await liveTwoBlocks([90, 70, 60, 60]);
+      expect(b3.index).toBe(3);
+      expect(b3.baseSlots['legs|legs:squat']).toBe(squat);
+    });
+
+    it('rotates a main lift whose best was no better than the block before', async () => {
+      const { squat, b3 } = await liveTwoBlocks([80, 65, 55, 55]);
+      expect(b3.baseSlots['legs|legs:squat']).not.toBe(squat);
+    });
   });
 
   it('dates an opened-but-empty session from its first logged set', async () => {

@@ -7,11 +7,11 @@ import type {
 import { addDays } from '../dates.js';
 import { hash } from '../ids.js';
 import { ZONE_NAME, compoundReps, coreTargets, isolationReps, restFor, rirFor, setsFor } from './templates.js';
-import { DELOAD_LOAD } from './progression.js';
+import { BACK_OFF_LOAD, DELOAD_LOAD } from './progression.js';
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, swapSlotKeys, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type StepUp, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.4.0';
+export const GENERATOR_VERSION = '1.5.0';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -459,6 +459,8 @@ function buildLift(
   const exercises: PlannedExercise[] = [];
   const notes: string[] = [];
   const inSession = new Set<string>();
+  /** A swapped-in movement that opens the workout (the Friday deadlift). */
+  let leadKey: SlotKey | undefined;
 
   const add = (ex: Exercise, slot: SlotKey, role: SlotRole, nSets: number, want: { min: number; max: number }, note?: string) => {
     const reps = ex.metric === 'time' ? ex.repRange : repsFor(ex, want);
@@ -495,6 +497,7 @@ function buildLift(
       note = `Takes the place of ${ex.name} this week.`;
       ex = swap;
       slotKey = slot.swap!.key;
+      if (slot.swap!.first) leadKey = slotKey;
     }
     // Heavy day: a muscle under its band gets one more set on its slot (§4.2 balance targets). A swapped-in
     // movement keeps its own sets.
@@ -507,12 +510,15 @@ function buildLift(
     add(ex, slotKey, slot.role, n, want, note);
   });
 
-  // Anatoly-style top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1).
+  // Anatoly-style top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1). Only on a lift the
+  // lifter has logged and that held the slot last block too: a new lift's first sets are for finding its weight.
   if (zone === 'H' && p.topSet && ctx.blockIndex >= p.topSet.fromBlock) {
     const primary = exercises.find((e) => e.role === 'P');
-    if (primary && primary.sets[0]?.targetReps) {
+    const slot = primary && `${type}|${primary.slot}`;
+    const settled = !!primary && ctx.known.has(primary.exerciseId) && ctx.input.previousBlock?.baseSlots[slot!] === primary.exerciseId;
+    if (primary && settled && primary.sets[0]?.targetReps) {
       primary.sets[0] = { ...primary.sets[0], targetReps: { ...p.topSet.reps }, rir: p.topSet.rir };
-      primary.note = [primary.note, 'Set 1 is a heavy top set; the rest are back-off sets about 10% lighter.'].filter(Boolean).join(' ');
+      primary.note = [primary.note, `Set 1 is a heavy top set; the rest are back-off sets about ${Math.round((1 - BACK_OFF_LOAD) * 100)}% lighter.`].filter(Boolean).join(' ');
     }
   }
 
@@ -586,6 +592,12 @@ function buildLift(
   }
 
   trimToCap(exercises, p.sessionCap.sets);
+
+  const lead = exercises.findIndex((e) => e.slot === leadKey);
+  if (lead > 0) {
+    exercises.unshift(...exercises.splice(lead, 1));
+    exercises.forEach((e, k) => Object.assign(e, { id: `${workoutId}-${k}`, order: k }));
+  }
 
   const label = tpl.label;
   const reps = compoundReps(effZone, ctx.blockIndex, p);

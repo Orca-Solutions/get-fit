@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, logSet, sessionFor, startSession, unlogSet, updateSession } from '@orca-solutions/get-fit-core/client';
-import { deloadHint, e1rmLoadHint, type Exercise, fmtNum, lastTimeHint, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory, swapSlotKeys } from '@orca-solutions/get-fit-core';
+import { backOffLoad, deloadHint, e1rmLoadHint, type Exercise, fmtNum, lastTimeHint, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory, swapSlotKeys } from '@orca-solutions/get-fit-core';
 import { useExercises, useProfile, useToday, useWakeLock } from '../../lib/hooks';
 import { Photo } from '../../ui/Photo';
 import { HistoryPanel } from './HistoryPanel';
@@ -158,8 +158,8 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement, de
   const lastTime = SWAP_SLOTS.has(pe.slot)
     ? e1rmLoadHint(ex, history, mainTarget, pe.sets[pe.sets.length - 1]?.rir ?? 2, sessionDate, profile, bandName)
     : lastTimeHint(ex, history, mainTarget, bandName);
-  // Deload weeks suggest about 10% under last time's weight (§4.5).
-  const hint = deload ? deloadHint(ex, lastTime, profile) : lastTime;
+  // Deload weeks suggest about 10% under the working weight (§4.5).
+  const hint = deload ? deloadHint(ex, lastTime, profile, { history, target: mainTarget, date: sessionDate }) : lastTime;
   const allDone = mine.length >= pe.sets.length;
   const effort = mine.find((s) => s.effort)?.effort;
   // The plan is written at block start, so its "first time" advice goes stale once the movement has history.
@@ -169,7 +169,9 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement, de
   const carryFor = (i: number): Carry => {
     const before = mine.filter((s) => s.setIndex < i);
     const src = before[before.length - 1] ?? mine[mine.length - 1];
-    if (src) return { weight: src.weight, bandId: src.bandId, stanceSteps: src.stanceSteps };
+    // After a heavy top set, the back-off sets start about 10% lighter (§4.1).
+    const topSet = src && i > src.setIndex && pe.sets[src.setIndex]?.targetReps && pe.sets[i]?.targetReps && pe.sets[src.setIndex].targetReps!.max < pe.sets[i].targetReps!.min;
+    if (src) return { weight: topSet ? backOffLoad(ex, src.weight, profile) ?? src.weight : src.weight, bandId: src.bandId, stanceSteps: src.stanceSteps };
     // Band movements start from last time's band and stance; weights stay blank on purpose.
     if (ex.weightConvention === 'band' && hint) return { bandId: hint.bandId, stanceSteps: hint.stanceSteps };
     return {};
