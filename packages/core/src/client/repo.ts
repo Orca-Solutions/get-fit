@@ -133,7 +133,7 @@ async function generatorInput(startDate: string, previousBlock: Block | undefine
   const sessionWorkout = new Map(sessions.map((s) => [s.id, s.plannedWorkoutId ? workoutById.get(s.plannedWorkoutId) : undefined]));
   const placeOf = (h: SessionSummary) => {
     const w = sessionWorkout.get(h.sessionId);
-    return w && !w.deletedAt ? { blockId: w.blockId, deload: w.isDeload } : undefined;
+    return w && !w.deletedAt ? { blockId: w.blockId, deload: w.isDeload, plannedDate: w.date } : undefined;
   };
   const stalled = known.filter((id) => isStalled(history(id), placeOf));
   const plannedSets = new Map(planned.flatMap((w) => w.exercises.map((e) => [e.id, e.sets] as const)));

@@ -61,6 +61,8 @@ export type WeightHint = {
  * What you did last time at a similar rep count. Looks for the newest session with a set inside
  * the target range (±1), else the newest session at all.
  */
+const HOLD = ' · that was Hard, so hold this weight';
+
 export function lastTimeHint(
   ex: Exercise,
   history: SessionSummary[],
@@ -82,7 +84,7 @@ export function lastTimeHint(
       const hard = h.sets.some((s) => s.effort === 'hard');
       const loaded = top.weight != null && ex.loadIncrementLb && ex.weightConvention !== 'band';
       const suggest = allTopped && !hard && loaded ? nextLoad(ex, top.weight!) : undefined;
-      const hold = allTopped && hard && loaded ? ' · that was Hard, so hold this weight' : '';
+      const hold = allTopped && hard && loaded ? HOLD : '';
       return { text: `Last time at ${repsLabel}: ${fmt(top)}${hold}`, date: h.date, weight: top.weight, bandId: top.bandId, stanceSteps: top.stanceSteps, suggest };
     }
   }
@@ -160,17 +162,32 @@ export function deloadHint(
   from?: { history: SessionSummary[]; target: { min: number; max: number } | undefined; date: string },
 ): WeightHint | null {
   if (!hint) return null;
-  let weight = hint.weight;
+  // A deload doesn't hold a weight after Hard, it drops it.
+  let out: WeightHint = { ...hint, text: hint.text.replace(HOLD, '') };
   if (from?.target && ex.metric === 'reps') {
     const { target } = from;
-    const recent = from.history.filter((h) => daysBetween(h.date, from.date) <= 21).flatMap((h) => h.sets);
-    const near = recent.filter((s) => s.reps != null && s.weight != null && s.reps >= target.min - 1 && s.reps <= target.max + 1);
+    const inside = (s: LoggedSet) => s.reps != null && s.weight != null && s.reps >= target.min && s.reps <= target.max;
     // "Heaviest" in effect: more assistance is lighter.
     const moved = (s: LoggedSet) => effectiveLoad(ex, s.weight, profile) ?? 0;
-    if (near.length) weight = near.reduce((a, b) => (moved(b) > moved(a) ? b : a)).weight;
+    const heaviest = (h: SessionSummary) => h.sets.filter(inside).reduce((a, b) => (moved(b) > moved(a) ? b : a));
+    // The recent session run closest to today's reps (median reps nearest the middle of the range), the heavier
+    // on a tie: the moderate week, not a heavy week's 8s or a light week's 12s.
+    const mid = (target.min + target.max) / 2;
+    const off = (h: SessionSummary) => {
+      const reps = h.sets.flatMap((s) => (s.reps != null ? [s.reps] : [])).sort((a, b) => a - b);
+      return Math.abs((reps[(reps.length - 1) >> 1] + reps[reps.length >> 1]) / 2 - mid);
+    };
+    const recent = from.history.filter((h) => daysBetween(h.date, from.date) <= 21 && h.sets.some(inside));
+    const src = recent.reduce<SessionSummary | undefined>((a, b) => (!a || off(b) < off(a) || (off(b) === off(a) && moved(heaviest(b)) > moved(heaviest(a))) ? b : a), undefined);
+    if (src) {
+      const top = heaviest(src);
+      const repsLabel = target.min === target.max ? `${target.min}` : `${target.min}–${target.max}`;
+      // The line and the suggestion come from the same session.
+      out = { ...out, text: `Last time at ${repsLabel}: ${describeLoad(ex, top)}`, date: src.date, weight: top.weight, bandId: top.bandId, stanceSteps: top.stanceSteps };
+    }
   }
-  const suggest = lighterLoad(ex, weight, profile, DELOAD_LOAD);
-  return { ...hint, suggest: suggest ?? undefined };
+  const suggest = lighterLoad(ex, out.weight, profile, DELOAD_LOAD);
+  return { ...out, suggest: suggest ?? undefined };
 }
 
 /** The pre-filled weight for a back-off set after a top set at `topWeight`: about 10% lighter (§4.1). */
@@ -214,8 +231,11 @@ export function bestSet(ex: Exercise, history: SessionSummary[], profile: Pick<P
   return top ? { set: top.set, date: top.date } : null;
 }
 
-/** Where a logged session sat in the plan: its block and whether it was a deload. */
-export type SessionPlace = { blockId: string; deload: boolean };
+/**
+ * Where a logged session sat in the plan: its block, whether it was a deload, and the planned workout's date
+ * (which orders blocks when an old workout is logged late; the session's own date stands in without it).
+ */
+export type SessionPlace = { blockId: string; deload: boolean; plannedDate?: string };
 
 /**
  * Stalled (§4.3), so it rotates out at the next block: the best e1RM of the newest block it was trained in is not
@@ -224,15 +244,18 @@ export type SessionPlace = { blockId: string; deload: boolean };
  * sessions; otherwise it isn't stalled. `placeOf` says where a session sat (from its planned workout).
  */
 export function isStalled(history: SessionSummary[], placeOf: (h: SessionSummary) => SessionPlace | undefined, gain = 0.01): boolean {
-  const blocks: { id: string; best: number[] }[] = [];
+  const blocks: { id: string; best: number[]; date: string }[] = [];
   for (const h of history) {
     const place = placeOf(h);
     if (!place || place.deload || h.bestE1rm == null) continue;
+    const date = place.plannedDate ?? h.date;
     let b = blocks.find((x) => x.id === place.blockId);
-    if (!b) blocks.push((b = { id: place.blockId, best: [] }));
+    if (!b) blocks.push((b = { id: place.blockId, best: [], date }));
     b.best.push(h.bestE1rm);
+    if (date > b.date) b.date = date;
   }
-  // History is newest first, so blocks are too.
+  // Newest block first, by when its workouts were planned.
+  blocks.sort((a, b) => b.date.localeCompare(a.date));
   const [last, before] = blocks;
   if (!last || !before || last.best.length < 2 || before.best.length < 2) return false;
   return Math.max(...last.best) < Math.max(...before.best) * (1 + gain);
