@@ -100,7 +100,7 @@ Five tabs (Today, Calendar, History, Library, Settings), plus a full-screen work
 **Placeholder behaviour** (the grey pre-fill is HTML `placeholder` text):
 
 - **Reps** show the planned reps in grey. Typing anything replaces them.
-- **Weight** starts blank, because the right weight depends on the rep target, which keeps changing. Above the sets, a hint line shows what was lifted last time at a similar rep count ("Last time at 6–8: 40 lb each"), and suggests one increment more when every set of that session reached the top of the range.
+- **Weight** starts blank, because the right weight depends on the rep target, which keeps changing. Above the sets, a hint line shows what was lifted last time at a similar rep count ("Last time at 6–8: 40 lb each"), and suggests one increment more when every set of that session reached the top of the range. A lift that comes round only some weeks (the Friday deadlift) gets its suggestion from its estimated 1RM instead ([periodization.md §4.8](periodization.md#48-hinges-the-friday-deadlift-knee-dominant-work-and-lower-back)).
 - **Carry-forward:** once a weight is logged on a set, the remaining sets of that movement show it in grey. The weight is typed once on set 1; a drop to 35 on set 2 carries to later sets.
 - Tapping ✓ logs whatever is in grey for any empty field, so "same again" is one tap. If a weighted set has no weight yet, ✓ puts the cursor in the weight field instead of logging.
 - Logged sets stay editable (tap a value to fix it). Un-ticking a set removes that log.
@@ -324,7 +324,7 @@ Built and in use: planning, logging, swap and skip, history, calendar, library, 
 Open:
 
 - **Supersets on one screen:** the core day's supersets are labelled, but each movement still has its own screen rather than alternating rows (A1, B1, A2, B2).
-- **Training rules not yet implemented:** early deload, the 10-day-gap load drop and the finer progression rules ([periodization.md §4.8](periodization.md#48-not-yet-implemented)).
+- **Training rules not yet implemented:** early deload, the 10-day-gap load drop and the finer progression rules ([periodization.md §4.9](periodization.md#49-not-yet-implemented)).
 - **Progression tuning** on real logs.
 - **Weekly targets from block 6:** Friday runs out of room, so back can dip to 8 sets in one week, triceps reach 10.5 in one week, and from block 8 rear delts sit at 1.5–2 (target 3–5). Blocks 1 to 5 stay inside every target.
 - **Server-side record checks:** the server validates only the sync fields of each record; field-level checks happen on the devices.

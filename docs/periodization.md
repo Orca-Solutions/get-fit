@@ -1,8 +1,8 @@
 # Training logic: "strange periodization", made explicit
 
-The rules get-fit's plan generator follows, with the research behind them. The numbers live in `STRANGE_PERIODIZATION` (version 1.3.0) in [`packages/core/src/program.ts`](../packages/core/src/program.ts); the method (rotation, balancing, fallbacks) lives in [`packages/core/src/generator/`](../packages/core/src/generator). Code comments cite this document by section number, so keep the numbering stable.
+The rules get-fit's plan generator follows, with the research behind them. The numbers live in `STRANGE_PERIODIZATION` (version 1.4.0) in [`packages/core/src/program.ts`](../packages/core/src/program.ts); the method (rotation, balancing, fallbacks) lives in [`packages/core/src/generator/`](../packages/core/src/generator). Code comments cite this document by section number, so keep the numbering stable.
 
-Each rule below is implemented unless it is marked **Not yet implemented**. Those are collected in [§4.8](#48-not-yet-implemented).
+Each rule below is implemented unless it is marked **Not yet implemented**. Those are collected in [§4.9](#49-not-yet-implemented).
 
 The program was built and tuned for one lifter, captured in the core's `referenceProfile()`: a beginner aiming for muscle, about 6 ft and 168 lb, who runs 2 miles every morning, trains at a Planet Fitness-style gym (Smith machine, no free barbells) and does core work at home with bands, kettlebells and an ab wheel. Where a rule depends on that setup, it says so.
 
@@ -79,7 +79,7 @@ The default schedule comes from `neutralProfile()` and `referenceProfile()` in [
 
 **Other defaults:**
 - **Goal:** muscle first, strength second.
-- **Gym:** the reference profile's gym is a Planet Fitness: no free barbell, trap bar or deadlift platform. Squats, deadlifts and presses are done on the **Smith machine**, from block 1. The gym also has dumbbells, cables, a leg press, a hack squat, hip adduction and abduction, and assisted pull-up and dip machines. Equipment per location is part of the profile, and the generator only picks what a day's location has. A gym that lists a free barbell (and a rack for the racked lifts) also gets the catalog's barbell pack. With a barbell and rack, the barbell squat, bench, overhead press and row are the main lifts from block 1. The hinge stays a dumbbell Romanian deadlift: a barbell deadlift on squat day would stack two of the most fatiguing lifts in one session, which §4.3 and §4.6 avoid for a daily runner.
+- **Gym:** the reference profile's gym is a Planet Fitness: no free barbell, trap bar or deadlift platform. Squats and presses are done on the **Smith machine** from block 1; hinges start on dumbbells and move to the Smith machine once the dumbbells are outgrown (§4.8). The gym also has dumbbells, cables, a leg press, a hack squat, hip adduction and abduction, and assisted pull-up and dip machines. Equipment per location is part of the profile, and the generator only picks what a day's location has. A gym that lists a free barbell (and a rack for the racked lifts) also gets the catalog's barbell pack. With a barbell and rack, the barbell squat, bench, overhead press and row are the main lifts from block 1. The hinges keep their dumbbell-first order, and a barbell Romanian deadlift or deadlift is planned only when the lifter marks it Favourite (§4.8). The deadlift itself goes on Friday, never on squat day: two of the most fatiguing lifts in one session is what §4.3 and §4.6 avoid for a daily runner.
 - **Home:** resistance bands with a door anchor, an ab wheel, and kettlebells (the reference profile has two 25 lb and one 35 lb).
 - **Units:** lb.
 
@@ -117,7 +117,7 @@ Sets per slot:
 
 - **Isolation and variety slots ignore the zone's compound rep range.** They run 10–15 reps on H and M days and 12–20 on L days.
 - **A movement's own limits win.** Every catalog entry has a sensible rep range, and a slot's reps clamp into it, keeping a window of at least 2 reps (for example a split squat on an H day runs 8–10, and an assisted pull-up on an L day 10–12).
-- **Light-day stand-ins:** Romanian deadlifts and other axial hinges are never programmed on an L day. The generator swaps in a hip-extension or hinge-variant movement instead, such as a back extension or a cable pull-through.
+- **Light-day stand-ins:** Romanian deadlifts and other axial hinges are never programmed on an L day or in a deload week. The generator swaps in a hip-extension or hinge-variant movement instead, such as a back extension, a hip thrust or a cable pull-through. With the leg-day hinge on H and M weeks only, the Romanian deadlift runs twice per block (§4.8).
 - **Anatoly-style top set:** from block 3 on, the P slot on an H day opens with one set of 3–5 reps at RIR 2, followed by its other sets.
 - **Volume ramp across blocks:** from block 3 on, heavy days add one set to an isolation slot per block (block 3: one slot, block 4: two, block 5 onward: three). A block that follows one where any session was marked "beat up" skips the ramp.
 - **Grip & forearm finishers:** the M and L days end with a 2-set grip or forearm finisher (about 4 minutes). The H day, already the biggest session, gets none, and neither does a deload week. The finisher always comes last, so pulling work is never done with tired hands. It rotates through the grip families from session to session:
@@ -137,14 +137,14 @@ Each lifting day has 6 base slots, which keep the same exercises for the whole b
 | Slot | Mon: Chest & biceps | Wed: Legs | Fri: Back, triceps & shoulders |
 |---|---|---|---|
 | 1 · P | horizontal press, flat | squat pattern, bilateral | vertical pull |
-| 2 · C | horizontal press, incline | hinge, bilateral | horizontal pull |
-| 3 | (I) chest fly | (C) single-leg, knee-dominant | (C) vertical press |
+| 2 · C | horizontal press, incline | Romanian deadlift (H and M weeks; a stand-in on L and deload weeks) | horizontal pull |
+| 3 | (I) chest fly | (C) knee-dominant: single-leg in odd blocks, sumo squat in even blocks | (C) vertical press, two-sided |
 | 4 · I | elbow flexion, supinated | knee extension | shoulder abduction (side delt) |
 | 5 · I | elbow flexion, neutral grip | knee flexion | elbow extension, overhead (stretch) |
-| 6 | (C) chest press variant, a different family from slots 1–2 (machine press or assisted dip) | (I) calf | (C) row or pullover, a different family from slot 2 |
-| V pool | stretch-position curl; another curl angle; chest press variant | hip extension; hack squat or leg press; hip adduction; hip abduction; hinge variant | pushdown; side delt; row or pullover variant; rear delt or face pull; shrug |
+| 6 | (C) chest press variant, a different family from slots 1–2 (machine press, assisted dip or decline press) | (I) calf | (C) row or pullover, a different family from slot 2; a deadlift takes its place on the H week, and on the M week when there's room (§4.8) |
+| V pool | stretch-position curl; another curl angle; chest press variant (including decline presses where a decline bench is listed) | hip extension; hack squat or leg press; hip adduction; hip abduction; hinge variant | pushdown; side delt; row or pullover variant; rear delt or face pull; shrug |
 
-Monday runs P, C, I, I, I, C: slot 3 is a fly and slot 6 a third press, so chest keeps pace with biceps. Friday's slot 6 is a second back compound, because back is the biggest upper-body muscle and was otherwise the least trained.
+Monday runs P, C, I, I, I, C: slot 3 is a fly and slot 6 a third press, so chest keeps pace with biceps. Friday's slot 6 is a second back compound, because back is the biggest upper-body muscle and was otherwise the least trained. On Friday's heavy week it becomes the deadlift (§4.8).
 
 **Core day (weekend, at home: resistance bands, bodyweight, kettlebells, ab wheel).** Every session hits every core dynamic once: 8 slots of 2 sets each, run as 4 supersets that pair opposing dynamics, in about 30–35 minutes.
 
@@ -190,8 +190,9 @@ Monday runs P, C, I, I, I, C: slot 3 is a fly and slot 6 a third press, so chest
 | Biceps | 7–9 |
 | Triceps | 7–10 |
 | Calves, rear delts | 3–5 |
+| Lower back | 3–5 |
 
-**How a week reaches its targets.** Sets count 1 for a main muscle and 0.5 for a secondary one. The generator first adds up what the base movements alone give each muscle that week. Then:
+**How a week reaches its targets.** Sets count 1 for a main muscle and 0.5 for a secondary one. Squats, lunges, sumo squats, the leg press and the hack squat list glutes as secondary, so they count half for glutes/hamstrings, and the deadlift counts half for back (§4.8). The generator first adds up what the base movements alone give each muscle that week. Then:
 - **Heavy days:** a muscle under its target gets 1 extra set on its slot (leg extension for quads, the slot 6 row for back, lateral raise for side delts, and so on).
 - **Moderate and light days:** the V slots go to muscles under their target, biggest shortfall first. A V slot can also hold a movement outside the targeted muscles (shrug, adductors, forearm curl). It never adds a muscle that is already at its target, or one that 2 more sets would push over. If nothing qualifies, the slot stays empty, so Monday doesn't pick a fourth curl.
 - **Grip finishers** skip movements, such as reverse curls, that would push biceps over.
@@ -199,9 +200,9 @@ Monday runs P, C, I, I, I, C: slot 3 is a fly and slot 6 a third press, so chest
 **Coverage check:** after laying out the weeks, the generator checks every loading week against the targets:
 - **Over:** a set comes off an isolation slot above 2 sets first, then a variety movement above 2 sets (the third chest press and second back compound count as variety here). Otherwise a variety movement whose main muscles are all over goes. The primary lift and the other base compounds are never trimmed, so a muscle that only they carry can stay over its target. Quads, chest and triceps have one set more room than the other big muscles because 3-set squats and presses credit them more.
 - **Under:** a set is added to an isolation or variety slot, then a compound, in a session with room under 22 sets, as long as it pushes no other muscle over. Failing that, a 2-set variety movement is added on a moderate or light day with room.
-- **Floors:** major muscles should not drop below 4 sets in any week, and calves, rear delts and forearms below 2. A week under a floor is reported as a warning.
+- **Floors:** major muscles should not drop below 4 sets in any week, and calves, rear delts, forearms and lower back below 2. A week under a floor is reported as a warning.
 
-A missed session just means fewer sets that week; nothing carries over. Forearms have no target because grip finishers and pulling work cover them, and daily running counts for something on calves. The core day is checked differently: every session contains all 8 dynamics. This check is what prevents the lopsided weeks AnatolyFit reviewers describe.
+A missed session just means fewer sets that week; nothing carries over. Forearms have no target because grip finishers and pulling work cover them, and daily running counts for something on calves. The core day is checked differently: every session contains all 8 dynamics. Its sets count toward lower back only (the hip-extension slot's bird dogs, supermen and swings), never toward the lifting targets. This check is what prevents the lopsided weeks AnatolyFit reviewers describe.
 
 ### 4.3 Exercise selection and variety
 
@@ -221,6 +222,8 @@ Rotation rules:
 - **Base slots keep the same exercise for the whole block,** so progress is measurable.
 - **V slots are where novelty lives.** They draw from the day's pool, avoid repeating a family already in the session, and can change every week. They only appear on M and L days, which is Anatoly's "wider variety when the bar gets lighter."
 - **At each block boundary,** each lifting day rotates one isolation slot, and on even-numbered blocks one compound slot too (secondary compounds before the primary lift, so the main lift sticks around longest). Any exercise that has **stalled** (no e1RM gain over its last 3 exposures) also rotates out.
+- **A main lift with nowhere else to go moves along its own family.** When a compound slot rotates and every candidate is in the same family as the outgoing movement, the next one in catalog order wins (for the shoulder press: Smith overhead press, then seated dumbbell press, then machine press). A load-type bonus, such as a barbell kit's, still outranks that order.
+- **Main presses stay two-sided.** Press slots on P and C roles skip free-standing one-arm presses, so Friday's shoulder press moves from the Smith overhead press to the seated dumbbell press at block 4 rather than to a half-kneeling single-arm press. One-arm rows and single-arm pulldowns still count as main lifts.
 - **When nothing fits:** if every candidate for a slot is marked Avoid or Can't do, none fits the available equipment, or the ones that fit are already on that day, the slot takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of the block. The block's rationale says which, so a gap is never silent; adding equipment or removing a flag brings the slot back.
 - **Mid-session swap:** the app offers movements tagged for the same slot first, then ones with the same movement pattern and muscles, limited to the equipment at that day's location. Logged sets attach to whatever was actually done.
 
@@ -233,18 +236,18 @@ Everything runs on what was **logged**, not what was prescribed. Weights are nev
    - **Smith machine:** the user logs only the plates added; the bar's weight is set once in Settings and added back.
    - **Assisted pull-up and dip machines:** the effective load is bodyweight minus assistance, so the profile keeps the user's bodyweight.
    - **Band and bodyweight movements** have no e1RM.
-3. **Weight hint (double progression).** Above the sets, the app shows the newest session at a similar rep count ("Last time at 8–12: 40 lb each"), or failing that the last session's sets. If every set of that session reached the top of the range, it suggests one increment more ("try 45"). Increments are per exercise: +5 lb on the Smith machine, the next dumbbell pair, the next pin on a machine, and one step less assistance on assisted machines.
+3. **Weight hint (double progression).** Above the sets, the app shows the newest session at a similar rep count ("Last time at 8–12: 40 lb each"), or failing that the last session's sets. If every set of that session reached the top of the range, it suggests one increment more ("try 45"). Increments are per exercise: +5 lb on the Smith machine, the next dumbbell pair, the next pin on a machine, and one step less assistance on assisted machines. The Friday deadlift, which comes round only some weeks and at different rep ranges, takes its suggestion from its e1RM instead (§4.8).
 4. **First time ever on an exercise:** the plan adds a calibration note: ramp up across sets to a weight that leaves about 3 reps in reserve. That first log becomes the baseline.
 5. **Pre-filled fields** show the planned reps in grey; typing replaces them. ✓ logs whatever is grey, so a set done as planned is one tap.
 
-**Not yet implemented:** the finer progression rules: two increments after overshooting the range by 3 or more reps, a 5–10% drop after two sessions in a row with two or more sets below the range, and converting e1RM into a suggested load when an exercise moves to a new zone (load = e1RM ÷ (1 + (target reps + target RIR) / 30)).
+**Not yet implemented:** the finer progression rules: two increments after overshooting the range by 3 or more reps, a 5–10% drop after two sessions in a row with two or more sets below the range, and converting e1RM into a suggested load when an exercise moves to a new zone (load = e1RM ÷ (1 + (target reps + target RIR) / 30)). Only the Friday deadlift uses that conversion so far (§4.8).
 
 ### 4.5 Calendar, deloads and missed days
 
 - **Calendar:** every session gets a date from the weekly schedule. The calendar shows each day's session type and zone (for example "Legs · Heavy"), shades deload weeks, and marks each session planned, done, partial, missed or done late. States are worked out from the plan and the logs, never stored.
 - **Planning ahead:** the next block is planned when the current one starts, from the logs available then, and its unlogged sessions are rebuilt once from the latest logs on its first day. Settings › Regenerate upcoming workouts rebuilds the rest of the current block and the next one; logged or started sessions are never touched. After a long break, a new block starts on the current week's Monday.
 - **Missed and moved sessions:** a session stays on its planned date. A missed session from the current week can be done on any later day of that week with **Do it today**, and a future session can be pulled forward the same way. The log records the real date and the calendar shows it as done late, not missed. Progression keys off the session, not the date, so nothing breaks. Nothing carries over to the next week, and the zone rotation continues as planned.
-- **Planned deload (week 4):** same base exercises, 2 sets each, about 10% lighter, RIR 4 or more. The core day keeps all 8 dynamics at 1 set each.
+- **Planned deload (week 4):** same base exercises, 2 sets each, about 10% lighter, RIR 4 or more. The leg-day Romanian deadlift takes its light-day stand-in, and Friday keeps its second row. The core day keeps all 8 dynamics at 1 set each.
 - **"Beat up":** the finish summary has a "beat up" checkbox. Today it only cancels the next block's volume ramp (§4.1).
 
 **Not yet implemented:**
@@ -268,7 +271,8 @@ for each block:
   for week 1..3:
     zone per day from the rotation table; RIR from the effort ramp
     sets per slot from role × zone; top set and volume ramp on heavy days from block 3
-    muscles under their weekly target claim heavy-day extra sets and V slots (M: 1, L: 2)
+    Friday's second row becomes the deadlift on the H week, and on the M week if every target still holds (4.8)
+    muscles under their weekly target claim heavy-day extra sets and V slots (M: 1, L: 1)
     grip finisher on M and L days
     core day: all 8 dynamics at this week's core zone
   coverage check (4.2): trim muscles over target, top up muscles under
@@ -282,11 +286,39 @@ during a session:
 
 `generateBlock` is a pure function: the same profile, catalog, flags, start date and previous block always give the same plan. Its inputs and outputs are documented in [api/core.md](api/core.md).
 
-### 4.8 Not yet implemented
+### 4.8 Hinges, the Friday deadlift, knee-dominant work and lower back
+
+These rules decide where the hinges go, how the squat-pattern work on leg day varies, and how the lower back is counted.
+
+**Romanian deadlift on two leg days per block.** Leg day's hinge slot runs a Romanian deadlift on its heavy and moderate weeks. The light week and the deload swap it for a non-axial hip-extension or hinge move such as a back extension, a hip thrust or a cable pull-through (§4.1).
+
+**A Friday deadlift in place of the second row.**
+- **When:** always on Friday's heavy week, and on its moderate week only when every muscle with a target stays inside it after the swap (the deadlift adds glutes/hamstrings and lower back, and gives back half the credit a row does). Never on the light week or in the deload. On the reference profile, back usually sits too close to the bottom of its target for the moderate-week swap, so it gets one deadlift per block.
+- **Why Friday:** a deadlift on leg day would share a session with the heavy squat. Friday's heavy week has the weekend after it and sits about 48 hours after Wednesday's hinge (inference from common practice, not a trial).
+- **What it costs:** the deadlift keeps the row's 3 sets. It never takes the heavy-day extra set, and the coverage check never adds sets to it, so back can end that week half a set under its target.
+- **Which deadlift:** dumbbells first, then the Smith machine once the dumbbell deadlift is outgrown (see below). A barbell deadlift or sumo deadlift is planned only when the lifter marks one Favourite, and then ahead of the others. The choice is made once per block. For growth the tool matters little; dumbbells come first because the hinge is easier to learn with the weights at the sides and they are always available at the reference gym (judgment).
+- **Opting out:** there is no deadlift setting. Marking one deadlift Avoid or Can't do moves the slot to the next one. Marking every deadlift that way, or a kit no deadlift fits, keeps the second row every week, so Friday is exactly what it was before.
+- **Load:** the deadlift comes round only once or twice a block, at different rep ranges, so its suggested weight comes from its latest e1RM at today's bottom rep and planned RIR, rounded down to the lift's increment. It never goes more than one increment above last time's top weight, and when the last deadlift was more than 3 weeks ago it starts at about 95% (a safety margin, not a cited rule).
+
+**Step-up ladders.** The leg-day hinge, the Friday deadlift and the sumo squat each start on the lowest rung of their equipment ladder and move up only past a movement the lifter has **outgrown**: in each of the last two sessions the heaviest set reached the top of its planned reps at Right or Easy, at the same weight both times. A topped-out session already suggests the next weight up, so a second one at the same weight reads as the next weight not being there, such as the heaviest dumbbells on the rack (inference: the app can't see the rack).
+
+**Single-leg work and sumo squats alternate by block.** Leg day's slot 3 takes single-leg work (split squats, lunges, step-ups) in odd blocks and a sumo squat in even blocks: the dumbbell sumo squat first, the Smith machine one once that is outgrown, and the kettlebell one at home. In sumo blocks the leg press, then the hack squat, gets first claim on the moderate and light weeks' variety slot, as long as it keeps every muscle within one set of its ceiling. That makes some leg days a squat, a sumo squat and a leg press: three variations of one pattern, without adding a movement or a set.
+
+**Knee-dominant lifts count half for glutes and hamstrings.** Squats, lunges, sumo squats, the leg press and the hack squat train the glutes but barely the hamstrings, and the target treats the two as one group, so they list glutes as a secondary muscle. Hinges and hip extensions count fully. The deadlift counts half for back: the lats hold the bar close without changing length, while rows and pulldowns take the back through a full range, which is what the back target tracks.
+
+**Lower back is tracked.** Target 3–5 sets a week, floor 2. Direct work (back extensions, good mornings, deadlifts, bird dogs, supermen) counts 1; the Romanian deadlift and kettlebell swing count 0.5; rows, squats, glute bridges, pull-throughs and side bends don't count toward it. The core day's hip-extension slot counts toward lower back, though not toward the lifting targets. The lower back gets indirect work from nearly every standing lift and recovers slowly, so the target is modest (inference).
+
+**Decline presses.** Smith machine and dumbbell decline presses join Monday's chest press variants. They need a decline bench, so they are planned only where the place's equipment lists `decline-bench`. The barbell decline bench press now needs one too.
+
+**Known costs on the reference profile, blocks 1 to 8:**
+- In the deadlift week, back can sit at 8.5, half a set under its 9–11 target, because Friday's heavy day has no room for another row set.
+- Lower back runs 4.5–6.5 in the deadlift week (the Romanian deadlift and the deadlift share it) and 2 in some weeks with only the Romanian deadlift, since no lifting day that week has a slot for lower-back work.
+
+### 4.9 Not yet implemented
 
 | Rule | Section |
 |---|---|
-| Two increments after a large overshoot; 5–10% drop after repeated misses; e1RM-based load for a new zone | §4.4 |
+| Two increments after a large overshoot; 5–10% drop after repeated misses; e1RM-based load for a new zone (beyond the Friday deadlift) | §4.4 |
 | Early deload from regressions or a "beat up" session | §4.5 |
 | 10% load drop after 10 or more days off | §4.5 |
 | Cut a leg set when leg sets keep missing | §4.6 |
@@ -294,9 +326,9 @@ during a session:
 ## 5. Data the rules depend on
 
 - **From the exercise catalog** ([exercise-database.md §4](exercise-database.md#4-schema)): the slots each movement may fill, movement pattern, primary and secondary muscles, mechanic, equipment, level, family, sensible rep range, load increment, weight convention (total, per hand, added, assisted, band), fatigue cost, run impact, starter flag, core dynamic and difficulty rank for core ladders, and grip type for finishers.
-- **From the profile:** the weekly schedule, equipment per location, bands, kettlebells, Smith bar weight, bodyweight, and core wave or flat.
-- **From the logs** ([SPEC.md §3](SPEC.md#3-data-model)): reps or seconds, weight or band and stance, the optional effort tap per movement, the session date, swaps, skips, and the "beat up" flag. A swap records the exercise actually done.
-- **From the user's marks:** Favourite, Avoid, and Can't do per location.
+- **From the profile:** the weekly schedule, equipment per location (including optional gear such as a barbell, rack or decline bench), bands, kettlebells, Smith bar weight, bodyweight, and core wave or flat.
+- **From the logs** ([SPEC.md §3](SPEC.md#3-data-model)): reps or seconds, weight or band and stance, the optional effort tap per movement, the session date, swaps, skips, and the "beat up" flag. A swap records the exercise actually done. Stalled and outgrown movements (§4.3, §4.8) are worked out from these logs.
+- **From the user's marks:** Favourite, Avoid, and Can't do per location. Favourite is also how a barbell hinge gets planned (§4.8).
 
 ## 6. Sample block
 
@@ -314,7 +346,7 @@ during a session:
 | C | Machine Chest Press | 3 × 8–12 |
 | G | Farmer's Carry | 2 × 20–60 s |
 
-**Wed · Legs · Heavy** (6 movements, 18 sets)
+**Wed · Legs · Heavy** (6 movements, 19 sets)
 
 | Slot | Movement | Sets × reps |
 |---|---|---|
@@ -322,7 +354,7 @@ during a session:
 | C | Dumbbell Romanian Deadlift | 3 × 6–8 |
 | C | Dumbbell Reverse Lunge | 3 × 8–10/side |
 | I | Leg Extension | 3 × 10–15 |
-| I | Seated Leg Curl | 3 × 10–15 |
+| I | Seated Leg Curl | 4 × 10–15 (extra glutes/hamstrings set) |
 | I | Seated Calf Raise | 3 × 10–15 |
 
 **Fri · Back, triceps & shoulders · Light** (8 movements, 21 sets)
@@ -351,24 +383,27 @@ during a session:
 | D | Reverse Crunch | 2 × 10–15 |
 | D | Kettlebell Side Bend | 2 × 10–15/side |
 
-Weeks 2 and 3 shift the zones (Monday light, Wednesday moderate, Friday heavy; then Monday heavy, Wednesday light, Friday moderate). On week 3's light leg day, a cable pull-through stands in for the Romanian deadlift. The heavy core week moves each core movement one step up its ladder: kettlebell dead bug, jackknife sit-up, half-kneeling Pallof press, side plank with leg raise, kettlebell windmill.
+Weeks 2 and 3 shift the zones (Monday light, Wednesday moderate, Friday heavy; then Monday heavy, Wednesday light, Friday moderate). Week 2's heavy Friday swaps the seated row machine for a 3 × 6–8 dumbbell deadlift; week 3's moderate Friday keeps the row, because the swap would take back under its target. On week 3's light leg day, a cable pull-through stands in for the Romanian deadlift and a 45° back extension takes the variety slot; in the deload week a back extension stands in. Block 1 is a single-leg block, so the sumo squat first appears in block 2. The heavy core week moves each core movement one step up its ladder: kettlebell dead bug, jackknife sit-up, half-kneeling Pallof press, side plank with leg raise, kettlebell windmill.
 
 **Weekly sets per muscle** for this block (direct 1, indirect 0.5):
 
 | Muscle | Week 1 | Week 2 | Week 3 | Target |
 |---|---|---|---|---|
-| Quads | 9 | 10 | 10 | 9–12 |
-| Glutes/hamstrings | 12 | 12 | 12 | 10–12 |
+| Quads | 9 | 9.5 | 9 | 9–12 |
+| Glutes/hamstrings | 10 | 11 | 10 | 10–12 |
 | Chest | 11 | 11 | 12 | 9–12 |
-| Back | 10 | 9 | 9 | 9–11 |
+| Back | 10 | 8.5 | 9 | 9–11 |
 | Side delts | 6.5 | 6 | 6.5 | 6–8 |
-| Biceps | 8.5 | 8.5 | 8.5 | 7–9 |
+| Biceps | 8.5 | 7.5 | 8.5 | 7–9 |
 | Triceps | 8 | 9.5 | 8 | 7–10 |
-| Calves | 4.5 | 3 | 3 | 3–5 |
-| Rear delts | 4.5 | 4.5 | 4.5 | 3–5 |
-| Forearms | 10 | 10 | 8.5 | no target |
+| Calves | 5 | 3 | 3 | 3–5 |
+| Rear delts | 4.5 | 3.5 | 4.5 | 3–5 |
+| Lower back | 3.5 | 6.5 | 4 | 3–5 |
+| Forearms | 10 | 12 | 8.5 | no target |
 
-The golden test (`packages/core/tests/golden.test.ts`) pins blocks 1 to 8 of this profile exactly. From block 6 on, Friday runs out of room for every target: triceps reach 10.5 in one week, and from block 8 rear delts sit at 1.5–2. Blocks 1 to 5 stay inside every target.
+Week 2 is the deadlift week, so back sits half a set under its target and lower back over it (§4.8).
+
+The golden test (`packages/core/tests/golden.test.ts`) pins blocks 1 to 8 of this profile exactly. From block 6 on, Friday runs out of room for every target: triceps reach 10.5 in one week, and in block 8 rear delts sit at 1.5–2. Apart from those and the hinge schedule's known costs (§4.8), blocks 1 to 8 stay inside every target.
 
 ## 7. Design choices
 
@@ -382,6 +417,9 @@ The places where the rules could reasonably have gone another way, and what was 
 6. **Variety:** V slots on lighter days plus one or two base-slot rotations per block.
 7. **Exclusions:** per-movement Avoid and Can't do marks in the library, rather than a list of injuries or banned patterns.
 8. **Balance:** fixed per-muscle weekly targets rather than a rotating focus muscle, so every muscle grows at about the same rate.
+9. **Deadlift:** on Friday in place of the second row, once or twice per block, rather than on leg day or every week. Leg day keeps the Romanian deadlift on two of its three loading weeks.
+10. **Hinge equipment:** dumbbells first, then the Smith machine, with the barbell only by choice (Favourite), rather than barbell first.
+11. **Deficit deadlifts** are left out.
 
 ## Sources
 
@@ -418,4 +456,5 @@ The places where the rules could reasonably have gone another way, and what was 
 - The progression thresholds
 - The 10-day gap rule
 - The running-related selection rules beyond ref 12
+- The hinge schedule, the Friday deadlift's placement, the half credit for knee-dominant lifts and the deadlift's back work, the lower-back target, the outgrown rule and the 95% restart after 3 weeks off (§4.8)
 - The calorie-surplus note
