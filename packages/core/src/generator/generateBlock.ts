@@ -7,6 +7,7 @@ import type {
 import { addDays } from '../dates.js';
 import { hash } from '../ids.js';
 import { ZONE_NAME, compoundReps, coreTargets, isolationReps, restFor, rirFor, setsFor } from './templates.js';
+import { DELOAD_LOAD } from './progression.js';
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, swapSlotKeys, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type StepUp, type TrainingParams } from '../program.js';
 
@@ -588,7 +589,7 @@ function buildLift(
 
   const label = tpl.label;
   const reps = compoundReps(effZone, ctx.blockIndex, p);
-  if (zone === 'deload') notes.push(`Deload week: base movements only, ${p.sets.deload} sets each, about 10% lighter, stop with ${p.rir.deload} or more reps in reserve.`);
+  if (zone === 'deload') notes.push(`Deload week: base movements only, ${p.sets.deload} sets each, about ${Math.round((1 - DELOAD_LOAD) * 100)}% lighter, stop with ${p.rir.deload} or more reps in reserve.`);
   else if (zone === 'H') notes.push(`Heavy day: fewer movements, more sets, ${reps.min}–${reps.max} reps on the big lifts.`);
   else {
     const nV = exercises.filter((e) => e.role === 'V').length;

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, logSet, sessionFor, startSession, unlogSet, updateSession } from '@orca-solutions/get-fit-core/client';
-import { e1rmLoadHint, type Exercise, fmtNum, lastTimeHint, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory, swapSlotKeys } from '@orca-solutions/get-fit-core';
+import { deloadHint, e1rmLoadHint, type Exercise, fmtNum, lastTimeHint, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory, swapSlotKeys } from '@orca-solutions/get-fit-core';
 import { useExercises, useProfile, useToday, useWakeLock } from '../../lib/hooks';
 import { Photo } from '../../ui/Photo';
 import { HistoryPanel } from './HistoryPanel';
@@ -95,7 +95,7 @@ export default function Workout() {
       </div>
 
       {ex ? (
-        <MovementLogger key={pe.id + actualId} pe={pe} ex={ex} sessionId={session.id} sessionDate={session.date} sets={sessionSets} lastMovement={isLast} />
+        <MovementLogger key={pe.id + actualId} pe={pe} ex={ex} sessionId={session.id} sessionDate={session.date} sets={sessionSets} lastMovement={isLast} deload={workout.isDeload} />
       ) : (
         <p className="muted">Unknown movement {actualId}.</p>
       )}
@@ -143,7 +143,7 @@ function firstUnfinished(list: PlannedExercise[], sets: LoggedSet[], skipped?: s
   return i < 0 ? 0 : i;
 }
 
-function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement }: { pe: PlannedExercise; ex: Exercise; sessionId: string; sessionDate: string; sets: LoggedSet[]; lastMovement: boolean }) {
+function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement, deload }: { pe: PlannedExercise; ex: Exercise; sessionId: string; sessionDate: string; sets: LoggedSet[]; lastMovement: boolean; deload: boolean }) {
   const profile = useProfile();
   const allHistory = useLiveQuery(async () => (await db.loggedSets.where('exerciseId').equals(ex.id).toArray()).filter((s) => !s.deletedAt), [ex.id]) ?? [];
   const history = useMemo(() => summarizeHistory(ex, allHistory.filter((s) => s.sessionId !== sessionId), profile), [ex, allHistory, sessionId, profile]);
@@ -155,9 +155,11 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement }: 
   const mainTarget = pe.sets[pe.sets.length - 1]?.targetReps ?? pe.sets[0]?.targetReps;
   const bandName = (id: string) => profile.bands.find((b) => b.id === id)?.name ?? 'band';
   // Lifts that come round only some weeks (the Friday deadlift) take their load from e1RM (§4.8).
-  const hint = SWAP_SLOTS.has(pe.slot)
+  const lastTime = SWAP_SLOTS.has(pe.slot)
     ? e1rmLoadHint(ex, history, mainTarget, pe.sets[pe.sets.length - 1]?.rir ?? 2, sessionDate, profile, bandName)
     : lastTimeHint(ex, history, mainTarget, bandName);
+  // Deload weeks suggest about 10% under last time's weight (§4.5).
+  const hint = deload ? deloadHint(ex, lastTime, profile) : lastTime;
   const allDone = mine.length >= pe.sets.length;
   const effort = mine.find((s) => s.effort)?.effort;
   // The plan is written at block start, so its "first time" advice goes stale once the movement has history.
