@@ -7,11 +7,11 @@ import type {
 import { addDays } from '../dates.js';
 import { hash } from '../ids.js';
 import { ZONE_NAME, compoundReps, coreTargets, isolationReps, restFor, rirFor, setsFor } from './templates.js';
-import { DELOAD_LOAD } from './progression.js';
+import { BACK_OFF_LOAD, DELOAD_LOAD } from './progression.js';
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, swapSlotKeys, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type StepUp, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.4.0';
+export const GENERATOR_VERSION = '1.5.0';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -507,12 +507,15 @@ function buildLift(
     add(ex, slotKey, slot.role, n, want, note);
   });
 
-  // Anatoly-style top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1).
+  // Anatoly-style top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1). Only on a lift the
+  // lifter has logged and that held the slot last block too: a new lift's first sets are for finding its weight.
   if (zone === 'H' && p.topSet && ctx.blockIndex >= p.topSet.fromBlock) {
     const primary = exercises.find((e) => e.role === 'P');
-    if (primary && primary.sets[0]?.targetReps) {
+    const slot = primary && `${type}|${primary.slot}`;
+    const settled = !!primary && ctx.known.has(primary.exerciseId) && ctx.input.previousBlock?.baseSlots[slot!] === primary.exerciseId;
+    if (primary && settled && primary.sets[0]?.targetReps) {
       primary.sets[0] = { ...primary.sets[0], targetReps: { ...p.topSet.reps }, rir: p.topSet.rir };
-      primary.note = [primary.note, 'Set 1 is a heavy top set; the rest are back-off sets about 10% lighter.'].filter(Boolean).join(' ');
+      primary.note = [primary.note, `Set 1 is a heavy top set; the rest are back-off sets about ${Math.round((1 - BACK_OFF_LOAD) * 100)}% lighter.`].filter(Boolean).join(' ');
     }
   }
 

@@ -272,7 +272,7 @@
    ]
   },
   {
-   "digest": "682df2e53551046acc780b644ec0925ad5280d19213bd15b6cde6994bffc571c",
+   "digest": "c2119a4e03fa32fc58dc8ee621cb21b8fce9f66eceb414ac8b959b837af651d0",
    "summary": [
     "2026-12-07 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -283,7 +283,7 @@
     "  C machine-chest-press 3x8-12 rir 3 rest 105",
     "  G farmers-carry 2x20-60s rir 3 rest 60",
     "2026-12-09 legs H gym",
-    "  P smith-machine-squat 4x3-5 rir 2 rest 150",
+    "  P smith-machine-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C dumbbell-split-squat 3x8-10 rir 3 rest 150",
     "  I single-leg-extension 4x10-15 rir 3 rest 90",
@@ -325,7 +325,7 @@
     "  V cable-hip-adduction 2x10-15 rir 2 rest 75",
     "  G plate-pinch 2x15-45s rir 2 rest 60",
     "2026-12-18 back-tri-shoulders H gym",
-    "  P assisted-pull-up 4x3-5 rir 2 rest 150",
+    "  P assisted-pull-up 4x5-8 rir 2 rest 150",
     "  C inverted-row 4x6-8 rir 2 rest 150",
     "  C smith-overhead-press 3x5-8 rir 2 rest 150",
     "  I cable-lateral-raise 5x10-15 rir 2 rest 90",
@@ -341,7 +341,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K side-plank-hip-dip 2x8-10 rir 2 rest 45 D",
     "2026-12-21 chest-biceps H gym",
-    "  P smith-bench-press 4x3-5 rir 2 rest 150",
+    "  P smith-bench-press 4x5-8 rir 2 rest 150",
     "  C smith-incline-bench-press 3x5-8 rir 2 rest 150",
     "  I pec-deck 2x10-15 rir 1 rest 90",
     "  I machine-preacher-curl 2x10-15 rir 1 rest 90",
@@ -407,7 +407,7 @@
    ]
   },
   {
-   "digest": "927f8c9ab9a7de3335590b3d7906c238ad8793e76d468c8b918efa1c956405af",
+   "digest": "8c3d0c8cd025edd06935fb4464e7260b178eb9dec9b93ce499738395404f2569",
    "summary": [
     "2027-01-04 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -418,7 +418,7 @@
     "  C assisted-dip 3x8-12 rir 3 rest 105",
     "  G plate-pinch 2x15-45s rir 3 rest 60",
     "2027-01-06 legs H gym",
-    "  P smith-machine-squat 4x3-5 rir 2 rest 150",
+    "  P smith-machine-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 3x6-8 rir 3 rest 150",
     "  C dumbbell-sumo-squat 3x8-10 rir 3 rest 150",
     "  I single-leg-extension 4x10-15 rir 3 rest 90",
@@ -460,7 +460,7 @@
     "  V leg-press 2x10-15 rir 2 rest 75",
     "  G dumbbell-pronation-supination 2x10-20 rir 2 rest 60",
     "2027-01-15 back-tri-shoulders H gym",
-    "  P assisted-pull-up 4x3-5 rir 2 rest 150",
+    "  P assisted-pull-up 4x5-8 rir 2 rest 150",
     "  C inverted-row 4x6-8 rir 2 rest 150",
     "  C seated-dumbbell-shoulder-press 3x6-8 rir 2 rest 150",
     "  I dumbbell-lateral-raise 5x10-15 rir 2 rest 90",
@@ -476,7 +476,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K kettlebell-windmill 2x6-10 rir 2 rest 45 D",
     "2027-01-18 chest-biceps H gym",
-    "  P smith-bench-press 4x3-5 rir 2 rest 150",
+    "  P smith-bench-press 4x5-8 rir 2 rest 150",
     "  C smith-incline-bench-press 3x5-8 rir 2 rest 150",
     "  I pec-deck 2x10-15 rir 1 rest 90",
     "  I machine-preacher-curl 2x10-15 rir 1 rest 90",
@@ -543,7 +543,7 @@
    ]
   },
   {
-   "digest": "fd633631ce9d62ce3111bcf716c57584e88d189cb06e8dc79d2a6d7250e10951",
+   "digest": "18ffa4fe879a6822a4c81611f62922423847b1fa87ce30de4b3fbfc4f73ef9d5",
    "summary": [
     "2027-02-01 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -554,7 +554,7 @@
     "  C assisted-dip 3x8-12 rir 3 rest 105",
     "  G dumbbell-pronation-supination 2x10-20 rir 3 rest 60",
     "2027-02-03 legs H gym",
-    "  P smith-machine-squat 4x3-5 rir 2 rest 150",
+    "  P smith-machine-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C dumbbell-reverse-lunge 3x8-10 rir 3 rest 150",
     "  I leg-extension 4x10-15 rir 3 rest 90",
@@ -596,7 +596,7 @@
     "  V copenhagen-plank 2x10-30s rir 2 rest 75",
     "  G dumbbell-finger-curl 2x12-25 rir 2 rest 60",
     "2027-02-12 back-tri-shoulders H gym",
-    "  P assisted-pull-up 4x3-5 rir 2 rest 150",
+    "  P assisted-pull-up 4x5-8 rir 2 rest 150",
     "  C inverted-row 4x6-8 rir 2 rest 150",
     "  C seated-dumbbell-shoulder-press 3x6-8 rir 2 rest 150",
     "  I dumbbell-lateral-raise 5x10-15 rir 2 rest 90",
@@ -612,7 +612,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K side-plank-hip-dip 2x8-10 rir 2 rest 45 D",
     "2027-02-15 chest-biceps H gym",
-    "  P smith-bench-press 4x3-5 rir 2 rest 150",
+    "  P smith-bench-press 4x5-8 rir 2 rest 150",
     "  C smith-incline-bench-press 3x5-8 rir 2 rest 150",
     "  I cable-crossover 2x10-15 rir 1 rest 90",
     "  I machine-preacher-curl 2x10-15 rir 1 rest 90",
@@ -678,7 +678,7 @@
    ]
   },
   {
-   "digest": "d3cd878419283e968a711a91114b0c7c26d84607739def8a1018246f40f44d7f",
+   "digest": "449474cfdeaeecb9bc7eb84cd120ebc87b19876c122f4c24d1f848b285c45edb",
    "summary": [
     "2027-03-01 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -689,7 +689,7 @@
     "  C assisted-dip 2x8-12 rir 3 rest 105",
     "  G towel-grip-dumbbell-hold 2x15-45s rir 3 rest 60",
     "2027-03-03 legs H gym",
-    "  P leg-press 4x3-5 rir 2 rest 150",
+    "  P leg-press 4x8-10 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C dumbbell-sumo-squat 3x8-10 rir 3 rest 150",
     "  I leg-extension 4x10-15 rir 3 rest 90",
@@ -731,7 +731,7 @@
     "  V hack-squat 2x10-15 rir 2 rest 75",
     "  G dumbbell-reverse-wrist-curl 2x12-25 rir 2 rest 60",
     "2027-03-12 back-tri-shoulders H gym",
-    "  P assisted-pull-up 4x3-5 rir 2 rest 150",
+    "  P assisted-pull-up 4x5-8 rir 2 rest 150",
     "  C inverted-row 4x6-8 rir 2 rest 150",
     "  C seated-dumbbell-shoulder-press 3x6-8 rir 2 rest 150",
     "  I cable-lateral-raise 5x10-15 rir 2 rest 90",
@@ -747,7 +747,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K kettlebell-windmill 2x6-10 rir 2 rest 45 D",
     "2027-03-15 chest-biceps H gym",
-    "  P machine-chest-press 4x3-5 rir 2 rest 150",
+    "  P machine-chest-press 4x6-8 rir 2 rest 150",
     "  C smith-incline-bench-press 3x5-8 rir 2 rest 150",
     "  I cable-crossover 2x10-15 rir 1 rest 90",
     "  I dumbbell-curl 4x10-15 rir 1 rest 90",
@@ -814,7 +814,7 @@
    ]
   },
   {
-   "digest": "d26a179801ce9a21749e7308120ba9bbf741b65de4119700bcad74feda04aded",
+   "digest": "908ddb54d3df97b9f1f37227b495fe5a0005312162fd249d5447769b3b8a0fe4",
    "summary": [
     "2027-03-29 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -825,7 +825,7 @@
     "  C assisted-dip 2x8-12 rir 3 rest 105",
     "  G dumbbell-reverse-wrist-curl 2x12-25 rir 3 rest 60",
     "2027-03-31 legs H gym",
-    "  P leg-press 4x3-5 rir 2 rest 150",
+    "  P leg-press 4x8-10 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C bodyweight-split-squat 3x10-12 rir 3 rest 150",
     "  I leg-extension 4x10-15 rir 3 rest 90",
@@ -867,7 +867,7 @@
     "  V side-lying-hip-abduction 2x12-15 rir 2 rest 75",
     "  G dead-hang 2x15-60s rir 2 rest 60",
     "2027-04-09 back-tri-shoulders H gym",
-    "  P assisted-pull-up 4x3-5 rir 2 rest 150",
+    "  P assisted-pull-up 4x5-8 rir 2 rest 150",
     "  C inverted-row 3x6-8 rir 2 rest 150",
     "  C seated-dumbbell-shoulder-press 3x6-8 rir 2 rest 150",
     "  I cable-lateral-raise 5x10-15 rir 2 rest 90",
@@ -883,7 +883,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K side-plank-hip-dip 2x8-10 rir 2 rest 45 D",
     "2027-04-12 chest-biceps H gym",
-    "  P machine-chest-press 4x3-5 rir 2 rest 150",
+    "  P machine-chest-press 4x6-8 rir 2 rest 150",
     "  C smith-incline-bench-press 3x5-8 rir 2 rest 150",
     "  I cable-crossover 2x10-15 rir 1 rest 90",
     "  I dumbbell-curl 4x10-15 rir 1 rest 90",
@@ -949,7 +949,7 @@
    ]
   },
   {
-   "digest": "963ebdea7a12832830f5427d1cb1cf58e5ff1ad8c837f752e865916f0028f0de",
+   "digest": "870436944a26c444deddcf5cf91412acf34b53563c5ab26157c2d6057b6584b2",
    "summary": [
     "2027-04-26 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -960,7 +960,7 @@
     "  C assisted-dip 2x8-12 rir 3 rest 105",
     "  G farmers-carry 2x20-60s rir 3 rest 60",
     "2027-04-28 legs H gym",
-    "  P leg-press 4x3-5 rir 2 rest 150",
+    "  P leg-press 4x8-10 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C dumbbell-sumo-squat 3x8-10 rir 3 rest 150",
     "  I single-leg-extension 4x10-15 rir 3 rest 90",
@@ -1002,7 +1002,7 @@
     "  V hack-squat 2x10-15 rir 2 rest 75",
     "  G dumbbell-wrist-curl 2x12-25 rir 2 rest 60",
     "2027-05-07 back-tri-shoulders H gym",
-    "  P close-grip-lat-pulldown 4x3-5 rir 2 rest 150",
+    "  P close-grip-lat-pulldown 4x6-8 rir 2 rest 150",
     "  C inverted-row 4x6-8 rir 2 rest 150",
     "  C seated-dumbbell-shoulder-press 3x6-8 rir 2 rest 150",
     "  I dumbbell-lateral-raise 5x10-15 rir 2 rest 90",
@@ -1018,7 +1018,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K kettlebell-windmill 2x6-10 rir 2 rest 45 D",
     "2027-05-10 chest-biceps H gym",
-    "  P machine-chest-press 4x3-5 rir 2 rest 150",
+    "  P machine-chest-press 4x6-8 rir 2 rest 150",
     "  C incline-neutral-grip-dumbbell-press 3x8-10 rir 2 rest 150",
     "  I pec-deck 2x10-15 rir 1 rest 90",
     "  I dumbbell-curl 4x10-15 rir 1 rest 90",
@@ -1493,7 +1493,7 @@
    ]
   },
   {
-   "digest": "df108461d639b30b5fc5d622174c85b73e548a7abc09b8ff290727bb88b738b8",
+   "digest": "a97ec99d3313ba7db06159141e087f9d8ae47f2aa0c2a51aa73a48846884ac00",
    "summary": [
     "2027-01-04 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -1504,7 +1504,7 @@
     "  C assisted-dip 3x8-12 rir 3 rest 105",
     "  G plate-pinch 2x15-45s rir 3 rest 60",
     "2027-01-06 legs H gym",
-    "  P smith-machine-squat 4x3-5 rir 2 rest 150",
+    "  P smith-machine-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 3x6-8 rir 3 rest 150",
     "  C dumbbell-sumo-squat 3x8-10 rir 3 rest 150",
     "  I single-leg-extension 3x10-15 rir 3 rest 90",
@@ -1764,7 +1764,7 @@
    ]
   },
   {
-   "digest": "5f29ad4718f5e29b02a3ac975e87e76764f238952e6df0bed1efb96ffe31bd6b",
+   "digest": "847a27fa267fbe254b715d83ee30f783d676ea12436e10af8e4502e05ed1b021",
    "summary": [
     "2027-03-01 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -1775,7 +1775,7 @@
     "  C assisted-dip 2x8-12 rir 3 rest 105",
     "  G towel-grip-dumbbell-hold 2x15-45s rir 3 rest 60",
     "2027-03-03 legs H gym",
-    "  P leg-press 4x3-5 rir 2 rest 150",
+    "  P leg-press 4x8-10 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C dumbbell-sumo-squat 3x8-10 rir 3 rest 150",
     "  I leg-extension 4x10-15 rir 3 rest 90",
@@ -1833,7 +1833,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K kettlebell-windmill 2x6-10 rir 2 rest 45 D",
     "2027-03-15 chest-biceps H gym",
-    "  P machine-chest-press 4x3-5 rir 2 rest 150",
+    "  P machine-chest-press 4x6-8 rir 2 rest 150",
     "  C smith-incline-bench-press 3x5-8 rir 2 rest 150",
     "  I cable-crossover 2x10-15 rir 1 rest 90",
     "  I dumbbell-curl 4x10-15 rir 1 rest 90",
@@ -2035,7 +2035,7 @@
    ]
   },
   {
-   "digest": "1004c65fd004c2c928d34a56cc2fbc9d024ebfaf531ef3f9f18eecfa7b35c280",
+   "digest": "c99eca9d05dea5ed17bf236e476e0fbd53841cc1cca4e51217338e6e5fc151f3",
    "summary": [
     "2027-04-26 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -2046,7 +2046,7 @@
     "  C assisted-dip 2x8-12 rir 3 rest 105",
     "  G farmers-carry 2x20-60s rir 3 rest 60",
     "2027-04-28 legs H gym",
-    "  P smith-machine-squat 4x3-5 rir 2 rest 150",
+    "  P smith-machine-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C dumbbell-sumo-squat 3x8-10 rir 3 rest 150",
     "  I single-leg-extension 4x10-15 rir 3 rest 90",
@@ -2088,7 +2088,7 @@
     "  V leg-press 2x10-15 rir 2 rest 75",
     "  G dumbbell-wrist-curl 2x12-25 rir 2 rest 60",
     "2027-05-07 back-tri-shoulders H gym",
-    "  P close-grip-lat-pulldown 4x3-5 rir 2 rest 150",
+    "  P close-grip-lat-pulldown 4x6-8 rir 2 rest 150",
     "  C inverted-row 4x6-8 rir 2 rest 150",
     "  C seated-dumbbell-shoulder-press 3x6-8 rir 2 rest 150",
     "  I incline-side-lying-lateral-raise 5x10-15 rir 2 rest 90",
@@ -3262,7 +3262,7 @@
    ]
   },
   {
-   "digest": "fc58455475363222a3411e772c9b3935dc95510673023c178795479566600327",
+   "digest": "b5f91292a52a8aae32ecd28b74aec9157820073f75d2077faf372ccdf87ae247",
    "summary": [
     "2026-12-07 chest-biceps M gym",
     "  P barbell-bench-press 3x8-12 rir 3 rest 105",
@@ -3273,7 +3273,7 @@
     "  C close-grip-barbell-bench-press 3x8-12 rir 3 rest 105",
     "  G farmers-carry 2x20-60s rir 3 rest 60",
     "2026-12-09 legs H gym",
-    "  P barbell-back-squat 4x3-5 rir 2 rest 150",
+    "  P barbell-back-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C dumbbell-split-squat 3x8-10 rir 3 rest 150",
     "  I single-leg-extension 4x10-15 rir 3 rest 90",
@@ -3315,7 +3315,7 @@
     "  V cable-hip-adduction 2x10-15 rir 2 rest 75",
     "  G plate-pinch 2x15-45s rir 2 rest 60",
     "2026-12-18 back-tri-shoulders H gym",
-    "  P assisted-pull-up 4x3-5 rir 2 rest 150",
+    "  P assisted-pull-up 4x5-8 rir 2 rest 150",
     "  C one-arm-dumbbell-row 3x6-8 rir 2 rest 150",
     "  C barbell-overhead-press 3x5-8 rir 2 rest 150",
     "  I barbell-upright-row 5x10-15 rir 2 rest 90",
@@ -3331,7 +3331,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K side-plank-hip-dip 2x8-10 rir 2 rest 45 D",
     "2026-12-21 chest-biceps H gym",
-    "  P barbell-bench-press 4x3-5 rir 2 rest 150",
+    "  P barbell-bench-press 4x5-8 rir 2 rest 150",
     "  C incline-barbell-bench-press 3x6-8 rir 2 rest 150",
     "  I pec-deck 2x10-15 rir 1 rest 90",
     "  I machine-preacher-curl 2x10-15 rir 1 rest 90",
@@ -3397,7 +3397,7 @@
    ]
   },
   {
-   "digest": "0a24dc06c84f2713258722488a1ccfaaa2e947f36ac0f458ee852f775b0dab6c",
+   "digest": "ff240c27d70856464fcdabe0f286c43ce74108603819700047c8a9c7851d5d15",
    "summary": [
     "2027-01-04 chest-biceps M gym",
     "  P barbell-bench-press 3x8-12 rir 3 rest 105",
@@ -3408,7 +3408,7 @@
     "  C assisted-dip 3x8-12 rir 3 rest 105",
     "  G plate-pinch 2x15-45s rir 3 rest 60",
     "2027-01-06 legs H gym",
-    "  P barbell-back-squat 4x3-5 rir 2 rest 150",
+    "  P barbell-back-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 3x6-8 rir 3 rest 150",
     "  C dumbbell-sumo-squat 3x8-10 rir 3 rest 150",
     "  I single-leg-extension 4x10-15 rir 3 rest 90",
@@ -3450,7 +3450,7 @@
     "  V leg-press 2x10-15 rir 2 rest 75",
     "  G dumbbell-pronation-supination 2x10-20 rir 2 rest 60",
     "2027-01-15 back-tri-shoulders H gym",
-    "  P assisted-pull-up 4x3-5 rir 2 rest 150",
+    "  P assisted-pull-up 4x5-8 rir 2 rest 150",
     "  C one-arm-dumbbell-row 4x6-8 rir 2 rest 150",
     "  C smith-overhead-press 3x5-8 rir 2 rest 150",
     "  I dumbbell-lateral-raise 5x10-15 rir 2 rest 90",
@@ -3466,7 +3466,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K kettlebell-windmill 2x6-10 rir 2 rest 45 D",
     "2027-01-18 chest-biceps H gym",
-    "  P barbell-bench-press 4x3-5 rir 2 rest 150",
+    "  P barbell-bench-press 4x5-8 rir 2 rest 150",
     "  C incline-barbell-bench-press 3x6-8 rir 2 rest 150",
     "  I pec-deck 2x10-15 rir 1 rest 90",
     "  I machine-preacher-curl 2x10-15 rir 1 rest 90",
@@ -3533,7 +3533,7 @@
    ]
   },
   {
-   "digest": "cb61eb1e1b4a3e39851d8f47db4f774c5702e3dfca19f9d32912b64113b02836",
+   "digest": "40450f8e20d9b56073183a55d7269f6b62e2d01c43cb379fe6c3a18760ff66e9",
    "summary": [
     "2027-02-01 chest-biceps M gym",
     "  P barbell-bench-press 3x8-12 rir 3 rest 105",
@@ -3544,7 +3544,7 @@
     "  C assisted-dip 3x8-12 rir 3 rest 105",
     "  G dumbbell-pronation-supination 2x10-20 rir 3 rest 60",
     "2027-02-03 legs H gym",
-    "  P barbell-back-squat 4x3-5 rir 2 rest 150",
+    "  P barbell-back-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C dumbbell-reverse-lunge 3x8-10 rir 3 rest 150",
     "  I leg-extension 4x10-15 rir 3 rest 90",
@@ -3586,7 +3586,7 @@
     "  V copenhagen-plank 2x10-30s rir 2 rest 75",
     "  G dumbbell-finger-curl 2x12-25 rir 2 rest 60",
     "2027-02-12 back-tri-shoulders H gym",
-    "  P assisted-pull-up 4x3-5 rir 2 rest 150",
+    "  P assisted-pull-up 4x5-8 rir 2 rest 150",
     "  C one-arm-dumbbell-row 4x6-8 rir 2 rest 150",
     "  C smith-overhead-press 3x5-8 rir 2 rest 150",
     "  I dumbbell-lateral-raise 5x10-15 rir 2 rest 90",
@@ -3602,7 +3602,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K side-plank-hip-dip 2x8-10 rir 2 rest 45 D",
     "2027-02-15 chest-biceps H gym",
-    "  P barbell-bench-press 4x3-5 rir 2 rest 150",
+    "  P barbell-bench-press 4x5-8 rir 2 rest 150",
     "  C incline-barbell-bench-press 3x6-8 rir 2 rest 150",
     "  I cable-crossover 2x10-15 rir 1 rest 90",
     "  I machine-preacher-curl 2x10-15 rir 1 rest 90",
@@ -3668,7 +3668,7 @@
    ]
   },
   {
-   "digest": "cd7fdfb2c76f0480e5d90c2aa6e8cf35600545c0f41bda825fab5e3bf97767d9",
+   "digest": "7ed313c9c229b8e9d354960ff445f83e7976588390659cf950c6c30b933e3259",
    "summary": [
     "2027-03-01 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -3679,7 +3679,7 @@
     "  C assisted-dip 3x8-12 rir 3 rest 105",
     "  G towel-grip-dumbbell-hold 2x15-45s rir 3 rest 60",
     "2027-03-03 legs H gym",
-    "  P smith-machine-squat 4x3-5 rir 2 rest 150",
+    "  P smith-machine-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C dumbbell-sumo-squat 3x8-10 rir 3 rest 150",
     "  I leg-extension 4x10-15 rir 3 rest 90",
@@ -3721,7 +3721,7 @@
     "  V leg-press 2x10-15 rir 2 rest 75",
     "  G dumbbell-reverse-wrist-curl 2x12-25 rir 2 rest 60",
     "2027-03-12 back-tri-shoulders H gym",
-    "  P assisted-pull-up 4x3-5 rir 2 rest 150",
+    "  P assisted-pull-up 4x5-8 rir 2 rest 150",
     "  C one-arm-dumbbell-row 4x6-8 rir 2 rest 150",
     "  C smith-overhead-press 3x5-8 rir 2 rest 150",
     "  I barbell-upright-row 5x10-15 rir 2 rest 90",
@@ -3737,7 +3737,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K kettlebell-windmill 2x6-10 rir 2 rest 45 D",
     "2027-03-15 chest-biceps H gym",
-    "  P machine-chest-press 4x3-5 rir 2 rest 150",
+    "  P machine-chest-press 4x6-8 rir 2 rest 150",
     "  C incline-barbell-bench-press 3x6-8 rir 2 rest 150",
     "  I cable-crossover 2x10-15 rir 1 rest 90",
     "  I dumbbell-curl 2x10-15 rir 1 rest 90",
@@ -3804,7 +3804,7 @@
    ]
   },
   {
-   "digest": "b521354de042a852a8cd45f682cedc317dc1c3fb34e787e7d8b52ba79b60ea10",
+   "digest": "dc5fcb422b406d40b00f4f021d3a7aa7cd31cc0eba0b3bb3008ec59ac4297ae8",
    "summary": [
     "2027-03-29 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -3815,7 +3815,7 @@
     "  C assisted-dip 3x8-12 rir 3 rest 105",
     "  G dumbbell-reverse-wrist-curl 2x12-25 rir 3 rest 60",
     "2027-03-31 legs H gym",
-    "  P smith-machine-squat 4x3-5 rir 2 rest 150",
+    "  P smith-machine-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C bodyweight-split-squat 3x10-12 rir 3 rest 150",
     "  I leg-extension 4x10-15 rir 3 rest 90",
@@ -3857,7 +3857,7 @@
     "  V side-lying-hip-abduction 2x12-15 rir 2 rest 75",
     "  G dead-hang 2x15-60s rir 2 rest 60",
     "2027-04-09 back-tri-shoulders H gym",
-    "  P assisted-pull-up 4x3-5 rir 2 rest 150",
+    "  P assisted-pull-up 4x5-8 rir 2 rest 150",
     "  C one-arm-dumbbell-row 3x6-8 rir 2 rest 150",
     "  C smith-overhead-press 3x5-8 rir 2 rest 150",
     "  I barbell-upright-row 5x10-15 rir 2 rest 90",
@@ -3873,7 +3873,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K side-plank-hip-dip 2x8-10 rir 2 rest 45 D",
     "2027-04-12 chest-biceps H gym",
-    "  P machine-chest-press 4x3-5 rir 2 rest 150",
+    "  P machine-chest-press 4x6-8 rir 2 rest 150",
     "  C incline-barbell-bench-press 3x6-8 rir 2 rest 150",
     "  I cable-crossover 2x10-15 rir 1 rest 90",
     "  I dumbbell-curl 2x10-15 rir 1 rest 90",
@@ -3939,7 +3939,7 @@
    ]
   },
   {
-   "digest": "ff07446a1ebe5aaca8daaf7a5de46ef1a35f80673efc2c842964cb0266608e16",
+   "digest": "d3869b7242170eafc881a8c7d2a0b381a5a1d1f51f236c5a3ffddee98c7b38b9",
    "summary": [
     "2027-04-26 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -3950,7 +3950,7 @@
     "  C assisted-dip 3x8-12 rir 3 rest 105",
     "  G farmers-carry 2x20-60s rir 3 rest 60",
     "2027-04-28 legs H gym",
-    "  P smith-machine-squat 4x3-5 rir 2 rest 150",
+    "  P smith-machine-squat 4x5-8 rir 3 rest 150",
     "  C dumbbell-romanian-deadlift 4x6-8 rir 3 rest 150",
     "  C dumbbell-sumo-squat 3x8-10 rir 3 rest 150",
     "  I single-leg-extension 4x10-15 rir 3 rest 90",
@@ -3992,7 +3992,7 @@
     "  V leg-press 2x10-15 rir 2 rest 75",
     "  G dumbbell-wrist-curl 2x12-25 rir 2 rest 60",
     "2027-05-07 back-tri-shoulders H gym",
-    "  P close-grip-lat-pulldown 4x3-5 rir 2 rest 150",
+    "  P close-grip-lat-pulldown 4x6-8 rir 2 rest 150",
     "  C one-arm-dumbbell-row 4x6-8 rir 2 rest 150",
     "  C smith-overhead-press 3x5-8 rir 2 rest 150",
     "  I dumbbell-lateral-raise 5x10-15 rir 2 rest 90",
@@ -4008,7 +4008,7 @@
     "  K lying-leg-raise 2x8-10 rir 2 rest 45 D",
     "  K kettlebell-windmill 2x6-10 rir 2 rest 45 D",
     "2027-05-10 chest-biceps H gym",
-    "  P machine-chest-press 4x3-5 rir 2 rest 150",
+    "  P machine-chest-press 4x6-8 rir 2 rest 150",
     "  C incline-dumbbell-press 3x6-8 rir 2 rest 150",
     "  I pec-deck 2x10-15 rir 1 rest 90",
     "  I dumbbell-curl 2x10-15 rir 1 rest 90",

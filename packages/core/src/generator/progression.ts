@@ -78,8 +78,12 @@ export function lastTimeHint(
       const top = near.reduce((a, b) => ((b.weight ?? 0) > (a.weight ?? 0) ? b : a));
       const repsLabel = target.min === target.max ? `${target.min}` : `${target.min}–${target.max}`;
       const allTopped = h.sets.length > 0 && h.sets.every((s) => (s.reps ?? 0) >= target.max);
-      const suggest = allTopped && top.weight != null && ex.loadIncrementLb && ex.weightConvention !== 'band' ? nextLoad(ex, top.weight) : undefined;
-      return { text: `Last time at ${repsLabel}: ${fmt(top)}`, date: h.date, weight: top.weight, bandId: top.bandId, stanceSteps: top.stanceSteps, suggest };
+      // Weight goes up only at or below the target effort (§4.4.2): a set tapped Hard holds it.
+      const hard = h.sets.some((s) => s.effort === 'hard');
+      const loaded = top.weight != null && ex.loadIncrementLb && ex.weightConvention !== 'band';
+      const suggest = allTopped && !hard && loaded ? nextLoad(ex, top.weight!) : undefined;
+      const hold = allTopped && hard && loaded ? ' · that was Hard, so hold this weight' : '';
+      return { text: `Last time at ${repsLabel}: ${fmt(top)}${hold}`, date: h.date, weight: top.weight, bandId: top.bandId, stanceSteps: top.stanceSteps, suggest };
     }
   }
   const h = past[0];
@@ -121,23 +125,57 @@ export function e1rmLoadHint(
 
 /** Deload weeks lift about 10% lighter (§4.5). */
 export const DELOAD_LOAD = 0.9;
+/** Back-off sets after a heavy top set are about 10% lighter (§4.1). */
+export const BACK_OFF_LOAD = 0.9;
 
 /**
- * A deload week's hint: last time's line, with the suggestion about 10% under last time's weight (§4.5), rounded
- * down to the lift's increment. Assisted machines add assistance instead, and Smith lifts count the bar. Band and
- * bodyweight movements get no suggestion; the deload's fewer sets and extra reps in reserve do the work there.
+ * `factor` of a logged weight, rounded down to the lift's increment: assisted machines add assistance instead,
+ * and Smith lifts count the bar. When the cut is under half an increment (a 10 or 15 lb dumbbell) the weight
+ * stays, since rounding would take a third or half off. Null for band and bodyweight movements.
  */
-export function deloadHint(ex: Exercise, hint: WeightHint | null, profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>): WeightHint | null {
-  if (!hint) return null;
+export function lighterLoad(ex: Exercise, weight: number | null | undefined, profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>, factor: number): number | null {
   const inc = ex.loadIncrementLb;
-  const load = effectiveLoad(ex, hint.weight, profile);
-  if (!inc || load == null || load <= 0) return { ...hint, suggest: undefined };
-  const target = load * DELOAD_LOAD;
-  let suggest: number;
-  if (ex.weightConvention === 'assist') suggest = Math.ceil((profile.bodyweightLb - target) / inc) * inc;
-  else if (ex.weightConvention === 'added' && ex.loadType === 'smith') suggest = Math.floor((target - profile.smithBarLb) / inc) * inc;
-  else suggest = Math.floor(target / inc) * inc;
-  return { ...hint, suggest: Math.max(0, suggest) };
+  const load = effectiveLoad(ex, weight, profile);
+  if (!inc || weight == null || load == null || load <= 0) return null;
+  if (load * (1 - factor) < inc / 2 - 1e-9) return weight;
+  const target = load * factor;
+  let w: number;
+  if (ex.weightConvention === 'assist') w = Math.ceil((profile.bodyweightLb - target) / inc) * inc;
+  else if (ex.weightConvention === 'added' && ex.loadType === 'smith') w = Math.floor((target - profile.smithBarLb) / inc) * inc;
+  else w = Math.floor(target / inc) * inc;
+  return Math.max(0, w);
+}
+
+/**
+ * A deload week's hint: last time's line, with the suggestion about 10% under the working weight (§4.5); see
+ * lighterLoad for the rounding. With `from`, the working weight is the heaviest set at the deload's reps (±1) in
+ * the 3 weeks before `date`, so a leg-day deload keys off the moderate week, not the lighter light week before
+ * it; without it, last time's weight. Band and bodyweight movements get no suggestion; the deload's fewer sets
+ * and extra reps in reserve do the work there.
+ */
+export function deloadHint(
+  ex: Exercise,
+  hint: WeightHint | null,
+  profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>,
+  from?: { history: SessionSummary[]; target: { min: number; max: number } | undefined; date: string },
+): WeightHint | null {
+  if (!hint) return null;
+  let weight = hint.weight;
+  if (from?.target && ex.metric === 'reps') {
+    const { target } = from;
+    const recent = from.history.filter((h) => daysBetween(h.date, from.date) <= 21).flatMap((h) => h.sets);
+    const near = recent.filter((s) => s.reps != null && s.weight != null && s.reps >= target.min - 1 && s.reps <= target.max + 1);
+    // "Heaviest" in effect: more assistance is lighter.
+    const moved = (s: LoggedSet) => effectiveLoad(ex, s.weight, profile) ?? 0;
+    if (near.length) weight = near.reduce((a, b) => (moved(b) > moved(a) ? b : a)).weight;
+  }
+  const suggest = lighterLoad(ex, weight, profile, DELOAD_LOAD);
+  return { ...hint, suggest: suggest ?? undefined };
+}
+
+/** The pre-filled weight for a back-off set after a top set at `topWeight`: about 10% lighter (§4.1). */
+export function backOffLoad(ex: Exercise, topWeight: number | null | undefined, profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>): number | null {
+  return lighterLoad(ex, topWeight, profile, BACK_OFF_LOAD);
 }
 
 /** One increment up; assisted machines progress by taking assistance away. */
@@ -176,11 +214,28 @@ export function bestSet(ex: Exercise, history: SessionSummary[], profile: Pick<P
   return top ? { set: top.set, date: top.date } : null;
 }
 
-/** No e1RM gain over the last 3 exposures (§4.3): rotate it out at the next block. */
-export function isStalled(history: SessionSummary[]): boolean {
-  const vals = history.map((h) => h.bestE1rm).filter((v): v is number => v != null);
-  if (vals.length < 4) return false;
-  return Math.max(...vals.slice(0, 3)) <= Math.max(...vals.slice(3));
+/** Where a logged session sat in the plan: its block and whether it was a deload. */
+export type SessionPlace = { blockId: string; deload: boolean };
+
+/**
+ * Stalled (§4.3), so it rotates out at the next block: the best e1RM of the newest block it was trained in is not
+ * at least `gain` (1%) above the best of the block before, like for like across each block's heavy, moderate and
+ * light days. Deload sessions and sessions off the plan don't count, and each block needs 2 or more loading
+ * sessions; otherwise it isn't stalled. `placeOf` says where a session sat (from its planned workout).
+ */
+export function isStalled(history: SessionSummary[], placeOf: (h: SessionSummary) => SessionPlace | undefined, gain = 0.01): boolean {
+  const blocks: { id: string; best: number[] }[] = [];
+  for (const h of history) {
+    const place = placeOf(h);
+    if (!place || place.deload || h.bestE1rm == null) continue;
+    let b = blocks.find((x) => x.id === place.blockId);
+    if (!b) blocks.push((b = { id: place.blockId, best: [] }));
+    b.best.push(h.bestE1rm);
+  }
+  // History is newest first, so blocks are too.
+  const [last, before] = blocks;
+  if (!last || !before || last.best.length < 2 || before.best.length < 2) return false;
+  return Math.max(...last.best) < Math.max(...before.best) * (1 + gain);
 }
 
 /**

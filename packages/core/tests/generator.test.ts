@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import catalog from '../src/data/exercises.json';
 import { BANDS, creditOf, groupOf, weeklySets, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
-import { deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
+import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
 import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
@@ -277,11 +277,21 @@ describe('generateBlock: later blocks', () => {
     expect(changed.length).toBeGreaterThanOrEqual(6);
   });
 
-  it('adds the Anatoly-style top set from block 3', () => {
-    const heavy = b3.workouts.find((w) => w.zone === 'H' && w.sessionType === 'legs')!;
-    expect(heavy.exercises[0].sets[0].targetReps).toEqual({ min: 3, max: 5 });
-    const heavy1 = b1.workouts.find((w) => w.zone === 'H' && w.sessionType === 'legs')!;
-    expect(heavy1.exercises[0].sets[0].targetReps).toEqual({ min: 6, max: 8 });
+  it('adds the Anatoly-style top set from block 3, only on a logged lift that held the slot last block', () => {
+    const heavyLegs = (g: typeof b1) => g.workouts.find((w) => w.zone === 'H' && w.sessionType === 'legs')!;
+    const squat = b2.block.baseSlots['legs|legs:squat'];
+    const logged = gen({ previousBlock: b2.block, startDate: '2026-12-07', known: [squat] });
+    expect(heavyLegs(logged).exercises[0].exerciseId).toBe(squat);
+    expect(heavyLegs(logged).exercises[0].sets[0].targetReps).toEqual({ min: 3, max: 5 });
+    expect(heavyLegs(logged).exercises[0].note).toContain('Set 1 is a heavy top set');
+    expect(heavyLegs(b1).exercises[0].sets[0].targetReps).toEqual({ min: 6, max: 8 });
+    // Never logged: the first sets find its weight, no top set.
+    expect(heavyLegs(b3).exercises[0].sets[0].targetReps).toEqual({ min: 5, max: 8 });
+    // Logged, but new to the slot this block (the old squat stalled): no top set either.
+    const rotated = gen({ previousBlock: b2.block, startDate: '2026-12-07', known: exercises.map((e) => e.id), stalled: [squat] });
+    expect(heavyLegs(rotated).exercises[0].exerciseId).not.toBe(squat);
+    expect(heavyLegs(rotated).exercises[0].sets[0].targetReps).toEqual(heavyLegs(rotated).exercises[0].sets[1].targetReps);
+    expect(heavyLegs(rotated).exercises[0].note ?? '').not.toContain('top set');
   });
 
   it('keeps every muscle inside its weekly band as blocks rotate', () => {
@@ -658,8 +668,10 @@ describe('progression', () => {
     const lift = (id: string) => byId.get(id)!;
     // Dumbbells per hand: 90% of 45 is 40.5, so 40.
     expect(deloadHint(lift('dumbbell-romanian-deadlift'), hint(45), profile)!.suggest).toBe(40);
-    // A small weight still drops a whole step: 90% of 10 is 9, so 5.
-    expect(deloadHint(lift('dumbbell-romanian-deadlift'), hint(10), profile)!.suggest).toBe(5);
+    // Where 10% is under half a step the weight stays: a 10 or 15 lb dumbbell doesn't lose a third or half.
+    expect(deloadHint(lift('dumbbell-romanian-deadlift'), hint(10), profile)!.suggest).toBe(10);
+    expect(deloadHint(lift('dumbbell-romanian-deadlift'), hint(15), profile)!.suggest).toBe(15);
+    expect(deloadHint(lift('dumbbell-romanian-deadlift'), hint(25), profile)!.suggest).toBe(20);
     // Smith plates count the 20 lb bar: 90% of 100 + 20 is 108, less the bar is 88, so 85.
     expect(deloadHint(lift('smith-machine-squat'), hint(100), profile)!.suggest).toBe(85);
     // Machine stack in 10s: 90% of 120 is 108, so 100.
@@ -675,11 +687,51 @@ describe('progression', () => {
     expect(deloadHint(lift('dumbbell-romanian-deadlift'), null, profile)).toBeNull();
   });
 
-  it('flags a movement as stalled after 3 exposures without a gain', () => {
-    const mk = (vals: number[]) => vals.map((v, i) => ({ sessionId: `${i}`, date: `2026-10-0${9 - i}`, sets: [], bestE1rm: v }));
-    expect(isStalled(mk([100, 100, 99, 101]))).toBe(true);
-    expect(isStalled(mk([105, 100, 99, 101]))).toBe(false);
-    expect(isStalled(mk([100, 100, 100]))).toBe(false);
+  it('keys the deload off the heaviest working weight at its reps in the last 3 weeks, not the light week before it', () => {
+    const squat = byId.get('smith-machine-squat')!;
+    const log = (date: string, weight: number, reps: number): LoggedSet => ({ ...set(date, date, weight, reps), exerciseId: squat.id });
+    // Moderate week 80 plates × 10, light week 60 × 12, then the deload at 8–12: 90% of 80 + the 20 lb bar is 90 moved, 70 plates.
+    const history = summarizeHistory(squat, [log('2026-10-21', 80, 10), log('2026-10-28', 60, 12), log('2026-09-20', 120, 10)], profile);
+    const last = lastTimeHint(squat, history, { min: 8, max: 12 });
+    expect(last!.weight).toBe(60);
+    expect(deloadHint(squat, last, profile, { history, target: { min: 8, max: 12 }, date: '2026-11-04' })!.suggest).toBe(70);
+    // Without the history it keys off last time.
+    expect(deloadHint(squat, last, profile)!.suggest).toBe(50);
+  });
+
+  it('holds the weight instead of suggesting more when a topped-out session had a Hard set', () => {
+    const hardSet = (i: number, effort: LoggedSet['effort']) => ({ ...set('a', '2026-10-01', 80, 12, i), effort });
+    const hard = lastTimeHint(curl, summarizeHistory(curl, [hardSet(0, 'hard'), hardSet(1, 'hard')], profile), { min: 8, max: 12 })!;
+    expect(hard.suggest).toBeUndefined();
+    expect(hard.text).toBe('Last time at 8–12: 80 lb each · that was Hard, so hold this weight');
+    const right = lastTimeHint(curl, summarizeHistory(curl, [hardSet(0, 'right'), hardSet(1, undefined)], profile), { min: 8, max: 12 })!;
+    expect(right.suggest).toBe(85);
+    expect(right.text).toBe('Last time at 8–12: 80 lb each');
+  });
+
+  it('starts back-off sets about 10% under the top set', () => {
+    expect(backOffLoad(byId.get('smith-machine-squat')!, 100, profile)).toBe(85);
+    expect(backOffLoad(curl, 50, profile)).toBe(45);
+    expect(backOffLoad(curl, 10, profile)).toBe(10);
+    expect(backOffLoad(byId.get('band-chest-press')!, null, profile)).toBeNull();
+  });
+
+  it("calls a lift stalled only when a block's best e1RM fails to beat the block before, leaving out deloads", () => {
+    // Newest first. Each session: [block, deload?, e1RM].
+    const mk = (rows: [string, boolean, number][]) => {
+      const history = rows.map(([, , v], i) => ({ sessionId: `${i}`, date: addDays('2026-12-31', -7 * i), sets: [], bestE1rm: v }));
+      const place = new Map(rows.map(([blockId, deload], i) => [`${i}`, { blockId, deload }]));
+      return [history, (h: { sessionId: string }) => place.get(h.sessionId)] as const;
+    };
+    // The review's case: weights up every week, so block 2's heavy day beats block 1's, though its light day and deload don't.
+    expect(isStalled(...mk([['b2', true, 120], ['b2', false, 132], ['b2', false, 143], ['b2', false, 150], ['b1', true, 120], ['b1', false, 126], ['b1', false, 132], ['b1', false, 147]]))).toBe(false);
+    // No gain block on block: stalled. Within 1% counts as no gain.
+    expect(isStalled(...mk([['b2', false, 140], ['b2', false, 147.5], ['b1', false, 132], ['b1', false, 147]]))).toBe(true);
+    expect(isStalled(...mk([['b2', false, 140], ['b2', false, 150], ['b1', false, 132], ['b1', false, 147]]))).toBe(false);
+    // One block of history, a block with fewer than 2 loading sessions, or sessions off the plan: not stalled.
+    expect(isStalled(...mk([['b1', false, 100], ['b1', false, 99], ['b1', false, 101]]))).toBe(false);
+    expect(isStalled(...mk([['b2', false, 90], ['b2', true, 80], ['b1', false, 132], ['b1', false, 147]]))).toBe(false);
+    expect(isStalled(mk([['b2', false, 90], ['b2', false, 91], ['b1', false, 132], ['b1', false, 147]])[0], () => undefined)).toBe(false);
   });
 });
 
