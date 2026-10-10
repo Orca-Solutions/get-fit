@@ -1,5 +1,6 @@
 // Loads and progression from what was actually logged (docs/periodization.md §4.4).
 import type { Exercise, LoggedSet, Profile } from '../types.js';
+import { daysBetween } from '../dates.js';
 
 /** Epley with reps in reserve: e1RM = load × (1 + (reps + RIR) / 30). */
 export function e1rm(load: number, reps: number, rir = 0): number {
@@ -87,6 +88,37 @@ export function lastTimeHint(
   return { text: `Last time: ${summary}`, date: h.date, weight: top.weight, bandId: top.bandId, stanceSteps: top.stanceSteps };
 }
 
+/**
+ * The hint for a lift that comes round only some weeks, such as the Friday deadlift (§4.8): last time's line,
+ * with a suggested load from the latest session's e1RM at the bottom of today's reps and planned RIR. That
+ * links sessions planned at different rep ranges. The suggestion rounds down to the lift's increment, never
+ * goes more than one increment past last time's top weight, and starts at about 95% when the last session
+ * was more than 3 weeks before `date` (a safety margin, not a cited rule).
+ */
+export function e1rmLoadHint(
+  ex: Exercise,
+  history: SessionSummary[],
+  target: { min: number; max: number } | undefined,
+  rir: number,
+  date: string,
+  profile: Pick<Profile, 'smithBarLb'>,
+  bandName?: (id: string) => string,
+): WeightHint | null {
+  const hint = lastTimeHint(ex, history, target, bandName);
+  const last = history.find((h) => h.bestE1rm != null);
+  const inc = ex.loadIncrementLb;
+  const loaded = ex.weightConvention === 'total' || ex.weightConvention === 'per-hand' || ex.weightConvention === 'added';
+  if (!hint || !last || !target || !inc || ex.metric !== 'reps' || !loaded) return hint;
+  let load = last.bestE1rm! / (1 + (target.min + rir) / 30);
+  if (daysBetween(last.date, date) > 21) load *= 0.95;
+  // e1RM counts the Smith bar; the weight logged is the plates.
+  if (ex.weightConvention === 'added' && ex.loadType === 'smith') load -= profile.smithBarLb;
+  let suggest = Math.max(0, Math.floor(load / inc) * inc);
+  const tops = last.sets.map((s) => s.weight).filter((w): w is number => w != null);
+  if (tops.length) suggest = Math.min(suggest, nextLoad(ex, Math.max(...tops)));
+  return { ...hint, suggest };
+}
+
 /** One increment up; assisted machines progress by taking assistance away. */
 export function nextLoad(ex: Exercise, weight: number): number {
   const inc = ex.loadIncrementLb ?? 5;
@@ -128,4 +160,23 @@ export function isStalled(history: SessionSummary[]): boolean {
   const vals = history.map((h) => h.bestE1rm).filter((v): v is number => v != null);
   if (vals.length < 4) return false;
   return Math.max(...vals.slice(0, 3)) <= Math.max(...vals.slice(3));
+}
+
+/**
+ * Outgrown (§4.8 step-up): in each of the last two exposures the heaviest set reached the top of its target
+ * reps at Right or Easy, at the same weight both times. A topped-out session suggests the next weight up, so
+ * a second one at the same weight reads as the next weight not being there, such as the heaviest dumbbell
+ * on the rack (inference: the app can't see the rack). `targetMax` gives a logged set's planned top rep.
+ */
+export function isOutgrown(history: SessionSummary[], targetMax: (s: LoggedSet) => number | undefined): boolean {
+  const last = history.slice(0, 2).map((h) => {
+    const weighted = h.sets.filter((s) => s.reps && s.weight != null);
+    const top = Math.max(...weighted.map((s) => s.weight!));
+    return weighted.filter((s) => s.weight === top);
+  });
+  if (last.length < 2 || last.some((sets) => !sets.length) || last[0][0].weight !== last[1][0].weight) return false;
+  return last.every((sets) => sets.some((s) => {
+    const max = targetMax(s);
+    return max != null && s.reps! >= max && (s.effort === 'right' || s.effort === 'easy');
+  }));
 }

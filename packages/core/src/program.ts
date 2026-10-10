@@ -12,7 +12,29 @@ export type BaseSlot = {
   role: Exclude<SlotRole, 'V' | 'G' | 'K'>;
   /** Pick from a different movement family than the day's other base slots (a second row, a second press). */
   distinctFamily?: boolean;
+  /**
+   * Alternate block by block between the slot's single-leg movements (odd blocks) and its bilateral ones (even
+   * blocks), e.g. split squats and lunges one block, sumo squats the next (§4.8). Falls back to whatever fits
+   * the kit. In bilateral blocks the day's first variety slot offers `varietyFirst` (exercise ids) first.
+   */
+  alternateLaterality?: { varietyFirst?: string[] };
+  /** Equipment ladder for the slot (in an alternating slot, its bilateral turn only); see StepUp. */
+  stepUp?: StepUp;
+  /**
+   * Weeks this slot runs a movement from another slot instead, e.g. a deadlift in place of Friday's second
+   * row (§4.8): on `always` zones every block, on `ifRoom` zones only while every banded muscle stays inside
+   * its band after the swap. The swap keeps the slot's sets and never takes the heavy-day extra set. With no
+   * usable movement for `key` (all flagged, or none fits the kit), the slot keeps its own movement every week.
+   */
+  swap?: { key: SlotKey; always: Zone[]; ifRoom: Zone[]; stepUp?: StepUp };
 };
+
+/**
+ * Start on the lowest rung of each ladder (regressions and progressions), moving up only past movements the
+ * lifter has outgrown: dumbbells first, then the Smith machine (§4.8). Load types in `optIn` (the barbell)
+ * are planned only when the lifter marks one Favourite, and then ahead of the ladder.
+ */
+export type StepUp = { optIn?: LoadType[] };
 
 export type LiftDay = {
   kind: 'lift';
@@ -117,15 +139,19 @@ export type Program = {
 
 export const STRANGE_PERIODIZATION: Program = {
   id: 'strange-periodization',
-  version: '1.3.0',
+  version: '1.4.0',
   days: {
     legs: {
       kind: 'lift',
       label: 'Legs',
       base: [
         { key: 'legs:squat', role: 'P' },
-        { key: 'legs:hinge', role: 'C' },
-        { key: 'legs:single-leg', role: 'C' },
+        // An RDL on heavy and moderate weeks; light and deload weeks swap it for a back extension or a
+        // hamstring move (§4.8). Dumbbells first, Smith once outgrown, barbell only if marked Favourite.
+        { key: 'legs:hinge', role: 'C', stepUp: { optIn: ['barbell'] } },
+        // Knee-dominant: single-leg one block, a sumo squat the next (dumbbell first, Smith once the dumbbell is
+        // outgrown), with the leg press, then the hack squat, first in line for the variety slot (§4.8).
+        { key: 'legs:single-leg', role: 'C', alternateLaterality: { varietyFirst: ['leg-press', 'hack-squat'] }, stepUp: {} },
         { key: 'legs:knee-extension', role: 'I' },
         { key: 'legs:knee-flexion', role: 'I' },
         { key: 'legs:calf', role: 'I' },
@@ -158,7 +184,11 @@ export const STRANGE_PERIODIZATION: Program = {
         { key: 'shoulders:side-delt', role: 'I' },
         { key: 'triceps:overhead', role: 'I' },
         // A second row or pullover: back is the biggest upper-body muscle and was the least trained (§4.2).
-        { key: 'back:v:row-variant', role: 'C', distinctFamily: true },
+        // A deadlift takes its place on the heavy week, and on the moderate week when the bands have room (§4.8).
+        {
+          key: 'back:v:row-variant', role: 'C', distinctFamily: true,
+          swap: { key: 'back:deadlift', always: ['H'], ifRoom: ['M'], stepUp: { optIn: ['barbell'] } },
+        },
       ],
       varietyPool: ['triceps:pushdown', 'shoulders:side-delt', 'back:v:row-variant', 'shoulders:v:rear-delt', 'back:v:shrug'],
       zones: ['L', 'H', 'M'],
@@ -216,10 +246,12 @@ export const STRANGE_PERIODIZATION: Program = {
       triceps: [7, 10],
       calves: [3, 5],
       'rear-delts': [3, 5],
+      // Hinges, back extensions and the core day's hip-extension move (§4.8).
+      'lower-back': [3, 5],
     },
     floors: {
       quads: 4, 'glutes-hamstrings': 4, chest: 4, back: 4, 'side-delts': 4, biceps: 4, triceps: 4,
-      calves: 2, 'rear-delts': 2, forearms: 2,
+      calves: 2, 'rear-delts': 2, forearms: 2, 'lower-back': 2,
     },
     // On moderate and light days a short muscle claims the variety slots instead (§4.2 balance targets).
     heavyExtra: {
@@ -273,6 +305,9 @@ export const STRANGE_PERIODIZATION: Program = {
 };
 
 export const liftDays = (p: Program) => Object.entries(p.days).filter((e): e is [string, LiftDay] => e[1].kind === 'lift');
+/** Slots that base slots swap into on some weeks (the Friday deadlift): their loads come from e1RM (§4.8). */
+export const swapSlotKeys = (p: Program = STRANGE_PERIODIZATION): Set<SlotKey> =>
+  new Set(liftDays(p).flatMap(([, d]) => d.base.flatMap((b) => (b.swap ? [b.swap.key] : []))));
 export const coreDayType = (p: Program) => Object.entries(p.days).find(([, d]) => d.kind === 'core')?.[0];
 
 /**
