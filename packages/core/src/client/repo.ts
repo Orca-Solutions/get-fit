@@ -5,7 +5,7 @@ import { addDays, daysBetween, mondayOf, today } from '../dates.js';
 import { uuid } from '../ids.js';
 import { isSyncConnected, scheduleSync } from './sync.js';
 import { generateBlock, type ExerciseFlags, type GeneratorInput } from '../generator/generateBlock.js';
-import { isStalled, summarizeHistory } from '../generator/progression.js';
+import { isOutgrown, isStalled, summarizeHistory } from '../generator/progression.js';
 import { db, SYNC_TABLES, type GetFitDB, type SyncTable } from './db.js';
 import { validRow } from '../validate.js';
 import { PROFILE_ID, neutralProfile } from '../profiles.js';
@@ -121,15 +121,19 @@ async function blockCovering(date: string, d: GetFitDB): Promise<Block> {
 
 /** Everything the generator needs from the device: profile, catalog, flags and what the logs say. */
 async function generatorInput(startDate: string, previousBlock: Block | undefined, d: GetFitDB): Promise<GeneratorInput> {
-  const [profile, exercises, flags, sets] = await Promise.all([getProfile(d), allExercises(d), flagMap(d), d.loggedSets.toArray()]);
+  const [profile, exercises, flags, sets, planned] = await Promise.all([getProfile(d), allExercises(d), flagMap(d), d.loggedSets.toArray(), d.plannedWorkouts.toArray()]);
   const live = sets.filter((s) => !s.deletedAt);
   const known = [...new Set(live.map((s) => s.exerciseId))];
-  const stalled = known.filter((id) => {
+  const history = (id: string) => {
     const ex = exercises.find((e) => e.id === id);
-    return ex ? isStalled(summarizeHistory(ex, live.filter((s) => s.exerciseId === id), profile)) : false;
-  });
+    return ex ? summarizeHistory(ex, live.filter((s) => s.exerciseId === id), profile) : [];
+  };
+  const stalled = known.filter((id) => isStalled(history(id)));
+  const plannedSets = new Map(planned.flatMap((w) => w.exercises.map((e) => [e.id, e.sets] as const)));
+  const targetMax = (s: LoggedSet) => plannedSets.get(s.plannedExerciseId ?? '')?.find((p) => p.setIndex === s.setIndex)?.targetReps?.max;
+  const outgrown = known.filter((id) => isOutgrown(history(id), targetMax));
   const recoveryOk = previousBlock ? !(await d.sessions.toArray()).some((s) => !s.deletedAt && s.beatUp && s.date >= previousBlock.startDate) : true;
-  return { profile, exercises, flags, startDate, previousBlock, stalled, known, recoveryOk };
+  return { profile, exercises, flags, startDate, previousBlock, stalled, known, outgrown, recoveryOk };
 }
 
 async function createBlock(startDate: string, previousBlock: Block | undefined, d: GetFitDB, plannedAhead = false): Promise<Block> {

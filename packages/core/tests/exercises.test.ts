@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
-  BARBELL_EQUIPMENT, BASE_SLOTS, CORE_DYNAMICS, FORBIDDEN_EQUIPMENT, GRIP_TYPES, GYM_EQUIPMENT, HOME_EQUIPMENT, MUSCLES, VARIETY_SLOTS,
+  BARBELL_EQUIPMENT, OPTIONAL_EQUIPMENT, BASE_SLOTS, CORE_DYNAMICS, FORBIDDEN_EQUIPMENT, GRIP_TYPES, GYM_EQUIPMENT, HOME_EQUIPMENT, MUSCLES, VARIETY_SLOTS,
   usableWith, validateCatalog,
 } from '../scripts/build-exercises';
 import { curation } from '../scripts/curation';
@@ -160,9 +160,9 @@ describe('slot coverage', () => {
     }
   });
 
-  it('only offers gym-usable movements (or barbell- or home-pack ones) in lifting and grip slots, with a matching gripType', () => {
+  it('only offers gym-usable movements (or barbell-, decline-bench- or home-pack ones) in lifting and grip slots, with a matching gripType', () => {
     for (const e of exercises) {
-      if (e.slots.some((s) => !s.startsWith('core:'))) expect(usableWith(e, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT, ...HOME_EQUIPMENT]), e.id).toBe(true);
+      if (e.slots.some((s) => !s.startsWith('core:'))) expect(usableWith(e, [...GYM_EQUIPMENT, ...BARBELL_EQUIPMENT, ...HOME_EQUIPMENT, ...OPTIONAL_EQUIPMENT]), e.id).toBe(true);
       if (e.slots.some((s) => s.startsWith('grip:'))) expect(usableWith(e, GYM_EQUIPMENT), e.id).toBe(true);
       const grip = e.slots.filter((s) => s.startsWith('grip:'));
       if (grip.length === 0) expect(e.gripType, e.id).toBeUndefined();
@@ -179,6 +179,22 @@ describe('slot coverage', () => {
       expect(e.source.name, e.id).toBe('get-fit');
       expect(usableWith(e, HOME_EQUIPMENT), e.id).toBe(true);
       expect(e.starter, e.id).toBe(false);
+    }
+  });
+
+  it('has beginner sumo squats for a dumbbell, a Smith machine and a kettlebell in the single-leg slot', () => {
+    for (const id of ['dumbbell-sumo-squat', 'smith-sumo-squat', 'kettlebell-sumo-squat']) {
+      const e = byId.get(id)!;
+      expect(e.slots, id).toEqual(['legs:single-leg']);
+      expect([e.level, e.family, e.laterality, e.repRange.min], id).toEqual(['beginner', 'sumo-squat', 'bilateral', 8]);
+    }
+    // Knee-dominant compounds count glutes half; hinges and hip extensions count them fully (§4.8).
+    for (const e of exercises.filter((x) => (x.movementPattern === 'squat' || x.movementPattern === 'lunge') && x.mechanic === 'compound')) {
+      expect(e.primaryMuscles, e.id).not.toContain('glutes');
+    }
+    expect(byId.get('dumbbell-romanian-deadlift')!.primaryMuscles).toContain('glutes');
+    for (const kit of [GYM_EQUIPMENT, HOME_EQUIPMENT, ['dumbbell', 'none'] as Equipment[]]) {
+      expect(candidates('legs:single-leg', kit).some((e) => e.laterality === 'bilateral'), kit.join()).toBe(true);
     }
   });
 

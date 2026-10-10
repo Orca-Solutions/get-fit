@@ -8,9 +8,9 @@ import { addDays } from '../dates.js';
 import { hash } from '../ids.js';
 import { ZONE_NAME, compoundReps, coreTargets, isolationReps, restFor, rirFor, setsFor } from './templates.js';
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
-import { STRANGE_PERIODIZATION, coreDayType, liftDays, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type TrainingParams } from '../program.js';
+import { STRANGE_PERIODIZATION, coreDayType, liftDays, swapSlotKeys, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type StepUp, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.3.0';
+export const GENERATOR_VERSION = '1.4.0';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -26,6 +26,8 @@ export type GeneratorInput = {
   previousBlock?: Block;
   /** Exercises with no e1RM gain over 3 exposures, or rated down: rotated out at the boundary (§4.3). */
   stalled?: string[];
+  /** Exercises whose load can't go up any more (see isOutgrown): slots with a step-up rule move past them (§4.8). */
+  outgrown?: string[];
   /** Exercises with any logged history; others get a calibration note (§4.4.4). */
   known?: string[];
   /** False after an early deload in the last block: skip the volume ramp (§4.1). */
@@ -65,12 +67,15 @@ type Ctx = {
   byId: Map<string, Exercise>;
   now: string;
   baseSlots: Record<string, string>;
+  /** The movement each swapping base slot (BaseSlot.swap) runs on its swap weeks, keyed like baseSlots. */
+  swaps: Record<string, Exercise>;
   rotated: string[];
   /** Slots whose whole pool was flagged, and what filled them (shown in the block rationale). */
   notices: string[];
   unfilled: UnfilledSlot[];
   stalled: Set<string>;
   known: Set<string>;
+  outgrown: Set<string>;
 };
 
 const WEEKDAY_OFFSET: Record<Weekday, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 };
@@ -93,11 +98,13 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
     byId: new Map(input.exercises.map((e) => [e.id, e])),
     now: input.now ?? new Date().toISOString(),
     baseSlots: {},
+    swaps: {},
     rotated: [],
     notices: [],
     unfilled: [],
     stalled: new Set(input.stalled ?? []),
     known: new Set(input.known ?? []),
+    outgrown: new Set(input.outgrown ?? []),
   };
   const blockId = blockIdFor(input.startDate);
 
@@ -265,6 +272,48 @@ function jitter(ctx: Ctx, id: string, salt = ''): number {
   return (hash(`${id}|${ctx.blockIndex}|${salt}`) % 1000) / 1000;
 }
 
+/**
+ * The movements in `pool` that are the lowest rung still in use: none of their regressions is in the pool
+ * and not yet outgrown, and they aren't outgrown themselves while a progression is in the pool. A dumbbell
+ * sumo squat comes first, and the Smith one takes over once the dumbbell is outgrown (§4.8).
+ */
+function lowestRungs(ctx: Ctx, pool: Exercise[]): Exercise[] {
+  const inPool = (id: string) => pool.some((e) => e.id === id);
+  const rungs = pool.filter((e) =>
+    !e.regressions.some((r) => inPool(r) && !ctx.outgrown.has(r)) && !(ctx.outgrown.has(e.id) && e.progressions.some(inPool)));
+  return rungs.length ? rungs : pool;
+}
+
+/**
+ * A slot's equipment ladder (StepUp): a Favourite opt-in movement if there is one, else the lowest rungs of
+ * what's left once opt-in load types are taken out. Empty when nothing is left.
+ */
+function stepUpPool(ctx: Ctx, pool: Exercise[], rule: StepUp): Exercise[] {
+  const optIn = (e: Exercise) => !!rule.optIn?.includes(e.loadType);
+  const chosen = pool.filter((e) => optIn(e) && ctx.input.flags?.[e.id]?.favourite);
+  if (chosen.length) return chosen;
+  const rest = pool.filter((e) => !optIn(e));
+  return rest.length ? lowestRungs(ctx, rest) : [];
+}
+
+/**
+ * A main lift rotating with no other family to go to moves on through its own family in catalog order, e.g.
+ * Smith overhead press, then seated DB press, then machine press (§4.3, rev 3.7): each step further along
+ * costs 1.5, enough to beat the random tie-break but not a load-type bonus such as a barbell kit's.
+ */
+function familyOrder(ctx: Ctx, slot: BaseSlot, pool: Exercise[], prevId: string | undefined): Map<string, number> {
+  const prev = prevId ? ctx.byId.get(prevId) : undefined;
+  if (slot.role === 'I' || !prev || pool.some((e) => e.family !== prev.family)) return new Map();
+  const order = ctx.input.exercises.filter((e) => e.family === prev.family).map((e) => e.id);
+  const at = order.indexOf(prev.id);
+  return new Map([...order.slice(at + 1), ...order.slice(0, at)].map((id, rank) => [id, rank]));
+}
+
+/** Blocks where slots with `alternateLaterality` take their bilateral movements (§4.8). */
+function bilateralBlock(ctx: Ctx): boolean {
+  return ctx.blockIndex % 2 === 0;
+}
+
 /** One pick per base slot, in template order; undefined where nothing fits the equipment. */
 function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefined)[] {
   const prev = ctx.input.previousBlock?.baseSlots ?? {};
@@ -283,17 +332,41 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefi
     const key = `${type}|${slot.key}`;
     const prevId = prev[key];
     let pool = candidates(ctx, slot.key, 'gym').filter((e) => !chosen.some((c) => c.id === e.id));
+    if (slot.alternateLaterality) {
+      const turn = pool.filter((e) => (e.laterality === 'bilateral') === bilateralBlock(ctx));
+      if (turn.length) pool = turn;
+    }
+    if (slot.stepUp && (!slot.alternateLaterality || bilateralBlock(ctx))) {
+      const ladder = stepUpPool(ctx, pool, slot.stepUp);
+      if (ladder.length) pool = ladder;
+    }
+    if (!slot.alternateLaterality && slot.key.includes('press')) {
+      // Main presses stay two-sided: no free-standing one-arm presses in P and C press slots. One-arm rows and
+      // pulldowns still count as main lifts (§4.3, rev 3.7).
+      const twoSided = pool.filter((e) => !(e.laterality === 'unilateral' && e.stability === 'free'));
+      if (twoSided.length) pool = twoSided;
+    }
     if (slot.distinctFamily) {
       const fresh = pool.filter((e) => !chosen.some((c) => c.family === e.family));
       if (fresh.length) pool = fresh;
     }
     const keep = prevId && !rotate.has(i) && !ctx.stalled.has(prevId) && pool.find((e) => e.id === prevId);
-    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen)) || fillEmptySlot(ctx, type, slot.key, 'gym', chosen);
+    const order = familyOrder(ctx, slot, pool, prevId);
+    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen) - 1.5 * (order.get(e.id) ?? 0)) || fillEmptySlot(ctx, type, slot.key, 'gym', chosen);
     out.push(pick);
     if (!pick) return;
     if (prevId && pick.id !== prevId) ctx.rotated.push(pick.id);
     ctx.baseSlots[key] = pick.id;
     chosen.push(pick);
+    if (slot.swap) {
+      // The swap movement is picked once per block too; with none usable the slot keeps its own every week.
+      const pool = candidates(ctx, slot.swap.key, 'gym').filter((e) => !chosen.some((c) => c.id === e.id));
+      const swap = best(slot.swap.stepUp ? stepUpPool(ctx, pool, slot.swap.stepUp) : pool, (e) => jitter(ctx, e.id, slot.swap!.key));
+      if (swap) {
+        ctx.swaps[key] = swap;
+        ctx.baseSlots[`${type}|${slot.swap.key}`] = swap.id;
+      }
+    }
   });
   return out;
 }
@@ -347,9 +420,9 @@ function repsFor(ex: Exercise, want: { min: number; max: number }): { min: numbe
   return want;
 }
 
-/** RDLs and other axial hinges stay out of light (15+ rep) days (§4.1). */
+/** RDLs and other axial hinges stay out of light (15+ rep) days (§4.1) and deload weeks (§4.8). */
 function fitsZone(ex: Exercise, zone: Zone | 'deload', want: { min: number; max: number }): boolean {
-  if (zone === 'L' && ex.movementPattern === 'hinge' && ex.axialLoad) return false;
+  if ((zone === 'L' || zone === 'deload') && ex.movementPattern === 'hinge' && ex.axialLoad) return false;
   return want.min <= ex.repRange.max;
 }
 
@@ -405,19 +478,32 @@ function buildLift(
       const pools: SlotKey[] = [slot.key, ...p.lightDayStandIns];
       const alt = best(pools.flatMap((p) => candidates(ctx, p, 'gym')).filter((e) => !inSession.has(e.id) && !base.some((b) => b?.id === e.id) && fitsZone(e, zone, want)), (e) => jitter(ctx, e.id, `alt${week}`) + (e.fatigueCost === 1 ? 1 : 0));
       if (alt) {
-        note = `Stands in for ${ex.name} on the light day.`;
+        note = `Stands in for ${ex.name} ${zone === 'deload' ? 'in the deload week' : 'on the light day'}.`;
         ex = alt;
       }
     }
     let n = setsFor(slot.role, zone, ctx.blockIndex, p);
-    // Heavy day: a muscle under its band gets one more set on its slot (§4.2 balance targets).
-    const short = zone === 'H' && proj ? (Object.keys(p.heavyExtra) as CoverageGroup[]).find((g) => p.heavyExtra[g] === slot.key && proj[g] < p.bands[g]![0]) : undefined;
+    let slotKey = slot.key;
+    const swap = slot.swap && zone !== 'deload' ? ctx.swaps[`${type}|${slot.key}`] : undefined;
+    if (swap && (slot.swap!.always.includes(zone as Zone) || (proj && slot.swap!.ifRoom.includes(zone as Zone) && swapFits(ex, swap, n, proj, p.bands)))) {
+      // The plan without extras already counts swaps on `always` zones; an `ifRoom` swap moves the week's sets now.
+      if (proj && !slot.swap!.always.includes(zone as Zone)) {
+        credit(ex, -n);
+        credit(swap, n);
+      }
+      note = `Takes the place of ${ex.name} this week.`;
+      ex = swap;
+      slotKey = slot.swap!.key;
+    }
+    // Heavy day: a muscle under its band gets one more set on its slot (§4.2 balance targets). A swapped-in
+    // movement keeps its own sets.
+    const short = zone === 'H' && proj && slotKey === slot.key ? (Object.keys(p.heavyExtra) as CoverageGroup[]).find((g) => p.heavyExtra[g] === slot.key && proj[g] < p.bands[g]![0]) : undefined;
     if (short) {
       n += 1;
       extraFor.add(short);
       credit(ex, 1);
     }
-    add(ex, slot.key, slot.role, n, want, note);
+    add(ex, slotKey, slot.role, n, want, note);
   });
 
   // Anatoly-style top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1).
@@ -440,12 +526,26 @@ function buildLift(
   if (zone !== 'deload' && proj) {
     const nV = p.varietySlots[zone];
     const baseFamilies = new Set(base.flatMap((b) => (b ? [b.family] : [])));
+    // In a bilateral block of an alternating slot, its varietyFirst movements claim the first variety slot
+    // while they keep every muscle within one set of its band's ceiling (the leg press on sumo-squat leg
+    // days, §4.8).
+    const first = tpl.base.flatMap((slot, i) => (slot.alternateLaterality && base[i]?.laterality === 'bilateral' ? slot.alternateLaterality.varietyFirst ?? [] : []));
     for (let v = 0; v < nV; v++) {
       const pools = rotateList(tpl.varietyPool, week * 2 + v + ctx.blockIndex);
       let pick: Exercise | undefined;
       let pickSlot: SlotKey = pools[0];
       let top = -Infinity;
-      pools.forEach((pool, rank) => {
+      if (v === 0) {
+        for (const id of first) {
+          const pool = tpl.varietyPool.find((k) => candidates(ctx, k, 'gym').some((e) => e.id === id));
+          const e = pool && ctx.byId.get(id);
+          if (!pool || !e || inSession.has(e.id) || !fitsBands(e, 2, proj, p.bands, 1)) continue;
+          pick = e;
+          pickSlot = pool;
+          break;
+        }
+      }
+      if (!pick) pools.forEach((pool, rank) => {
         for (const e of candidates(ctx, pool, 'gym')) {
           if (inSession.has(e.id) || exercises.some((x) => x.role === 'V' && ctx.byId.get(x.exerciseId)?.family === e.family)) continue;
           const need = needOf(e, proj, p.bands);
@@ -558,17 +658,33 @@ function needOf(ex: Exercise, proj: Record<CoverageGroup, number>, bands: Bands)
 }
 
 /**
+ * True when running `n` sets of `swap` instead of `ex` keeps every banded muscle inside its band: muscles that
+ * gain sets stay at or under the ceiling, muscles that lose them at or over the floor of the band (§4.8).
+ */
+function swapFits(ex: Exercise, swap: Exercise, n: number, sets: Record<CoverageGroup, number>, bands: Bands): boolean {
+  const from = creditOf(ex);
+  const to = creditOf(swap);
+  return [...new Set([...from.keys(), ...to.keys()])].every((g) => {
+    const band = bands[g];
+    const delta = ((to.get(g) ?? 0) - (from.get(g) ?? 0)) * n;
+    return !band || (delta > 0 ? sets[g] + delta <= band[1] : sets[g] + delta >= band[0] || delta === 0);
+  });
+}
+
+/** True when `n` more sets of `ex` keep every banded muscle it trains within its band's ceiling. */
+function fitsBands(ex: Exercise, n: number, sets: Record<CoverageGroup, number>, bands: Bands, slack = 0): boolean {
+  return [...creditOf(ex)].every(([g, c]) => !bands[g] || sets[g] + c * n <= bands[g]![1] + slack);
+}
+
+/**
  * Add one set for a muscle under its band in `week`: isolation and variety slots first, then
  * compounds, never the primary lift, in a session with room under 22 sets.
  */
-/** True when `n` more sets of `ex` keep every banded muscle it trains within its band's ceiling. */
-function fitsBands(ex: Exercise, n: number, sets: Record<CoverageGroup, number>, bands: Bands): boolean {
-  return [...creditOf(ex)].every(([g, c]) => !bands[g] || sets[g] + c * n <= bands[g]![1]);
-}
-
 function addCoverageSet(ctx: Ctx, workouts: PlannedWorkout[], muscle: CoverageGroup, week: number, coverage: CoverageReport): boolean {
   const { byId, p } = ctx;
   const fits = (ex: Exercise) => fitsBands(ex, 1, coverage.weeks[week], p.bands);
+  // A swapped-in movement (the Friday deadlift) keeps its planned sets.
+  const swaps = swapSlotKeys(ctx.program);
   const steps: [string[], 'primary' | 'any'][] = [[['I', 'V'], 'primary'], [['C'], 'primary'], [['C'], 'any']];
   for (const [roles, credit] of steps) {
     for (const w of workouts) {
@@ -576,7 +692,7 @@ function addCoverageSet(ctx: Ctx, workouts: PlannedWorkout[], muscle: CoverageGr
       if (w.exercises.reduce((n, e) => n + e.sets.length, 0) >= p.sessionCap.sets) continue;
       const target = w.exercises.find((e) => {
         const ex = byId.get(e.exerciseId);
-        if (!ex || !roles.includes(e.role) || e.sets.length >= 4 || !fits(ex)) return false;
+        if (!ex || !roles.includes(e.role) || e.sets.length >= 4 || !fits(ex) || swaps.has(e.slot)) return false;
         return credit === 'primary' ? ex.primaryMuscles.some((m) => muscleGroupOf(m) === muscle) : creditOf(ex).has(muscle);
       });
       if (target) {

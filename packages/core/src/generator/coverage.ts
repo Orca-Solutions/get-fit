@@ -4,7 +4,7 @@ import { STRANGE_PERIODIZATION, type TrainingParams } from '../program.js';
 
 export const COVERAGE_GROUPS = [
   'quads', 'glutes-hamstrings', 'chest', 'back', 'side-delts', 'biceps', 'triceps',
-  'calves', 'rear-delts', 'forearms',
+  'calves', 'rear-delts', 'forearms', 'lower-back',
 ] as const;
 export type CoverageGroup = (typeof COVERAGE_GROUPS)[number];
 
@@ -19,6 +19,7 @@ export const GROUP_LABEL: Record<CoverageGroup, string> = {
   calves: 'calves',
   'rear-delts': 'rear delts',
   forearms: 'forearms',
+  'lower-back': 'lower back',
 };
 
 /** The original program's weekly set bands (Program.params.bands). */
@@ -63,11 +64,14 @@ export function weeklySets(workouts: PlannedWorkout[], byId: Map<string, Exercis
   for (const w of workouts) {
     if (w.weekIndex > 2) continue;
     for (const pe of w.exercises) {
-      // Core work isn't balanced against the lifting bands.
-      if (pe.role === 'K') continue;
       const ex = byId.get(pe.exerciseId);
       if (!ex) continue;
-      for (const [g, c] of creditOf(ex)) weeks[w.weekIndex][g] += c * pe.sets.length;
+      for (const [g, c] of creditOf(ex)) {
+        // Core work counts toward the lower back only (supermen, bird dogs, swings); the lifting bands
+        // leave it out (§4.8).
+        if (pe.role === 'K' && g !== 'lower-back') continue;
+        weeks[w.weekIndex][g] += c * pe.sets.length;
+      }
     }
   }
   return weeks;
