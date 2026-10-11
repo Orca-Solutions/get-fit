@@ -80,7 +80,7 @@ export function lastTimeHint(
       const top = near.reduce((a, b) => ((b.weight ?? 0) > (a.weight ?? 0) ? b : a));
       const repsLabel = target.min === target.max ? `${target.min}` : `${target.min}–${target.max}`;
       const allTopped = h.sets.length > 0 && h.sets.every((s) => (s.reps ?? 0) >= target.max);
-      // Weight goes up only at or below the target effort (§4.4.2): a set tapped Hard holds it.
+      // Weight goes up only at or below the target effort (§4.4 item 3): a set tapped Hard holds it.
       const hard = h.sets.some((s) => s.effort === 'hard');
       const loaded = top.weight != null && ex.loadIncrementLb && ex.weightConvention !== 'band';
       const suggest = allTopped && !hard && loaded ? nextLoad(ex, top.weight!) : undefined;
@@ -98,7 +98,7 @@ export function lastTimeHint(
  * The hint for a lift that comes round only some weeks, such as the Friday deadlift (§4.8): last time's line,
  * with a suggested load from the latest session's e1RM at the bottom of today's reps and planned RIR. That
  * links sessions planned at different rep ranges. The suggestion rounds down to the lift's increment, never
- * goes more than one increment past last time's top weight, and starts at about 95% when the last session
+ * goes more than one increment past last time's top weight (nor past it at all after a set tapped Hard), and starts at about 95% when the last session
  * was more than 3 weeks before `date` (a safety margin, not a cited rule).
  */
 export function e1rmLoadHint(
@@ -121,7 +121,9 @@ export function e1rmLoadHint(
   if (ex.weightConvention === 'added' && ex.loadType === 'smith') load -= profile.smithBarLb;
   let suggest = Math.max(0, Math.floor(load / inc) * inc);
   const tops = last.sets.map((s) => s.weight).filter((w): w is number => w != null);
-  if (tops.length) suggest = Math.min(suggest, nextLoad(ex, Math.max(...tops)));
+  // At most one increment up, and none after a set tapped Hard: Hard holds the weight, as in lastTimeHint.
+  const hard = last.sets.some((s) => s.effort === 'hard');
+  if (tops.length) suggest = Math.min(suggest, hard ? Math.max(...tops) : nextLoad(ex, Math.max(...tops)));
   return { ...hint, suggest };
 }
 
