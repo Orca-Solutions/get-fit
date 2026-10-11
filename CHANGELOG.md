@@ -4,6 +4,14 @@ Notable changes to get-fit. Releases of the core package are tagged `core-v<vers
 
 ## 2026-10-10
 
+- **core-v0.6.1:** released with program 1.5.0 (0.5.1 and 0.6.0 were never released on their own).
+- **Program 1.5.0** (core-v0.6.1):
+  - **Deloads about 10% lighter:** a deload week's weight hint suggests about 10% under the working weight, taken from the recent session closest to the deload's reps (usually the moderate week) and rounded down to the lift's increment (`deloadHint`, `lighterLoad`, `DELOAD_LOAD`).
+  - **Stalls compare block with block:** a lift is stalled when its best e1RM in its newest block isn't at least 1% above the block before, leaving out deloads. `isStalled(history, placeOf)` takes each session's place in the plan (`SessionPlace`).
+  - **No top set on a new lift:** the heavy-day top set from block 3 goes only to a primary lift the lifter has logged and that held the slot the block before.
+  - **Hold after Hard:** when a session topped its range but a set was tapped Hard, the hint says to hold the weight instead of suggesting the next one.
+  - **Lighter back-off sets:** after a top set, the back-off sets pre-fill about 10% lighter (`backOffLoad`, `BACK_OFF_LOAD`).
+  - **Deadlift first:** on the Fridays it runs, the deadlift opens the workout (`BaseSlot.swap.first`).
 - **core-v0.5.0:** released with program 1.4.0.
 - **Program 1.4.0** (core-v0.5.0):
   - **Romanian deadlift twice per block:** leg day runs it on its heavy and moderate weeks; the light week and the deload take a back extension, hip thrust or cable pull-through instead.
