@@ -678,6 +678,15 @@ describe('progression', () => {
     expect(e1rmLoadHint(dl, [], { min: 5, max: 8 }, 2, '2026-10-16', profile)).toBeNull();
   });
 
+  it('holds the deadlift weight after a set tapped Hard instead of stepping up', () => {
+    const dl = byId.get('dumbbell-deadlift')!;
+    const sets = [0, 1].map((i): LoggedSet => ({ ...set('s', '2026-10-02', 80, 9, i), exerciseId: dl.id, effort: i ? 'hard' : 'right' }));
+    // 80 × 9 points at 85 by e1RM, one increment up, but the Hard set holds it at 80, as the line says.
+    const hint = e1rmLoadHint(dl, summarizeHistory(dl, sets, profile), { min: 5, max: 8 }, 2, '2026-10-16', profile)!;
+    expect(hint.text).toBe('Last time at 5–8: 80 lb each · that was Hard, so hold this weight');
+    expect(hint.suggest).toBe(80);
+  });
+
   it('suggests about 10% under last time on deload weeks, rounded down to a real increment (§4.5)', () => {
     const hint = (weight: number | null) => ({ text: 'Last time', date: '2026-10-28', weight, suggest: weight == null ? undefined : weight + 5 });
     const lift = (id: string) => byId.get(id)!;
