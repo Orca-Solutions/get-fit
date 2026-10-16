@@ -2,11 +2,12 @@
 
 | Document | What it covers | Read it before |
 |---|---|---|
+| [USER_GUIDE.md](USER_GUIDE.md) | Using the app: setup, the plan, logging a workout, the calendar, history, the library, settings and backups. | Using get-fit, or answering a question about how it behaves. |
 | [SPEC.md](SPEC.md) | The product: screens and flows, the data model, storage and sync, stack and code layout, open items. | Changing a screen or a record shape. |
 | [periodization.md](periodization.md) | The training rules the plan generator implements (zones, slots, rotation, balance targets, core wave, progression), with sources. | Touching `packages/core/src/generator` or `packages/core/src/program.ts`. |
 | [exercise-database.md](exercise-database.md) | Where the exercise catalog comes from, its schema, the movements in it, and how it's built. | Editing `packages/core/scripts/curation.ts`. |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Running the app and sync server in production: hosting, domain, backups, rollout, rollback, updates, security. | Deploying or operating a server. |
-| [api/](api/README.md) | API reference for the core package (`@orca-solutions/get-fit-core`) and the sync server's HTTP API. | Building on the core or talking to the server. |
+| [api/](api/README.md) | The published API reference for the core package (`@orca-solutions/get-fit-core`, [core.md](api/core.md)) and the sync server's HTTP API. | Building on the core or talking to the server. |
 
 Project records at the repo root:
 

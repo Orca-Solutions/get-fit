@@ -24,5 +24,6 @@ Out of scope: meal planning, running (runs stay outside the app), accounts, mult
 
 ## Contributing
 
+- The app is complete and takes fixes only; new features and training rules go into the core package.
 - Work happens on feature branches and lands through pull requests that pass CI. The maintainer reviews and merges.
 - Deployments and secrets (the sync token, hosting variables) are handled by whoever runs the server; nothing secret is ever committed.

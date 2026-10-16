@@ -4,6 +4,12 @@ A workout planner and logger for the gym. It generates a training plan in 4-week
 
 get-fit is a single-user app: one person, any number of their own devices, no accounts. Meal planning, running and social features are out of scope.
 
+The app is complete and maintained for fixes. The training engine behind it, [`@orca-solutions/get-fit-core`](packages/core), keeps developing and is published for other apps to build on, with a full [API reference](docs/api/core.md).
+
+- **Using the app:** [user guide](docs/USER_GUIDE.md).
+- **Building on the core:** [install](#using-the-core-package), [quick start](docs/api/core.md#quick-start) and [API reference](docs/api/core.md).
+- **Running a server:** [deploy](#deploy) and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ## Background
 
 get-fit began as a replacement for AnatolyFit, a subscription workout app whose "strange periodization" was worth keeping but whose bugs kept losing workouts. The project writes that training method down as explicit, tested rules and wraps it in an app that does three things reliably: say what to do today, record what was actually done (which is often not what the plan said), and show how that movement has gone before.
@@ -65,15 +71,15 @@ CI (`.github/workflows/ci.yml`) runs typecheck, unit tests, the build and the Pl
 
 ## Using the core package
 
-The engine is released as a tarball attached to a GitHub release named `core-v<version>`, and installs by URL:
+The engine is released as a tarball attached to a GitHub release named `core-v<version>` (it is not on the npm registry), and installs by URL:
 
 ```sh
-npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.6.1/orca-solutions-get-fit-core-0.6.1.tgz
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.6.2/orca-solutions-get-fit-core-0.6.2.tgz
 ```
 
 To cut a release: bump `version` in `packages/core/package.json`, merge, then run the **Release core** workflow on `main` from the Actions tab (or push a tag `core-v<version>`). The workflow tests the workspace, packs the package and creates the release.
 
-API reference: [docs/api/core.md](docs/api/core.md).
+The [API reference](docs/api/core.md) documents every export of the root, `/client` and `/sqlite` entry points, and opens with a [quick start](docs/api/core.md#quick-start).
 
 ## Deploy
 
@@ -86,7 +92,7 @@ One service from this repo: build with `npm run build`, start with `npm start`, 
 
 ## Documentation
 
-See [docs/README.md](docs/README.md) for the full index: the product spec, the training rules, the exercise catalog, deployment and the API reference.
+See [docs/README.md](docs/README.md) for the full index: the user guide, the product spec, the training rules, the exercise catalog, deployment and the API reference.
 
 ## Credits
 
