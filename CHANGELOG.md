@@ -2,6 +2,16 @@
 
 Notable changes to get-fit. Releases of the core package are tagged `core-v<version>`.
 
+## 2026-10-16
+
+- **User guide:** [docs/USER_GUIDE.md](docs/USER_GUIDE.md) walks through setup, the plan, logging, the calendar, history, the library, settings and backups.
+- **Core API reference** for core-v0.6.2, with a tested quick start, linked from the README.
+- The app is complete and maintained for fixes; new work goes into the core package.
+
+## 2026-10-11
+
+- **core-v0.6.2:** Hard holds the deadlift weight too. After a set tapped Hard, the e1RM-based suggestion for a lift that comes round only some weeks (the Friday deadlift) is capped at last time's top weight instead of one increment above it (`e1rmLoadHint`). Program version unchanged (1.5.0).
+
 ## 2026-10-10
 
 - **core-v0.6.1:** released with program 1.5.0 (0.5.1 and 0.6.0 were never released on their own).

@@ -2,9 +2,12 @@
 
 The get-fit training engine as a library: domain types, the curated exercise catalog, training programs as data, the block generator, progression and coverage helpers, the sync protocol, an IndexedDB client and a SQLite sync store.
 
-Version documented: `0.6.1` (the version on `main` and the latest release, `core-v0.6.1`; 0.5.1 and 0.6.0 were never released). Additions in 0.5.0 and 0.6.1 are marked *(0.5.0)* and *(0.6.1)*. See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
+This is the public API reference for the package: everything it exports, what each function takes and returns, and the rules behind the numbers. The package is source-available under [FSL-1.1-MIT](../../LICENSE) and is published only as a tarball on GitHub releases.
+
+Version documented: `0.6.2` (the version on `main` and the latest release, `core-v0.6.2`; 0.5.1 and 0.6.0 were never released). Changes in 0.5.0, 0.6.1 and 0.6.2 are marked *(0.5.0)*, *(0.6.1)* and *(0.6.2)*. See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
 
 - [Install](#install)
+- [Quick start](#quick-start)
 - [Entry points](#entry-points)
 - [Conventions](#conventions)
 - [Domain types](#domain-types)
@@ -26,7 +29,7 @@ Version documented: `0.6.1` (the version on `main` and the latest release, `core
 The package is distributed as a tarball attached to each `core-v<version>` GitHub release. It is not published to the npm registry.
 
 ```sh
-npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.6.1/orca-solutions-get-fit-core-0.6.1.tgz
+npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.6.2/orca-solutions-get-fit-core-0.6.2.tgz
 ```
 
 | Requirement | Needed for |
@@ -36,6 +39,63 @@ npm install https://github.com/Orca-Solutions/get-fit/releases/download/core-v0.
 | `better-sqlite3` `>=11` (optional peer dependency) | `@orca-solutions/get-fit-core/sqlite` |
 
 Install only the peer dependency for the entry point in use. The package is ESM only (`"type": "module"`) and ships both compiled JavaScript with declarations (`dist`) and the TypeScript sources (`src`, exposed through a `source` export condition).
+
+## Quick start
+
+Plan a block, read a workout, turn logged sets into next time's weight, and chain the next block:
+
+```ts
+import {
+  CATALOG, generateBlock, lastTimeHint, neutralProfile, summarizeHistory, type LoggedSet,
+} from '@orca-solutions/get-fit-core';
+
+// 1. Plan four weeks for a lifter with a typical commercial gym.
+const profile = neutralProfile();
+const first = generateBlock({ profile, exercises: CATALOG, startDate: '2026-10-12' }); // a Monday
+
+// 2. Read the first workout.
+const monday = first.workouts[0];
+console.log(monday.focus, '-', monday.rationale);
+for (const pe of monday.exercises) {
+  const ex = CATALOG.find((e) => e.id === pe.exerciseId)!;
+  const reps = pe.sets[0].targetReps ?? pe.sets[0].targetSeconds!;
+  console.log(`${pe.role} ${ex.name}: ${pe.sets.length} × ${reps.min}–${reps.max}`);
+}
+
+// 3. Log three sets of the first lift, then ask for next time's weight.
+const bench = CATALOG.find((e) => e.id === monday.exercises[0].exerciseId)!;
+const at = '2026-10-12T17:00:00Z';
+const logged: LoggedSet[] = [0, 1, 2].map((i) => ({
+  id: `set-${i}`, createdAt: at, updatedAt: at, loggedAt: at, date: '2026-10-12',
+  sessionId: 's-1', plannedExerciseId: null, exerciseId: bench.id,
+  setIndex: i, reps: 12, weight: 95, effort: 'right',
+}));
+const hint = lastTimeHint(bench, summarizeHistory(bench, logged, profile), { min: 8, max: 12 });
+console.log(hint?.text, '→ try', hint?.suggest);
+
+// 4. Chain the next block from the first.
+const second = generateBlock({
+  profile, exercises: CATALOG, startDate: '2026-11-09', previousBlock: first.block, known: [bench.id],
+});
+console.log(second.block.index, second.coverage.warnings);
+```
+
+With core 0.6.2 this prints:
+
+```text
+Chest & biceps · Moderate - Moderate day: 8–12 reps on the big lifts. Finish with farmer's carry for grip.
+P Smith Machine Bench Press: 3 × 8–12
+C Incline Dumbbell Press: 3 × 8–12
+I Cable Crossover (High to Low): 2 × 10–15
+I Dumbbell Curl: 2 × 10–15
+I Dumbbell Hammer Curl: 2 × 10–15
+C Machine Chest Press: 3 × 8–12
+G Farmer's Carry: 2 × 20–60
+Last time at 8–12: 95 lb plates → try 100
+2 []
+```
+
+Every set reached the top of the range and none was tapped Hard, so the hint suggests one increment up. Roles are `P` primary, `C` compound, `I` isolation and `G` grip (see [Domain types](#domain-types)). The sections below cover each step in full: [Generating a block](#generating-a-block), [Progression](#progression) and [Coverage](#coverage).
 
 ## Entry points
 
@@ -492,7 +552,7 @@ Loads and progression from logged sets ([../periodization.md](../periodization.m
 | `setE1rm` | `(ex: Exercise, s: LoggedSet, profile) => number \| null` | e1RM of one set; `null` for time movements, sets without reps, or no positive load. `effort` maps to RIR `easy` 4, `right` 2, `hard` 0.5; no effort reads as 2. |
 | `summarizeHistory` | `(ex: Exercise, sets: LoggedSet[], profile) => SessionSummary[]` | Groups a movement's non-deleted sets by session, newest first. `SessionSummary` is `{ sessionId, date, sets, bestE1rm }`. |
 | `lastTimeHint` | `(ex, history: SessionSummary[], target: { min, max } \| undefined, bandName?: (id) => string, excludeSessionId?: string) => WeightHint \| null` | The newest session with a set within the target range (±1 rep), or else the newest session. When that session topped the range but a set was tapped `hard`, there is no `suggest` and the text ends `· that was Hard, so hold this weight` *(0.6.1)*. |
-| `e1rmLoadHint` | `(ex, history: SessionSummary[], target: { min, max } \| undefined, rir: number, date: string, profile: Pick<Profile, 'smithBarLb'>, bandName?) => WeightHint \| null` | *(0.5.0)* For a lift that comes round only some weeks (a swap slot). `lastTimeHint`'s line, with `suggest` set from the newest session's e1RM at `target.min` and `rir`: rounded down to `loadIncrementLb`, at most `nextLoad` of last time's top weight, and ×0.95 when that session was more than 21 days before `date`. For the Smith machine the bar weight is taken off. For time, band, assisted and bodyweight movements, or with no e1RM yet, it returns `lastTimeHint`'s result unchanged. |
+| `e1rmLoadHint` | `(ex, history: SessionSummary[], target: { min, max } \| undefined, rir: number, date: string, profile: Pick<Profile, 'smithBarLb'>, bandName?) => WeightHint \| null` | *(0.5.0)* For a lift that comes round only some weeks (a swap slot). `lastTimeHint`'s line, with `suggest` set from the newest session's e1RM at `target.min` and `rir`: rounded down to `loadIncrementLb`, at most `nextLoad` of last time's top weight (*(0.6.2)* at most last time's top weight when a set in that session was tapped `hard`, so Hard holds the weight here too), and ×0.95 when that session was more than 21 days before `date`. For the Smith machine the bar weight is taken off. For time, band, assisted and bodyweight movements, or with no e1RM yet, it returns `lastTimeHint`'s result unchanged. |
 | `deloadHint` | `(ex, hint: WeightHint \| null, profile: Pick<Profile, 'bodyweightLb' \| 'smithBarLb'>, from?: { history: SessionSummary[]; target: { min, max } \| undefined; date: string }) => WeightHint \| null` | *(0.6.1)* A deload week's hint: `hint` without the Hard hold, with `suggest` = `lighterLoad(…, DELOAD_LOAD)`. With `from`, the line and the working weight come from the session in the 21 days before `date` whose median reps sit nearest the middle of `target` (the heavier on a tie), using its heaviest set inside `target`. |
 | `backOffLoad` | `(ex, topWeight: number \| null \| undefined, profile) => number \| null` | *(0.6.1)* The pre-filled weight for a back-off set after a top set: `lighterLoad(…, BACK_OFF_LOAD)`. |
 | `lighterLoad` | `(ex, weight: number \| null \| undefined, profile: Pick<Profile, 'bodyweightLb' \| 'smithBarLb'>, factor: number) => number \| null` | *(0.6.1)* `factor` of the effective load, rounded down to `loadIncrementLb` and given back as the weight to log: Smith lifts take the bar off, `assist` movements round the assistance up. Returns `weight` unchanged when the cut is under half an increment, and `null` with no increment, no weight or no positive load (band and bodyweight movements). |

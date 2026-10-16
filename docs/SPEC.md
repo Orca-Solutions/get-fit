@@ -319,9 +319,9 @@ The full API is in [api/core.md](api/core.md).
 
 ## 6. Status and open items
 
-Built and in use: planning, logging, swap and skip, history, calendar, library, settings, export and restore, multi-device sync, the rest timer, in-app updates, and a responsive desktop layout.
+Built and in use: planning, logging, swap and skip, history, calendar, library, settings, export and restore, multi-device sync, the rest timer, in-app updates, and a responsive desktop layout. The app is complete and maintained for fixes; it gets no new features, and development continues in the core package ([api/core.md](api/core.md)). How to use it is in [USER_GUIDE.md](USER_GUIDE.md).
 
-Open:
+Open. The training-rule items continue in the core package; the app-side items (supersets on one screen, server-side record checks, an editable schedule and units, custom movements) are known gaps rather than planned work.
 
 - **Supersets on one screen:** the core day's supersets are labelled, but each movement still has its own screen rather than alternating rows (A1, B1, A2, B2).
 - **Training rules not yet implemented:** early deload, the 10-day-gap load drop and the finer progression rules ([periodization.md §4.9](periodization.md#49-not-yet-implemented)).
