@@ -5,7 +5,7 @@ import { addDays, daysBetween, mondayOf, today } from '../dates.js';
 import { uuid } from '../ids.js';
 import { isSyncConnected, scheduleSync } from './sync.js';
 import { generateBlock, type ExerciseFlags, type GeneratorInput } from '../generator/generateBlock.js';
-import { isOutgrown, isStalled, summarizeHistory, type SessionSummary } from '../generator/progression.js';
+import { isOutgrown, isStalled, summarizeHistory, withoutDeloads, type SessionSummary } from '../generator/progression.js';
 import { db, SYNC_TABLES, type GetFitDB, type SyncTable } from './db.js';
 import { validRow } from '../validate.js';
 import { PROFILE_ID, neutralProfile } from '../profiles.js';
@@ -138,7 +138,7 @@ async function generatorInput(startDate: string, previousBlock: Block | undefine
   const stalled = known.filter((id) => isStalled(history(id), placeOf));
   const plannedSets = new Map(planned.flatMap((w) => w.exercises.map((e) => [e.id, e.sets] as const)));
   const targetMax = (s: LoggedSet) => plannedSets.get(s.plannedExerciseId ?? '')?.find((p) => p.setIndex === s.setIndex)?.targetReps?.max;
-  const outgrown = known.filter((id) => isOutgrown(history(id), targetMax));
+  const outgrown = known.filter((id) => isOutgrown(withoutDeloads(history(id), (h) => !!placeOf(h)?.deload), targetMax));
   const recoveryOk = previousBlock ? !(await d.sessions.toArray()).some((s) => !s.deletedAt && s.beatUp && s.date >= previousBlock.startDate) : true;
   return { profile, exercises, flags, startDate, previousBlock, stalled, known, outgrown, recoveryOk };
 }
@@ -187,6 +187,13 @@ export async function workoutsWithLogs(d: GetFitDB = db): Promise<Set<string>> {
   const [sessions, sets] = await Promise.all([d.sessions.toArray(), d.loggedSets.toArray()]);
   const withSets = new Set(sets.filter((s) => !s.deletedAt).map((s) => s.sessionId));
   return new Set(sessions.filter((s) => !s.deletedAt && s.plannedWorkoutId && withSets.has(s.id)).map((s) => s.plannedWorkoutId!));
+}
+
+/** Sessions logged against a deload workout, which the weight hint leaves out (withoutDeloads). */
+export async function deloadSessionIds(d: GetFitDB = db): Promise<Set<string>> {
+  const [sessions, planned] = await Promise.all([d.sessions.toArray(), d.plannedWorkouts.toArray()]);
+  const deloads = new Set(planned.filter((w) => w.isDeload && !w.deletedAt).map((w) => w.id));
+  return new Set(sessions.filter((s) => !s.deletedAt && s.plannedWorkoutId && deloads.has(s.plannedWorkoutId)).map((s) => s.id));
 }
 
 export async function sessionFor(plannedWorkoutId: string, d: GetFitDB = db): Promise<Session | undefined> {

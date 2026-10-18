@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GetFitDB } from '../src/client/db';
 import { configureSync } from '../src/client/sync';
-import { ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/client/repo';
+import { deloadSessionIds, ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/client/repo';
 import { addDays, mondayOf, today } from '../src/dates';
 
 let n = 0;
@@ -109,6 +109,17 @@ describe('repo', () => {
     expect(set.date).toBe(today());
     expect((await d.sessions.get(s.id))!.date).toBe(today());
     expect(await workoutsWithLogs(d)).toEqual(new Set([w.id]));
+  });
+
+  it('lists the sessions logged against a deload workout', async () => {
+    const d = await fresh();
+    await ensurePlan(today(), d);
+    const planned = await d.plannedWorkouts.toArray();
+    const deload = planned.find((w) => w.isDeload)!;
+    const loading = planned.find((w) => !w.isDeload)!;
+    const a = await startSession(deload.id, deload.date, d);
+    await startSession(loading.id, loading.date, d);
+    expect(await deloadSessionIds(d)).toEqual(new Set([a.id]));
   });
 
   it('merges a partial update into the stored set instead of reverting other fields', async () => {
