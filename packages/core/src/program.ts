@@ -140,7 +140,7 @@ export type Program = {
 
 export const STRANGE_PERIODIZATION: Program = {
   id: 'strange-periodization',
-  version: '1.5.0',
+  version: '1.6.0',
   days: {
     legs: {
       kind: 'lift',

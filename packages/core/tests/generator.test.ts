@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import catalog from '../src/data/exercises.json';
 import { BANDS, creditOf, groupOf, weeklySets, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
-import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, isTopSet, lastTimeHint, summarizeHistory, withoutDeloads, workoutHint } from '../src/generator/progression';
+import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, isToppedOut, isTopSet, lastTimeHint, summarizeHistory, withoutDeloads, workoutHint } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
 import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
@@ -313,6 +313,16 @@ describe('generateBlock: later blocks', () => {
     const curl = b1.block.baseSlots['chest-biceps|biceps:neutral'];
     const next = gen({ previousBlock: b1.block, startDate: '2026-11-09', stalled: [curl] });
     expect(next.block.baseSlots['chest-biceps|biceps:neutral']).not.toBe(curl);
+  });
+
+  it('rotates a topped-out isolation lift with a note saying why, and keeps a topped-out main lift (§4.3)', () => {
+    const curl = b1.block.baseSlots['chest-biceps|biceps:neutral'];
+    const bench = b1.block.baseSlots['chest-biceps|chest:flat-press'];
+    const next = gen({ previousBlock: b1.block, startDate: '2026-11-09', toppedOut: [curl, bench] });
+    const pick = byId.get(next.block.baseSlots['chest-biceps|biceps:neutral'])!;
+    expect(pick.id).not.toBe(curl);
+    expect(next.block.rationale).toContain(`${byId.get(curl)!.name} kept reaching the top of its reps without a weight step it could make, so ${pick.name} takes its place this block.`);
+    expect(next.block.baseSlots['chest-biceps|chest:flat-press']).toBe(bench);
   });
 });
 
@@ -793,6 +803,24 @@ describe('progression', () => {
     expect(isStalled(...mk([['b1', false, 100], ['b1', false, 99], ['b1', false, 101]]))).toBe(false);
     expect(isStalled(...mk([['b2', false, 90], ['b2', true, 80], ['b1', false, 132], ['b1', false, 147]]))).toBe(false);
     expect(isStalled(mk([['b2', false, 90], ['b2', false, 91], ['b1', false, 132], ['b1', false, 147]])[0], () => undefined)).toBe(false);
+  });
+
+  it("calls a flat block topped out when its heaviest set reached the top of its reps at Right or Easy", () => {
+    // Newest first: [block, deload?, weight, reps, effort], each planned at 10–15.
+    const mk = (rows: [string, boolean, number, number, LoggedSet['effort']][]) => {
+      const history = rows.map(([, , weight, reps, effort], i) => ({ sessionId: `${i}`, date: addDays('2026-12-31', -7 * i), sets: [{ weight, reps, effort, setIndex: 0 } as LoggedSet], bestE1rm: e1rm(weight, reps, 2) }));
+      const place = new Map(rows.map(([blockId, deload], i) => [`${i}`, { blockId, deload }]));
+      return [history, (h: { sessionId: string }) => place.get(h.sessionId), () => 15] as const;
+    };
+    // A 20 lb curl topped at 15 reps, Right, while the 25 lb bell is out of reach.
+    expect(isToppedOut(...mk([['b2', false, 20, 15, 'right'], ['b2', false, 20, 14, 'hard'], ['b1', false, 20, 15, 'easy']]))).toBe(true);
+    // Topped only at Hard, short of the top, or only on a lighter set: stuck, not waiting on a step.
+    expect(isToppedOut(...mk([['b2', false, 20, 15, 'hard'], ['b2', false, 20, 14, 'right']]))).toBe(false);
+    expect(isToppedOut(...mk([['b2', false, 20, 13, 'right'], ['b2', false, 20, 12, 'easy']]))).toBe(false);
+    expect(isToppedOut(...mk([['b2', false, 20, 12, 'right'], ['b2', false, 15, 15, 'easy']]))).toBe(false);
+    // The deload and the block before don't count: only the newest block's loading sessions do.
+    expect(isToppedOut(...mk([['b2', true, 15, 15, 'easy'], ['b2', false, 20, 12, 'right'], ['b1', false, 20, 15, 'right']]))).toBe(false);
+    expect(isToppedOut(mk([['b2', false, 20, 15, 'right']])[0], () => undefined, () => 15)).toBe(false);
   });
 
   it('orders blocks by their planned dates when an old workout is logged late', () => {

@@ -383,28 +383,56 @@ export function bestSet(ex: Exercise, history: SessionSummary[], profile: Pick<P
  */
 export type SessionPlace = { blockId: string; deload: boolean; plannedDate?: string };
 
+/** Loading sessions on the plan, by block, newest block first by when its workouts were planned. */
+function byBlock(history: SessionSummary[], placeOf: (h: SessionSummary) => SessionPlace | undefined): { id: string; sessions: SessionSummary[]; date: string }[] {
+  const blocks: { id: string; sessions: SessionSummary[]; date: string }[] = [];
+  for (const h of history) {
+    const place = placeOf(h);
+    if (!place || place.deload) continue;
+    const date = place.plannedDate ?? h.date;
+    let b = blocks.find((x) => x.id === place.blockId);
+    if (!b) blocks.push((b = { id: place.blockId, sessions: [], date }));
+    b.sessions.push(h);
+    if (date > b.date) b.date = date;
+  }
+  return blocks.sort((a, b) => b.date.localeCompare(a.date));
+}
+
 /**
  * Stalled (§4.3), so it rotates out at the next block: the best e1RM of the newest block it was trained in is not
  * at least `gain` (1%) above the best of the block before, like for like across each block's heavy, moderate and
  * light days. Deload sessions and sessions off the plan don't count, and each block needs 2 or more loading
- * sessions; otherwise it isn't stalled. `placeOf` says where a session sat (from its planned workout).
+ * sessions; otherwise it isn't stalled. `placeOf` says where a session sat (from its planned workout). A flat block
+ * that topped out (isToppedOut) is waiting on a weight step, not stuck; the caller tells the two apart.
  */
 export function isStalled(history: SessionSummary[], placeOf: (h: SessionSummary) => SessionPlace | undefined, gain = 0.01): boolean {
-  const blocks: { id: string; best: number[]; date: string }[] = [];
-  for (const h of history) {
-    const place = placeOf(h);
-    if (!place || place.deload || h.bestE1rm == null) continue;
-    const date = place.plannedDate ?? h.date;
-    let b = blocks.find((x) => x.id === place.blockId);
-    if (!b) blocks.push((b = { id: place.blockId, best: [], date }));
-    b.best.push(h.bestE1rm);
-    if (date > b.date) b.date = date;
-  }
-  // Newest block first, by when its workouts were planned.
-  blocks.sort((a, b) => b.date.localeCompare(a.date));
-  const [last, before] = blocks;
-  if (!last || !before || last.best.length < 2 || before.best.length < 2) return false;
-  return Math.max(...last.best) < Math.max(...before.best) * (1 + gain);
+  const best = byBlock(history, placeOf).map((b) => b.sessions.flatMap((h) => (h.bestE1rm == null ? [] : [h.bestE1rm])));
+  const [last, before] = best.filter((b) => b.length);
+  if (!last || !before || last.length < 2 || before.length < 2) return false;
+  return Math.max(...last) < Math.max(...before) * (1 + gain);
+}
+
+/**
+ * Topped out (§4.3, review of 2026-10-18): in the newest block's loading sessions, the heaviest set reached the top
+ * of its planned reps (`targetMax`) at Right or Easy. Double progression shows a gain only inside the rep range, so
+ * a lift whose next weight is too big a step to land (a 20 to 25 lb dumbbell is 25%) logs a flat e1RM while the
+ * lifter gets stronger; such a block is not a stall. `load` ranks sets by the weight moved (more assistance is
+ * lighter); it defaults to the logged weight.
+ */
+export function isToppedOut(
+  history: SessionSummary[],
+  placeOf: (h: SessionSummary) => SessionPlace | undefined,
+  targetMax: (s: LoggedSet) => number | undefined,
+  load: (s: LoggedSet) => number = (s) => s.weight ?? 0,
+): boolean {
+  const newest = byBlock(history, placeOf).find((b) => b.sessions.some((h) => h.bestE1rm != null));
+  const sets = newest?.sessions.flatMap((h) => h.sets.filter((s) => s.reps && s.weight != null)) ?? [];
+  if (!sets.length) return false;
+  const top = Math.max(...sets.map(load));
+  return sets.some((s) => {
+    const max = targetMax(s);
+    return load(s) === top && max != null && s.reps! >= max && (s.effort === 'right' || s.effort === 'easy');
+  });
 }
 
 /**

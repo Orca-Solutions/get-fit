@@ -77,7 +77,7 @@ type Check = (ok: boolean, date: string, what: string) => void;
 const GROUPS = ['hints', 'safety', 'backOff', 'plans', 'shape', 'slots', 'bands', 'stalls', 'heavy'] as const;
 const bad = Object.fromEntries(GROUPS.map((g) => [g, [] as Violation[]])) as Record<(typeof GROUPS)[number], Violation[]>;
 const checker = (g: (typeof GROUPS)[number]): Check => (ok, date, what) => { if (!ok) bad[g].push({ date, what }); };
-const stats = { workouts: 0, sets: 0, hints: 0, suggestions: 0, backOffs: 0, topSets: 0, rotated: 0, heavyPairs: 0 };
+const stats = { workouts: 0, sets: 0, hints: 0, suggestions: 0, backOffs: 0, topSets: 0, stalled: 0, toppedOut: 0, heavyPairs: 0 };
 
 /** The heaviest weight used on each movement's working sets (top sets aside), by block, day and zone. */
 const used = new Map<string, number>();
@@ -149,9 +149,9 @@ describe('six blocks of day-to-day use', () => {
     checkSlots(checker('slots'), blocks, workouts);
     checkBands(checker('bands'), blocks, workouts, byId);
     checkHeavy(checker('heavy'), blocks);
-    stats.rotated = await checkStalls(checker('stalls'), d, byId, profile);
+    await checkStalls(checker('stalls'), d, byId, profile);
     console.log(`simulated ${stats.workouts} workouts, ${stats.sets} sets, ${stats.hints} hints (${stats.suggestions} with a suggestion), ${planned.length} plans, ` +
-      `${stats.topSets} planned top sets (${stats.backOffs} done), ${stats.rotated} stall rotations, ${stats.heavyPairs} heavy/moderate pairs; violations: ` +
+      `${stats.topSets} planned top sets (${stats.backOffs} done), ${stats.stalled} stalled and ${stats.toppedOut} topped out, ${stats.heavyPairs} heavy/moderate pairs; violations: ` +
       GROUPS.map((g) => `${g} ${bad[g].length}`).join(', '));
   }, 300_000);
   afterAll(() => vi.useRealTimers());
@@ -169,9 +169,10 @@ describe('six blocks of day-to-day use', () => {
     expect(bad.heavy.slice(0, 20)).toEqual([]);
     expect(stats.heavyPairs).toBeGreaterThan(0);
   });
-  it('rotates lifts out as stalled only when the logs say so', () => {
+  it('calls lifts stalled or topped out only when the logs say so', () => {
     expect(bad.stalls.slice(0, 20)).toEqual([]);
-    expect(stats.rotated).toBeGreaterThan(0);
+    expect(stats.stalled).toBeGreaterThan(0);
+    expect(stats.toppedOut).toBeGreaterThan(0);
   });
   // Known drift: a muscle can sit a set outside its band from block 6 (review/core-logic-review-2026-10-10.md).
   // Expected to fail until that is fixed; it reports as passing the day it starts to pass, so the mark comes off.
@@ -409,34 +410,46 @@ function checkHeavy(check: Check, blocks: Awaited<ReturnType<typeof liveBlocks>>
 }
 
 /**
- * Stalls (§4.3), worked out again from the logs the planner had: a lift rotates out as stalled only when its
- * best e1RM over the loading sessions of the newest block it was trained in failed to beat the block before by
- * 1%, with 2 or more such sessions in each. This catches wiring slips (deloads counted, blocks out of order,
- * heavy compared with light) that the unit tests can't see.
+ * Stalls (§4.3), worked out again from the logs the planner had. A lift is flat when its best e1RM over the loading
+ * sessions of the newest block it was trained in failed to beat the block before by 1%, with 2 or more such
+ * sessions in each; it is topped out when that newest block's heaviest set reached the top of its planned reps at
+ * Right or Easy. Stalled must mean flat and not topped out, and topped out must mean flat and topped out. This
+ * catches wiring slips (deloads counted, blocks out of order, heavy compared with light) that unit tests can't see.
  */
-async function checkStalls(check: Check, d: GetFitDB, byId: Map<string, Exercise>, profile: Awaited<ReturnType<typeof getProfile>>): Promise<number> {
+async function checkStalls(check: Check, d: GetFitDB, byId: Map<string, Exercise>, profile: Awaited<ReturnType<typeof getProfile>>): Promise<void> {
   const workouts = new Map((await d.plannedWorkouts.toArray()).map((w) => [w.id, w]));
+  const plannedSets = new Map([...workouts.values()].flatMap((w) => w.exercises.map((e) => [e.id, e.sets] as const)));
   const sessions = new Map((await d.sessions.toArray()).map((s) => [s.id, s]));
   const blocks = new Map((await d.blocks.toArray()).map((b) => [b.id, b]));
   const sets = (await d.loggedSets.toArray()).filter((s) => !s.deletedAt);
-  let rotated = 0;
   for (const { input, at } of planned) {
-    for (const id of input.stalled ?? []) {
-      rotated++;
+    const judge = (id: string) => {
       const ex = byId.get(id)!;
-      const best = new Map<string, Map<string, number>>();
+      const per = new Map<string, LoggedSet[]>();
       for (const s of sets) {
         const w = workouts.get(sessions.get(s.sessionId)?.plannedWorkoutId ?? '');
-        const e = setE1rm(ex, s, profile);
-        if (s.exerciseId !== id || s.loggedAt > at || !w || w.isDeload || e == null) continue;
-        const per = best.get(w.blockId) ?? new Map<string, number>();
-        per.set(s.sessionId, Math.max(per.get(s.sessionId) ?? 0, e));
-        best.set(w.blockId, per);
+        if (s.exerciseId !== id || s.loggedAt > at || !w || w.isDeload || setE1rm(ex, s, profile) == null) continue;
+        per.set(w.blockId, [...(per.get(w.blockId) ?? []), s]);
       }
-      const [last, before] = [...best].sort((a, b) => blocks.get(b[0])!.startDate.localeCompare(blocks.get(a[0])!.startDate)).map(([, per]) => [...per.values()]);
-      const ok = !!last && !!before && last.length >= 2 && before.length >= 2 && Math.max(...last) < Math.max(...before) * 1.01;
-      check(ok, input.startDate, `${id} rotated out as stalled, but its logs say otherwise`);
+      const [last, before] = [...per].sort((a, b) => blocks.get(b[0])!.startDate.localeCompare(blocks.get(a[0])!.startDate)).map(([, list]) => list);
+      const best = (list: LoggedSet[]) => Math.max(...list.map((s) => setE1rm(ex, s, profile)!));
+      const count = (list: LoggedSet[]) => new Set(list.map((s) => s.sessionId)).size;
+      const flat = !!last && !!before && count(last) >= 2 && count(before) >= 2 && best(last) < best(before) * 1.01;
+      const load = (s: LoggedSet) => moved(ex, s.weight ?? 0);
+      const top = last && Math.max(...last.map(load));
+      const max = (s: LoggedSet) => plannedSets.get(s.plannedExerciseId ?? '')?.find((p) => p.setIndex === s.setIndex)?.targetReps?.max;
+      const topped = !!last && last.some((s) => load(s) === top && max(s) != null && s.reps! >= max(s)! && (s.effort === 'right' || s.effort === 'easy'));
+      return { flat, topped };
+    };
+    for (const id of input.stalled ?? []) {
+      stats.stalled++;
+      const { flat, topped } = judge(id);
+      check(flat && !topped, input.startDate, `${id} rotated out as stalled, but its logs say ${flat ? 'it topped out' : 'it gained'}`);
+    }
+    for (const id of input.toppedOut ?? []) {
+      stats.toppedOut++;
+      const { flat, topped } = judge(id);
+      check(flat && topped, input.startDate, `${id} called topped out, but its logs say ${flat ? 'it never topped out' : 'it gained'}`);
     }
   }
-  return rotated;
 }

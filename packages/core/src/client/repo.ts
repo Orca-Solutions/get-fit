@@ -6,7 +6,7 @@ import { addDays, daysBetween, mondayOf, today } from '../dates.js';
 import { uuid } from '../ids.js';
 import { isSyncConnected, scheduleSync } from './sync.js';
 import { generateBlock, type ExerciseFlags, type GeneratorInput } from '../generator/generateBlock.js';
-import { isOutgrown, isStalled, summarizeHistory, withoutDeloads, type SessionSummary } from '../generator/progression.js';
+import { effectiveLoad, isOutgrown, isStalled, isToppedOut, summarizeHistory, withoutDeloads, type SessionSummary } from '../generator/progression.js';
 import { db, SYNC_TABLES, type GetFitDB, type SyncTable } from './db.js';
 import { validRow } from '../validate.js';
 import { PROFILE_ID, neutralProfile } from '../profiles.js';
@@ -136,12 +136,18 @@ async function generatorInput(startDate: string, previousBlock: Block | undefine
     const w = sessionWorkout.get(h.sessionId);
     return w && !w.deletedAt ? { blockId: w.blockId, deload: w.isDeload, plannedDate: w.date } : undefined;
   };
-  const stalled = known.filter((id) => isStalled(history(id), placeOf));
   const plannedSets = new Map(planned.flatMap((w) => w.exercises.map((e) => [e.id, e.sets] as const)));
   const targetMax = (s: LoggedSet) => plannedSets.get(s.plannedExerciseId ?? '')?.find((p) => p.setIndex === s.setIndex)?.targetReps?.max;
+  // A flat block that topped out is waiting on a weight step, not stuck (§4.3).
+  const flat = known.filter((id) => isStalled(history(id), placeOf));
+  const toppedOut = flat.filter((id) => {
+    const ex = exercises.find((e) => e.id === id)!;
+    return isToppedOut(history(id), placeOf, targetMax, (s) => effectiveLoad(ex, s.weight, profile) ?? 0);
+  });
+  const stalled = flat.filter((id) => !toppedOut.includes(id));
   const outgrown = known.filter((id) => isOutgrown(withoutDeloads(history(id), (h) => !!placeOf(h)?.deload), targetMax));
   const recoveryOk = previousBlock ? !(await d.sessions.toArray()).some((s) => !s.deletedAt && s.beatUp && s.date >= previousBlock.startDate) : true;
-  return { profile, exercises, flags, startDate, previousBlock, stalled, known, outgrown, recoveryOk };
+  return { profile, exercises, flags, startDate, previousBlock, stalled, toppedOut, known, outgrown, recoveryOk };
 }
 
 async function createBlock(startDate: string, previousBlock: Block | undefined, d: GetFitDB, plannedAhead = false): Promise<Block> {

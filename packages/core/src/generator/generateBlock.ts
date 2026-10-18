@@ -11,7 +11,7 @@ import { BACK_OFF_LOAD, DELOAD_LOAD } from './progression.js';
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, swapSlotKeys, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type StepUp, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.5.1';
+export const GENERATOR_VERSION = '1.6.0';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -27,6 +27,11 @@ export type GeneratorInput = {
   previousBlock?: Block;
   /** Exercises with no e1RM gain over 3 exposures, or rated down: rotated out at the boundary (§4.3). */
   stalled?: string[];
+  /**
+   * Exercises flat for a block but topped out at Right or Easy (see isToppedOut): waiting on a weight step, not
+   * stuck. Isolation slots rotate them, saying why; main lifts (P and C) keep them (§4.3).
+   */
+  toppedOut?: string[];
   /** Exercises whose load can't go up any more (see isOutgrown): slots with a step-up rule move past them (§4.8). */
   outgrown?: string[];
   /** Exercises with any logged history; others get a calibration note (§4.4.4). */
@@ -75,6 +80,7 @@ type Ctx = {
   notices: string[];
   unfilled: UnfilledSlot[];
   stalled: Set<string>;
+  toppedOut: Set<string>;
   known: Set<string>;
   outgrown: Set<string>;
 };
@@ -104,6 +110,7 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
     notices: [],
     unfilled: [],
     stalled: new Set(input.stalled ?? []),
+    toppedOut: new Set(input.toppedOut ?? []),
     known: new Set(input.known ?? []),
     outgrown: new Set(input.outgrown ?? []),
   };
@@ -351,7 +358,9 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefi
       const fresh = pool.filter((e) => !chosen.some((c) => c.family === e.family));
       if (fresh.length) pool = fresh;
     }
-    const keep = prevId && !rotate.has(i) && !ctx.stalled.has(prevId) && pool.find((e) => e.id === prevId);
+    // A topped-out isolation lift makes way; a topped-out main lift stays for a better step or more reps (§4.3).
+    const capped = !!prevId && slot.role === 'I' && ctx.toppedOut.has(prevId);
+    const keep = prevId && !rotate.has(i) && !ctx.stalled.has(prevId) && !capped && pool.find((e) => e.id === prevId);
     const order = familyOrder(ctx, slot, pool, prevId);
     // A slot that rotates stays off the families later slots ran last block, so they can keep theirs (§4.3).
     const later = new Set(tpl.base.slice(i + 1).flatMap((s) => { const id = prev[`${type}|${s.key}`]; const f = id && ctx.byId.get(id)?.family; return f ? [f] : []; }));
@@ -359,6 +368,7 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefi
     out.push(pick);
     if (!pick) return;
     if (prevId && pick.id !== prevId) ctx.rotated.push(pick.id);
+    if (capped && pick.id !== prevId) ctx.notices.push(`${ctx.byId.get(prevId)?.name ?? prevId} kept reaching the top of its reps without a weight step it could make, so ${pick.name} takes its place this block.`);
     ctx.baseSlots[key] = pick.id;
     chosen.push(pick);
     if (slot.swap) {
