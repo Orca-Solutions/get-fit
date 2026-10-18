@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GetFitDB } from '../src/client/db';
 import { configureSync } from '../src/client/sync';
-import { deloadSessionIds, ensurePlan, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/client/repo';
+import { deloadSessionIds, ensurePlan, hintContext, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/client/repo';
 import { addDays, mondayOf, today } from '../src/dates';
 
 let n = 0;
@@ -120,6 +120,24 @@ describe('repo', () => {
     const a = await startSession(deload.id, deload.date, d);
     await startSession(loading.id, loading.date, d);
     expect(await deloadSessionIds(d)).toEqual(new Set([a.id]));
+  });
+
+  it('gives the weight hint the deload sessions and each logged set\'s planned reps', async () => {
+    const d = await fresh();
+    await ensurePlan(today(), d);
+    const planned = await d.plannedWorkouts.toArray();
+    const deload = planned.find((w) => w.isDeload)!;
+    const loading = planned.find((w) => !w.isDeload && w.exercises[0].sets[0].targetReps)!;
+    const pe = loading.exercises[0];
+    const a = await startSession(deload.id, deload.date, d);
+    const b = await startSession(loading.id, loading.date, d);
+    await logSet(b, pe.exerciseId, pe.id, 1, { weight: 50, reps: 10 }, d);
+    const ctx = await hintContext(d);
+    expect(ctx.isDeload({ sessionId: a.id, date: deload.date, sets: [], bestE1rm: null })).toBe(true);
+    expect(ctx.isDeload({ sessionId: b.id, date: loading.date, sets: [], bestE1rm: null })).toBe(false);
+    const set = (await d.loggedSets.toArray())[0];
+    expect(ctx.targetOf(set)).toEqual(pe.sets[1].targetReps);
+    expect(ctx.targetOf({ ...set, plannedExerciseId: null })).toBeUndefined();
   });
 
   it('merges a partial update into the stored set instead of reverting other fields', async () => {

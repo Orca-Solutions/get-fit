@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import catalog from '../src/data/exercises.json';
 import { BANDS, creditOf, groupOf, weeklySets, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
-import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, isTopSet, lastTimeHint, summarizeHistory, withoutDeloads } from '../src/generator/progression';
+import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, isTopSet, lastTimeHint, summarizeHistory, withoutDeloads, workoutHint } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
 import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
@@ -806,6 +806,52 @@ describe('progression', () => {
   });
 });
 
+
+describe('workoutHint (§4.4)', () => {
+  const rdl = byId.get('dumbbell-romanian-deadlift')!;
+  const press = byId.get('leg-press')!;
+  const range = (min: number, max: number) => ({ min, max });
+  /** A logged session: `sets` of [weight, reps, effort], each planned at `target`. */
+  const session = (ex: Exercise, id: string, date: string, target: { min: number; max: number }, sets: [number, number, LoggedSet['effort']][]) =>
+    sets.map(([weight, reps, effort], i): LoggedSet => ({
+      id: `${id}-${i}`, createdAt: date, updatedAt: date, deletedAt: null, sessionId: id, exerciseId: ex.id, plannedExerciseId: `${id}|${target.min}-${target.max}`,
+      setIndex: i, weight, reps, effort, date, loggedAt: `${date}T10:0${i}:00Z`,
+    }));
+  const targetOf = (s: LoggedSet) => { const [min, max] = s.plannedExerciseId!.split('|')[1].split('-').map(Number); return { min, max }; };
+  const plan = (target: { min: number; max: number }, rir: number, n = 3) => ({ slot: 'legs:hinge', sets: Array.from({ length: n }, (_, i) => ({ setIndex: i, targetReps: target, rir, restSec: 90 })) });
+  const hint = (ex: Exercise, sets: LoggedSet[], pe: ReturnType<typeof plan>, o: { deload?: boolean; targets?: boolean } = {}) =>
+    workoutHint(ex, pe, summarizeHistory(ex, sets, profile), { deload: !!o.deload, isDeload: () => false, targetOf: o.targets === false ? undefined : targetOf, date: '2026-10-16', profile });
+
+  it('suggests from e1RM when last time ran other reps: the moderate week after a heavy week', () => {
+    const heavy = session(rdl, 'h', '2026-10-09', range(5, 8), [[30, 8, 'right'], [30, 8, 'right'], [30, 7, 'right']]);
+    // 30 × 8 at Right is an e1RM of 40; 8–12 at RIR 3 gives 29.3, so 25, under the heavy week's 30.
+    expect(hint(rdl, heavy, plan(range(8, 12), 3))).toMatchObject({ text: 'Last time at 5–8: 30 lb each', suggest: 25 });
+    // Without the planned targets it reads the 8s as "at 8–12" and suggests nothing, as before.
+    expect(hint(rdl, heavy, plan(range(8, 12), 3), { targets: false })).toMatchObject({ text: 'Last time at 8–12: 30 lb each', suggest: undefined });
+  });
+
+  it('goes up as far as e1RM says when the reps drop: the heavy week after a light week', () => {
+    const light = session(press, 'l', '2026-10-09', range(12, 20), [[100, 20, 'right'], [100, 18, 'right']]);
+    // 100 × 20 at Right is an e1RM of 173; 5–8 at RIR 2 gives 140.5, so 140, not one increment past 100.
+    expect(hint(press, light, plan(range(5, 8), 2))).toMatchObject({ text: 'Last time at 12–20: 100 lb', suggest: 140 });
+  });
+
+  it('holds the step up when the next weight is too big a jump to make the bottom of the range', () => {
+    const topped = (ex: Exercise, w: number) => session(ex, 's', '2026-10-09', range(10, 15), [[w, 15, 'right'], [w, 15, 'right']]);
+    // 20 × 15 at Right is an e1RM of 31.3; 25 lb for 10 reps at RIR 2 needs 35, so more reps first.
+    expect(hint(rdl, topped(rdl, 20), plan(range(10, 15), 2))).toMatchObject({
+      text: 'Last time at 10–15: 20 lb each · the next weight up is a big jump, so aim for 16–18 reps first', suggest: undefined,
+    });
+    // A 10 lb step on a 100 lb leg press lands: an e1RM of 156.7 carries 110 for 10 at RIR 2 (154).
+    expect(hint(press, topped(press, 100), plan(range(10, 15), 2))!.suggest).toBe(110);
+  });
+
+  it('keeps a deload suggestion under what e1RM carries when last time was too heavy for the reps', () => {
+    const heavy = session(rdl, 'h', '2026-10-09', range(5, 8), [[40, 5, 'right']]);
+    // 10% off 40 is 35, but 40 × 5 is an e1RM of 49.3, which carries 33.6 for 10 at RIR 4: 30.
+    expect(hint(rdl, heavy, plan(range(10, 15), 4, 2), { deload: true })!.suggest).toBe(30);
+  });
+});
 
 describe('generateBlock: eight blocks in a row', () => {
   const blocks = [gen()];

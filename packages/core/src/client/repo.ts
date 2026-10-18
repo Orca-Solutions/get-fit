@@ -1,6 +1,7 @@
 // All writes go through here: every record gets updatedAt stamped (for sync) and saves immediately.
 import { CATALOG } from '../catalog.js';
 import type { Block, Exercise, ExerciseFlag, LoggedSet, PlannedWorkout, Profile, Session } from '../types.js';
+import type { RepRange } from '../program.js';
 import { addDays, daysBetween, mondayOf, today } from '../dates.js';
 import { uuid } from '../ids.js';
 import { isSyncConnected, scheduleSync } from './sync.js';
@@ -194,6 +195,19 @@ export async function deloadSessionIds(d: GetFitDB = db): Promise<Set<string>> {
   const [sessions, planned] = await Promise.all([d.sessions.toArray(), d.plannedWorkouts.toArray()]);
   const deloads = new Set(planned.filter((w) => w.isDeload && !w.deletedAt).map((w) => w.id));
   return new Set(sessions.filter((s) => !s.deletedAt && s.plannedWorkoutId && deloads.has(s.plannedWorkoutId)).map((s) => s.id));
+}
+
+/**
+ * What the weight hint needs from the plan (workoutHint): which sessions were deloads, and the planned rep target
+ * of each logged set, so the hint can tell a change of rep range from a repeat.
+ */
+export async function hintContext(d: GetFitDB = db): Promise<{ isDeload: (h: SessionSummary) => boolean; targetOf: (s: LoggedSet) => RepRange | undefined }> {
+  const [deloads, planned] = await Promise.all([deloadSessionIds(d), d.plannedWorkouts.toArray()]);
+  const sets = new Map(planned.filter((w) => !w.deletedAt).flatMap((w) => w.exercises.map((e) => [e.id, e.sets] as const)));
+  return {
+    isDeload: (h) => deloads.has(h.sessionId),
+    targetOf: (s) => sets.get(s.plannedExerciseId ?? '')?.find((p) => p.setIndex === s.setIndex)?.targetReps,
+  };
 }
 
 export async function sessionFor(plannedWorkoutId: string, d: GetFitDB = db): Promise<Session | undefined> {

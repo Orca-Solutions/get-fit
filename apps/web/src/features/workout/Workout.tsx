@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, deloadSessionIds, logSet, sessionFor, startSession, unlogSet, updateSession } from '@orca-solutions/get-fit-core/client';
+import { db, hintContext, logSet, sessionFor, startSession, unlogSet, updateSession } from '@orca-solutions/get-fit-core/client';
 import { backOffLoad, type Exercise, isTopSet, fmtNum, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory, workoutHint } from '@orca-solutions/get-fit-core';
 import { useExercises, useProfile, useToday, useWakeLock } from '../../lib/hooks';
 import { Photo } from '../../ui/Photo';
@@ -145,15 +145,15 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement, de
   const profile = useProfile();
   const allHistory = useLiveQuery(async () => (await db.loggedSets.where('exerciseId').equals(ex.id).toArray()).filter((s) => !s.deletedAt), [ex.id]) ?? [];
   const history = useMemo(() => summarizeHistory(ex, allHistory.filter((s) => s.sessionId !== sessionId), profile), [ex, allHistory, sessionId, profile]);
-  // The weight hint builds on loading weeks, not the deliberately light deload (§4.4).
-  const deloads = useLiveQuery(() => deloadSessionIds(), []);
+  // The weight hint builds on loading weeks, not the deliberately light deload, and reads each set's planned reps (§4.4).
+  const ctx = useLiveQuery(() => hintContext(), []);
   // Sets for this slot and this movement: after a swap, the other movement's sets stay in its own history.
   const mine = sets.filter((s) => s.plannedExerciseId === pe.id && s.exerciseId === ex.id).sort((a, b) => a.setIndex - b.setIndex);
   const [extraRows, setExtraRows] = useState(0);
   const [focusWeightRow, setFocusWeightRow] = useState<number | null>(null);
   const rowCount = Math.max(pe.sets.length + extraRows, mine.length ? mine[mine.length - 1].setIndex + 1 : 0);
   const bandName = (id: string) => profile.bands.find((b) => b.id === id)?.name ?? 'band';
-  const hint = workoutHint(ex, pe, history, { deload, isDeload: (h) => !!deloads?.has(h.sessionId), date: sessionDate, profile, bandName });
+  const hint = workoutHint(ex, pe, history, { deload, isDeload: ctx?.isDeload ?? (() => false), targetOf: ctx?.targetOf, date: sessionDate, profile, bandName });
   const allDone = mine.length >= pe.sets.length;
   const effort = mine.find((s) => s.effort)?.effort;
   // The plan is written at block start, so its "first time" advice goes stale once the movement has history.
