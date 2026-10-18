@@ -14,7 +14,7 @@ Notable changes to get-fit. Releases of the core package are tagged `core-v<vers
 
 ## 2026-10-10
 
-- **core-v0.6.1:** released with program 1.5.0 (0.5.1 and 0.6.0 were never released on their own).
+- **core-v0.6.1:** released with program 1.5.0. It supersedes core-v0.6.0, published about ten minutes earlier the same day with program 1.5.0 but without 0.6.1's deload and stall-check fixes; use 0.6.1 or later. 0.5.1 was never released.
 - **Program 1.5.0** (core-v0.6.1):
   - **Deloads about 10% lighter:** a deload week's weight hint suggests about 10% under the working weight, taken from the recent session closest to the deload's reps (usually the moderate week) and rounded down to the lift's increment (`deloadHint`, `lighterLoad`, `DELOAD_LOAD`).
   - **Stalls compare block with block:** a lift is stalled when its best e1RM in its newest block isn't at least 1% above the block before, leaving out deloads. `isStalled(history, placeOf)` takes each session's place in the plan (`SessionPlace`).

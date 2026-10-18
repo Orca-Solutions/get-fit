@@ -4,7 +4,7 @@ The get-fit training engine as a library: domain types, the curated exercise cat
 
 This is the public API reference for the package: everything it exports, what each function takes and returns, and the rules behind the numbers. The package is source-available under [FSL-1.1-MIT](../../LICENSE) and is published only as a tarball on GitHub releases.
 
-Version documented: `0.6.2` (the version on `main` and the latest release, `core-v0.6.2`; 0.5.1 and 0.6.0 were never released). Changes in 0.5.0, 0.6.1 and 0.6.2 are marked *(0.5.0)*, *(0.6.1)* and *(0.6.2)*. See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
+Version documented: `0.6.2` (the version on `main` and the latest release, `core-v0.6.2`; 0.5.1 was never released, and 0.6.0 was superseded by 0.6.1 the day it was published). Changes in 0.5.0, 0.6.1 and 0.6.2 are marked *(0.5.0)*, *(0.6.1)* and *(0.6.2)*. See [README.md](README.md#stability) for the stability policy, [../periodization.md](../periodization.md) for the training rules behind the generator, and [../SPEC.md](../SPEC.md) for the product.
 
 - [Install](#install)
 - [Quick start](#quick-start)
