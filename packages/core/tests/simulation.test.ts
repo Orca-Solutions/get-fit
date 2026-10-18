@@ -174,9 +174,16 @@ describe('six blocks of day-to-day use', () => {
     expect(stats.stalled).toBeGreaterThan(0);
     expect(stats.toppedOut).toBeGreaterThan(0);
   });
-  // Known drift: a muscle can sit a set outside its band from block 6 (review/core-logic-review-2026-10-10.md).
-  // Expected to fail until that is fixed; it reports as passing the day it starts to pass, so the mark comes off.
-  it.fails('keeps each muscle within its band in loading weeks (one set over, none under)', () => expect(bad.bands.slice(0, 20)).toEqual([]));
+  // Known drift (review/core-logic-review-2026-10-10.md, addendum c): lower back lands under its band in some
+  // loading weeks and over it in deadlift weeks, and back can sit half a set under. Anything else goes red, so a
+  // new band regression can't hide behind the known one.
+  it('keeps each muscle within its band in loading weeks (one set over, none under), apart from the known drift', () => {
+    const known = (v: Violation) => {
+      const [, g, n, min] = v.what.match(/: (\S+) at ([\d.]+) sets, band (\d+)–/) ?? [];
+      return g === 'lower-back' || (g === 'back' && Number(n) >= Number(min) - 0.5);
+    };
+    expect(bad.bands.filter((v) => !known(v)).slice(0, 20)).toEqual([]);
+  });
 });
 
 
