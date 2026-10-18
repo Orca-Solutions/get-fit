@@ -1,6 +1,6 @@
 {
   "name": "@orca-solutions/get-fit-core",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "The get-fit training engine: exercise library, plan generator, progression and sync.",
   "license": "FSL-1.1-MIT",
   "type": "module",

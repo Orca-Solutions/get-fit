@@ -280,6 +280,32 @@ describe('syncNow', () => {
     expect((await phone.db.loggedSets.get('l1'))?.weight).toBe(50);
   });
 
+  it('a plan rebuilt on the right clock wins over the plan a fast-clock device made', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    // The laptop's clock is a day fast when it plans the block.
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 86_400_000 });
+    const block = await ensurePlan('2026-10-14', laptop.db);
+    await laptop.sync();
+    vi.useRealTimers();
+    // The phone, on the right time, avoids the squat and rebuilds the rest of the block.
+    await phone.sync();
+    const legs = (await phone.db.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((w) => w.sessionType === 'legs')!;
+    const squat = legs.exercises[0].exerciseId;
+    await setFlagIn(phone.db, squat, { avoid: true });
+    await regenerateUpcoming(legs.date, phone.db);
+    const rebuilt = (await phone.db.plannedWorkouts.get(legs.id))!;
+    expect(rebuilt.exercises[0].exerciseId).not.toBe(squat);
+    await phone.sync();
+    await laptop.sync();
+    await phone.sync();
+    for (const device of [phone, laptop]) {
+      expect((await device.db.plannedWorkouts.get(legs.id))!.exercises).toEqual(rebuilt.exercises);
+      expect((await device.db.blocks.get(block.id))!.updatedAt).toBe((await phone.db.blocks.get(block.id))!.updatedAt);
+    }
+  });
+
   it('still uploads sets logged after the clock is set back from running fast', async () => {
     const server = makeServer();
     const phone = await makeDevice(server.fetch);
