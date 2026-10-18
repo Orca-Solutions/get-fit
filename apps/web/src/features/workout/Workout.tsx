@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, hintContext, logSet, sessionFor, startSession, unlogSet, updateSession } from '@orca-solutions/get-fit-core/client';
-import { backOffLoad, type Exercise, isTopSet, fmtNum, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory, workoutHint } from '@orca-solutions/get-fit-core';
+import { backOffLoad, type Exercise, isTopSet, fmtNum, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory, withoutTopSet, workoutHint } from '@orca-solutions/get-fit-core';
 import { useExercises, useProfile, useToday, useWakeLock } from '../../lib/hooks';
 import { Photo } from '../../ui/Photo';
 import { HistoryPanel } from './HistoryPanel';
@@ -95,7 +95,7 @@ export default function Workout() {
       </div>
 
       {ex ? (
-        <MovementLogger key={pe.id + actualId} pe={pe} ex={ex} sessionId={session.id} sessionDate={session.date} sets={sessionSets} lastMovement={isLast} deload={workout.isDeload} />
+        <MovementLogger key={pe.id + actualId} pe={pe} ex={ex} sessionId={session.id} sessionDate={session.date} sets={sessionSets} lastMovement={isLast} deload={workout.isDeload} blockId={workout.blockId} />
       ) : (
         <p className="muted">Unknown movement {actualId}.</p>
       )}
@@ -141,19 +141,21 @@ function firstUnfinished(list: PlannedExercise[], sets: LoggedSet[], skipped?: s
   return i < 0 ? 0 : i;
 }
 
-function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement, deload }: { pe: PlannedExercise; ex: Exercise; sessionId: string; sessionDate: string; sets: LoggedSet[]; lastMovement: boolean; deload: boolean }) {
+function MovementLogger({ pe: plan, ex, sessionId, sessionDate, sets, lastMovement, deload, blockId }: { pe: PlannedExercise; ex: Exercise; sessionId: string; sessionDate: string; sets: LoggedSet[]; lastMovement: boolean; deload: boolean; blockId: string }) {
   const profile = useProfile();
   const allHistory = useLiveQuery(async () => (await db.loggedSets.where('exerciseId').equals(ex.id).toArray()).filter((s) => !s.deletedAt), [ex.id]) ?? [];
   const history = useMemo(() => summarizeHistory(ex, allHistory.filter((s) => s.sessionId !== sessionId), profile), [ex, allHistory, sessionId, profile]);
   // The weight hint builds on loading weeks, not the deliberately light deload, and reads each set's planned reps (§4.4).
   const ctx = useLiveQuery(() => hintContext(), []);
   // Sets for this slot and this movement: after a swap, the other movement's sets stay in its own history.
-  const mine = sets.filter((s) => s.plannedExerciseId === pe.id && s.exerciseId === ex.id).sort((a, b) => a.setIndex - b.setIndex);
+  const mine = sets.filter((s) => s.plannedExerciseId === plan.id && s.exerciseId === ex.id).sort((a, b) => a.setIndex - b.setIndex);
   const [extraRows, setExtraRows] = useState(0);
   const [focusWeightRow, setFocusWeightRow] = useState<number | null>(null);
-  const rowCount = Math.max(pe.sets.length + extraRows, mine.length ? mine[mine.length - 1].setIndex + 1 : 0);
+  const rowCount = Math.max(plan.sets.length + extraRows, mine.length ? mine[mine.length - 1].setIndex + 1 : 0);
   const bandName = (id: string) => profile.bands.find((b) => b.id === id)?.name ?? 'band';
-  const hint = workoutHint(ex, pe, history, { deload, isDeload: ctx?.isDeload ?? (() => false), targetOf: ctx?.targetOf, date: sessionDate, profile, bandName });
+  const hint = workoutHint(ex, plan, history, { deload, isDeload: () => false, ...ctx, blockId, date: sessionDate, profile, bandName });
+  // Back from 4+ weeks off this block, the heavy top set waits (§4.5): set 1 runs like the back-off sets.
+  const pe = hint?.noTopSet ? withoutTopSet(plan) : plan;
   const allDone = mine.length >= pe.sets.length;
   const effort = mine.find((s) => s.effort)?.effort;
   // The plan is written at block start, so its "first time" advice goes stale once the movement has history.
@@ -183,6 +185,7 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement, de
             <div className="hint">
               {hint.text}
               {hint.suggest != null && <span className="muted"> · try {fmtNum(hint.suggest)}</span>}
+              {hint.backOff != null && <span className="muted"> · back-offs about {fmtNum(hint.backOff)}</span>}
             </div>
           )}
           {note && <div className="small faint" style={{ marginTop: 4 }}>{note}</div>}

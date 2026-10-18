@@ -65,6 +65,10 @@ export type WeightHint = {
   stanceSteps?: number | null;
   /** Suggested next load when the last exposure at this rep range topped out (double progression). */
   suggest?: number;
+  /** On a heavy top-set day, the back-off sets' weight that goes with `suggest` (or last time's top set). */
+  backOff?: number;
+  /** The lift is back from 4+ weeks off this block: skip the heavy top set (show it with withoutTopSet). */
+  noTopSet?: boolean;
 };
 
 /**
@@ -87,7 +91,9 @@ export function lastTimeHint(
     for (const h of past) {
       const near = h.sets.filter((s) => s.reps != null && s.reps >= target.min - 1 && s.reps <= target.max + 1);
       if (!near.length) continue;
-      const top = near.reduce((a, b) => ((b.weight ?? 0) > (a.weight ?? 0) ? b : a));
+      // The heaviest set: most weight, or least assistance on an assisted machine.
+      const heavier = (a: LoggedSet, b: LoggedSet) => (ex.weightConvention === 'assist' ? (b.weight ?? Infinity) < (a.weight ?? Infinity) : (b.weight ?? 0) > (a.weight ?? 0));
+      const top = near.reduce((a, b) => (heavier(a, b) ? b : a));
       const repsLabel = target.min === target.max ? `${target.min}` : `${target.min}–${target.max}`;
       const allTopped = h.sets.length > 0 && h.sets.every((s) => (s.reps ?? 0) >= target.max);
       // Weight goes up only at or below the target effort (§4.4 item 3): a set tapped Hard holds it.
@@ -108,15 +114,15 @@ export function lastTimeHint(
  * The hint for a lift that comes round only some weeks, such as the Friday deadlift (§4.8): last time's line,
  * with a suggested load from the latest session's e1RM at the bottom of today's reps and planned RIR. That
  * links sessions planned at different rep ranges. The suggestion rounds down to the lift's increment, never
- * goes more than one increment past last time's top weight (nor past it at all after a set tapped Hard), and starts at about 95% when the last session
- * was more than 3 weeks before `date` (a safety margin, not a cited rule).
+ * goes more than one increment past last time's top weight (nor past it at all after a set tapped Hard). Long gaps
+ * are workoutHint's (§4.5 rev 3.9, which retired this hint's own 95% after 3 weeks); the date argument is kept for callers.
  */
 export function e1rmLoadHint(
   ex: Exercise,
   history: SessionSummary[],
   target: { min: number; max: number } | undefined,
   rir: number,
-  date: string,
+  _date: string,
   profile: Pick<Profile, 'smithBarLb'>,
   bandName?: (id: string) => string,
 ): WeightHint | null {
@@ -126,7 +132,6 @@ export function e1rmLoadHint(
   const loaded = ex.weightConvention === 'total' || ex.weightConvention === 'per-hand' || ex.weightConvention === 'added';
   if (!hint || !last || !target || !inc || ex.metric !== 'reps' || !loaded) return hint;
   let load = last.bestE1rm! / (1 + (target.min + rir) / 30);
-  if (daysBetween(last.date, date) > 21) load *= 0.95;
   // e1RM counts the Smith bar; the weight logged is the plates.
   if (ex.weightConvention === 'added' && ex.loadType === 'smith') load -= profile.smithBarLb;
   let suggest = Math.max(0, Math.floor(load / inc) * inc);
@@ -137,42 +142,159 @@ export function e1rmLoadHint(
   return { ...hint, suggest };
 }
 
+/** What the weight hint needs from the plan about logged work (the client's hintContext gives all of it). */
+export type HintContext = {
+  isDeload: (h: SessionSummary) => boolean;
+  /** A logged set's planned rep target, which tells a change of rep range from a repeat. */
+  targetOf?: (s: LoggedSet) => { min: number; max: number } | undefined;
+  /** How many sets the movement a logged set belongs to was planned with, so a partly logged session can't earn a step. */
+  setsPlanned?: (s: LoggedSet) => number | undefined;
+  /** The block a logged session was planned in. */
+  blockOf?: (h: SessionSummary) => string | undefined;
+  /**
+   * When this movement's time off began, between its last log `from` and `to`: `from` if nothing at all was logged
+   * in between; else a week before the first planned day it went unlogged (lifting days repeat weekly, so that is
+   * when it was last due); else undefined, for a gap the plan made (the Friday deadlift a few weeks apart, an RDL
+   * that skips light weeks, a lift rotated out for a block). Without it, the whole gap counts.
+   */
+  timeOffFrom?: (exerciseId: string, from: string, to: string) => string | undefined;
+};
+
+/** Long gaps, counted per lift from its last logged loading session (§4.5 rev 3.9): days, and the load factor. */
+export const LONG_GAP = { days: 10, factor: 0.9, monthDays: 28, monthFactor: 0.8, newDays: 56 } as const;
+
 /**
  * The weight hint for one planned movement, as the workout screen shows it (§4.4): last time's line and a
- * suggestion, read from loading sessions only. Lifts that come round only some weeks (the Friday deadlift)
- * take their load from e1RM (§4.8), and so does any movement whose last session ran a different rep range
- * (with `targetOf`): the moderate week after a heavy week suggests from e1RM at today's bottom reps and RIR
- * instead of showing the heavy weight. At the same reps, the step up waits when the next weight is too big a
- * jump to make the bottom of the range, and the line asks for a few more reps first. Deload weeks suggest
- * about 10% under the working weight (§4.5). `history` is the movement's sessions, newest first, leaving out
- * the one being logged.
+ * suggestion, read from loading sessions only. `history` is the movement's sessions, newest first, leaving out
+ * the one being logged; `blockId` is today's block.
+ * - Same reps as last time (with `targetOf`): double progression, judging each set against its own planned target.
+ *   On a heavy top-set day the top set drives the load and two or more back-off sets under their range hold it;
+ *   the hint then gives the back-off weight too. A session logged short of its planned sets earns no step, and
+ *   neither does a step the e1RM can't carry for the bottom of the range (a few more reps first).
+ * - Other reps than last time, and lifts that come round only some weeks (the Friday deadlift): from e1RM at the
+ *   bottom of today's reps and RIR (§4.4 item 3, §4.8).
+ * - Deload weeks: about 10% under the working weight (§4.5).
+ * - After a long gap in this lift's logged work (never app opens or sign-ins), counted from when it was due and went
+ *   unlogged (`timeOffFrom`): 90% of last time after 10 days, 80% and no top set for the
+ *   rest of the block after 4 weeks, and a fresh start after 8 weeks (§4.5 rev 3.9).
  */
 export function workoutHint(
   ex: Exercise,
   pe: Pick<PlannedExercise, 'slot' | 'sets'>,
   history: SessionSummary[],
-  o: {
-    deload: boolean;
-    isDeload: (h: SessionSummary) => boolean;
-    /** A logged set's planned rep target (hintContext), which tells a change of rep range from a repeat. */
-    targetOf?: (s: LoggedSet) => { min: number; max: number } | undefined;
-    date: string;
-    profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>;
-    bandName?: (id: string) => string;
-  },
+  o: HintContext & { deload: boolean; date: string; blockId?: string; profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>; bandName?: (id: string) => string },
 ): WeightHint | null {
   const loading = withoutDeloads(history, o.isDeload);
+  const newest = loading[0];
+  // Days off this lift since its last logged session (a deload counts): only from when it was due and went unlogged.
+  const off = (from: string, to: string) => {
+    const start = o.timeOffFrom ? o.timeOffFrom(ex.id, from, to) : from;
+    return start ? daysBetween(start, to) : 0;
+  };
+  const gap = history[0] ? off(history[0].date, o.date) : 0;
+  const returned = returnedThisBlock(loading, gap, off, o);
   const last = pe.sets[pe.sets.length - 1];
   const target = last?.targetReps ?? pe.sets[0]?.targetReps;
   const rir = last?.rir ?? 2;
-  const newest = loading[0];
+  // A top-set day's suggestion is the top set's weight; back-off sets follow at about 90% (§4.1).
+  const topDay = isTopSet(pe, 0) && !returned;
+  const lead = topDay ? { target: pe.sets[0].targetReps, rir: pe.sets[0].rir } : { target, rir };
   const was = newest && o.targetOf?.(newest.sets[newest.sets.length - 1]);
   const shifted = !!target && !!was && (was.min !== target.min || was.max !== target.max);
   let line: WeightHint | null;
-  if (SWAP_SLOTS.has(pe.slot)) line = e1rmLoadHint(ex, loading, target, rir, o.date, o.profile, o.bandName);
-  else if (shifted && !o.deload) line = rangeShiftHint(ex, newest, was!, target!, rir, o) ?? lastTimeHint(ex, loading, target, o.bandName);
-  else line = bigStepCheck(ex, lastTimeHint(ex, loading, target, o.bandName), loading, target, rir, o.profile);
-  return o.deload ? deloadCap(ex, deloadHint(ex, line, o.profile, { history: loading, target, date: o.date }), loading, target, rir, o.profile) : line;
+  let fromE1 = true;
+  if (SWAP_SLOTS.has(pe.slot)) line = e1rmLoadHint(ex, loading, lead.target, lead.rir, o.date, o.profile, o.bandName);
+  else if (shifted && !o.deload) line = rangeShiftHint(ex, newest, was!, lead.target!, lead.rir, o) ?? lastTimeHint(ex, loading, target, o.bandName);
+  else {
+    fromE1 = false;
+    const same = o.targetOf && newest && target && !o.deload ? sameRangeHint(ex, newest, target, pe.sets.length, o) : null;
+    line = bigStepCheck(ex, same ?? lastTimeHint(ex, loading, target, o.bandName), loading, lead.target, lead.rir, o.profile);
+  }
+  if (o.deload) line = deloadCap(ex, deloadHint(ex, line, o.profile, { history: loading, target, date: o.date }), loading, target, rir, o.profile);
+  if (line && topDay && !o.deload) line = { ...line, backOff: backOffLoad(ex, line.suggest ?? line.weight, o.profile) ?? undefined };
+  if (line && gap >= LONG_GAP.days) line = afterBreak(ex, line, fromE1 && !o.deload ? line.suggest : line.weight, gap, o);
+  return line && returned && isTopSet(pe, 0) ? { ...line, noTopSet: true, backOff: undefined } : line;
+}
+
+/**
+ * The movement as the workout screen shows it when the hint drops its top set (WeightHint.noTopSet): set 1 runs
+ * at the back-off sets' target, effort and rest.
+ */
+export function withoutTopSet<T extends Pick<PlannedExercise, 'sets'>>(pe: T): T {
+  const [, next] = pe.sets;
+  return isTopSet(pe, 0) ? { ...pe, sets: pe.sets.map((s, i) => (i === 0 ? { ...next, setIndex: 0 } : s)) } : pe;
+}
+
+/**
+ * Whether this lift came back from 4 or more weeks without logged work in today's block: its first session in the
+ * block (or today) came that long after the one before. Without `blockOf`, only today's return counts.
+ */
+function returnedThisBlock(loading: SessionSummary[], gap: number, off: (from: string, to: string) => number, o: Pick<HintContext, 'blockOf'> & { blockId?: string; date: string }): boolean {
+  if (!o.blockOf || !o.blockId) return gap >= LONG_GAP.monthDays;
+  const inBlock = loading.filter((h) => o.blockOf!(h) === o.blockId);
+  const first = inBlock[inBlock.length - 1];
+  const before = first ? loading[loading.indexOf(first) + 1] : loading[0];
+  return !!before && off(before.date, first?.date ?? o.date) >= LONG_GAP.monthDays;
+}
+
+/**
+ * Double progression on the same reps as last time (§4.4 item 2), each set judged against its own planned target:
+ * every working set at the top of its range, the session logged in full and nothing tapped Hard earns one increment;
+ * two or more sets under their range hold the weight. On a top-set day the top set drives the load and the back-off
+ * sets are the brake. The heaviest set is the one that moved the most (least assistance). Null for movements
+ * without a load to step, so the plain line takes over.
+ */
+function sameRangeHint(
+  ex: Exercise,
+  h: SessionSummary,
+  target: { min: number; max: number },
+  plannedToday: number,
+  o: Pick<HintContext, 'targetOf' | 'setsPlanned'> & { profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>; bandName?: (id: string) => string },
+): WeightHint | null {
+  const loaded = ex.weightConvention === 'total' || ex.weightConvention === 'per-hand' || ex.weightConvention === 'added' || ex.weightConvention === 'assist';
+  const sets = h.sets.filter((s) => s.reps != null);
+  if (ex.metric !== 'reps' || !loaded || !ex.loadIncrementLb || !sets.length) return null;
+  const own = (s: LoggedSet) => o.targetOf?.(s) ?? target;
+  const moved = (s: LoggedSet) => effectiveLoad(ex, s.weight, o.profile) ?? 0;
+  const topDay = sets.length > 1 && sets[0].setIndex === 0 && own(sets[0]).max < own(sets[sets.length - 1]).max;
+  const working = topDay ? sets.slice(1) : sets;
+  const complete = h.sets.length >= (o.setsPlanned?.(h.sets[0]) ?? plannedToday);
+  const hard = h.sets.some((s) => s.effort === 'hard');
+  const short = working.filter((s) => s.reps! < own(s).min).length >= 2;
+  const lead = topDay ? sets[0] : working.reduce((a, b) => (moved(b) > moved(a) ? b : a));
+  const topped = complete && !short && (topDay ? [lead] : working).every((s) => s.reps! >= own(s).max);
+  const suggest = topped && !hard ? nextLoad(ex, lead.weight ?? 0) : undefined;
+  const why = topped && hard ? HOLD : short ? SHORT : '';
+  const range = own(lead);
+  const label = topDay ? 'Top set last time' : `Last time at ${range.min === range.max ? range.min : `${range.min}–${range.max}`}`;
+  return { text: `${label}: ${describeLoad(ex, lead, o.bandName)}${topDay ? ` × ${lead.reps}` : ''}${why}`, date: h.date, weight: lead.weight, bandId: lead.bandId, stanceSteps: lead.stanceSteps, suggest };
+}
+
+const SHORT = ' · two sets fell short of the range, so hold this weight';
+
+/**
+ * The first session back after a long gap in this lift's logged work (§4.5 rev 3.9): `base` (last time's weight,
+ * or the e1RM suggestion when the reps changed) about 10% lighter after 10 days and 20% after 4 weeks, with no step
+ * up; after 8 weeks no number at all, and the lift is found again like a new one (§4.4 item 4).
+ */
+function afterBreak(
+  ex: Exercise,
+  line: WeightHint,
+  base: number | null | undefined,
+  gap: number,
+  o: { deload: boolean; profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'> },
+): WeightHint {
+  const ago = gap >= 14 ? `${Math.floor(gap / 7)} weeks` : `${gap} days`;
+  const text = line.text.replace(HOLD, '').replace(SHORT, '').replace(/ · the next weight up is a big jump.*$/, '');
+  if (gap >= LONG_GAP.newDays) {
+    return { ...line, suggest: undefined, backOff: undefined, text: `${text} · first session back after ${ago}: ramp up across sets to a weight that leaves about 3 reps in the tank` };
+  }
+  const factor = gap >= LONG_GAP.monthDays ? LONG_GAP.monthFactor : LONG_GAP.factor;
+  let suggest = lighterLoad(ex, base, o.profile, factor) ?? undefined;
+  // A deload week after a gap takes the lighter of the two.
+  if (o.deload && suggest != null && line.suggest != null) suggest = ex.weightConvention === 'assist' ? Math.max(suggest, line.suggest) : Math.min(suggest, line.suggest);
+  const backOff = line.backOff != null ? backOffLoad(ex, suggest ?? base, o.profile) ?? undefined : undefined;
+  return { ...line, suggest, backOff, text: `${text} · first session back after ${ago}, so about ${Math.round((1 - factor) * 100)}% lighter` };
 }
 
 /**
@@ -198,9 +320,9 @@ function deloadCap(
 /**
  * Last session ran other reps than today's (a heavy week before a moderate one): its heaviest set at its own
  * reps for the line, and a suggestion from its e1RM at the bottom of today's reps and today's RIR (§4.4 item 3),
- * rounded to the lift's increment on the light side; about 95% when it was more than 3 weeks ago. Going to fewer
- * reps the weight goes up as far as e1RM says; going to more reps it never goes past one increment over last time
- * (nor past it after a set tapped Hard). Null for movements without a load or an e1RM.
+ * rounded to the lift's increment on the light side. Going to fewer reps the weight goes up as far as e1RM says,
+ * with one more rep in reserve; going to more reps it never goes past one increment over last time (nor past it
+ * after a set tapped Hard). Null for movements without a load or an e1RM.
  */
 function rangeShiftHint(
   ex: Exercise,
@@ -208,7 +330,7 @@ function rangeShiftHint(
   was: { min: number; max: number },
   target: { min: number; max: number },
   rir: number,
-  o: { targetOf?: (s: LoggedSet) => { min: number; max: number } | undefined; date: string; profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>; bandName?: (id: string) => string },
+  o: Pick<HintContext, 'targetOf'> & { profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>; bandName?: (id: string) => string },
 ): WeightHint | null {
   if (ex.metric !== 'reps' || h.bestE1rm == null || !ex.loadIncrementLb) return null;
   const moved = (s: LoggedSet) => effectiveLoad(ex, s.weight, o.profile) ?? 0;
@@ -216,9 +338,8 @@ function rangeShiftHint(
   if (!weighted.length) return null;
   const same = weighted.filter((s) => { const t = o.targetOf?.(s); return t?.min === was.min && t.max === was.max; });
   const top = (same.length ? same : weighted).reduce((a, b) => (moved(b) > moved(a) ? b : a));
-  let load = h.bestE1rm / (1 + (target.min + rir) / 30);
-  if (daysBetween(h.date, o.date) > 21) load *= 0.95;
-  let suggest = weightFor(ex, load, o.profile);
+  // Going to fewer reps, a rep more in reserve: Epley from higher reps tends to overstate strength at lower ones.
+  let suggest = weightFor(ex, h.bestE1rm / (1 + (target.min + rir + (target.min < was.min ? 1 : 0)) / 30), o.profile);
   if (suggest == null) return null;
   if (target.min >= was.min) {
     const heaviest = weighted.reduce((a, b) => (moved(b) > moved(a) ? b : a)).weight!;
