@@ -11,7 +11,7 @@ import { BACK_OFF_LOAD, DELOAD_LOAD } from './progression.js';
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, swapSlotKeys, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type StepUp, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.5.0';
+export const GENERATOR_VERSION = '1.5.1';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -353,7 +353,9 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefi
     }
     const keep = prevId && !rotate.has(i) && !ctx.stalled.has(prevId) && pool.find((e) => e.id === prevId);
     const order = familyOrder(ctx, slot, pool, prevId);
-    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen) - 1.5 * (order.get(e.id) ?? 0)) || fillEmptySlot(ctx, type, slot.key, 'gym', chosen);
+    // A slot that rotates stays off the families later slots ran last block, so they can keep theirs (§4.3).
+    const later = new Set(tpl.base.slice(i + 1).flatMap((s) => { const id = prev[`${type}|${s.key}`]; const f = id && ctx.byId.get(id)?.family; return f ? [f] : []; }));
+    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen) - 1.5 * (order.get(e.id) ?? 0) - (later.has(e.family) ? 6 : 0)) || fillEmptySlot(ctx, type, slot.key, 'gym', chosen);
     out.push(pick);
     if (!pick) return;
     if (prevId && pick.id !== prevId) ctx.rotated.push(pick.id);
@@ -546,7 +548,7 @@ function buildLift(
         for (const id of first) {
           const pool = tpl.varietyPool.find((k) => candidates(ctx, k, 'gym').some((e) => e.id === id));
           const e = pool && ctx.byId.get(id);
-          if (!pool || !e || inSession.has(e.id) || !fitsBands(e, 2, proj, p.bands, 1)) continue;
+          if (!pool || !e || inSession.has(e.id) || !fitsZone(e, zone, isolationReps(zone, p)) || !fitsBands(e, 2, proj, p.bands, 1)) continue;
           pick = e;
           pickSlot = pool;
           break;
@@ -554,7 +556,7 @@ function buildLift(
       }
       if (!pick) pools.forEach((pool, rank) => {
         for (const e of candidates(ctx, pool, 'gym')) {
-          if (inSession.has(e.id) || exercises.some((x) => x.role === 'V' && ctx.byId.get(x.exerciseId)?.family === e.family)) continue;
+          if (inSession.has(e.id) || !fitsZone(e, zone, isolationReps(zone, p)) || exercises.some((x) => x.role === 'V' && ctx.byId.get(x.exerciseId)?.family === e.family)) continue;
           const need = needOf(e, proj, p.bands);
           if (need === null) continue;
           const s = need * 10 + jitter(ctx, e.id, `v${week}${v}`) - rank * 0.1 - (usedV.has(e.id) ? 2 : 0) - (baseFamilies.has(e.family) ? 1.5 : 0) + (ctx.input.flags?.[e.id]?.favourite ? 2 : 0);
@@ -762,7 +764,7 @@ function addCoverageMovement(ctx: Ctx, workouts: PlannedWorkout[], muscle: Cover
     const inSession = w.exercises.map((e) => ctx.byId.get(e.exerciseId)!);
     const pick = best(
       (ctx.program.days[w.sessionType] as LiftDay).varietyPool.flatMap((pool) => candidates(ctx, pool, w.location).map((e) => [pool, e] as const))
-        .filter(([, e]) => primaryGroups(e, p.bands).includes(muscle) && fitsBands(e, 2, coverage.weeks[week], p.bands) && !inSession.some((x) => x.id === e.id || x.family === e.family)),
+        .filter(([, e]) => primaryGroups(e, p.bands).includes(muscle) && fitsZone(e, w.zone, isolationReps(w.zone as Zone, p)) && fitsBands(e, 2, coverage.weeks[week], p.bands) && !inSession.some((x) => x.id === e.id || x.family === e.family)),
       ([, e]) => jitter(ctx, e.id, `cov${week}`),
     );
     if (!pick) continue;

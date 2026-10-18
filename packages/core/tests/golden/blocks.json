@@ -136,7 +136,7 @@
    ]
   },
   {
-   "digest": "07ee1233b04b5a1d80c7b79af7d72f7781e9d217d09c26d7d79be5a3882420a4",
+   "digest": "ec6fa2b5d7354644642a44bc77f5be8d4efc3027f8b560fc90b9c1c76b520495",
    "summary": [
     "2026-11-09 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -219,7 +219,7 @@
     "  I seated-leg-curl 3x12-20 rir 1 rest 75",
     "  I seated-calf-raise 2x12-20 rir 1 rest 75",
     "  V leg-press 2x12-20 rir 1 rest 75",
-    "  V smith-good-morning 2x12-15 rir 1 rest 75",
+    "  V back-extension 2x12-20 rir 1 rest 75",
     "  G farmers-carry 2x20-60s rir 1 rest 60",
     "2026-11-27 back-tri-shoulders M gym",
     "  P assisted-pull-up 3x8-12 rir 2 rest 105",
@@ -407,7 +407,7 @@
    ]
   },
   {
-   "digest": "6e0b1e2277ad9046ce181f32aaf92f0c331b9b87c3145016196f8fbcf4d424ec",
+   "digest": "03b33e8404fad42c61e4fc8de1f4a03b41ea45d27f53cf7d10beee5ae4a13de9",
    "summary": [
     "2027-01-04 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -490,7 +490,7 @@
     "  I lying-leg-curl 3x12-20 rir 1 rest 75",
     "  I standing-calf-raise 2x12-20 rir 1 rest 75",
     "  V leg-press 2x12-20 rir 1 rest 75",
-    "  V smith-good-morning 2x12-15 rir 1 rest 75",
+    "  V back-extension 2x12-20 rir 1 rest 75",
     "  G dead-hang 2x15-60s rir 1 rest 60",
     "2027-01-22 back-tri-shoulders M gym",
     "  P assisted-pull-up 3x8-12 rir 2 rest 105",
@@ -949,7 +949,7 @@
    ]
   },
   {
-   "digest": "35244b9f432583f14160efeed6ff9832b8c3aab793a676b620c925b4afb36705",
+   "digest": "193e443a39bc34a1b5cf4c08f17e6e79b150a5b3d5a4716c61d66e5d01dcc9f5",
    "summary": [
     "2027-04-26 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -1032,7 +1032,7 @@
     "  I seated-leg-curl 3x12-20 rir 1 rest 75",
     "  I seated-calf-raise 2x12-20 rir 1 rest 75",
     "  V hack-squat 2x12-15 rir 1 rest 75",
-    "  V smith-good-morning 2x12-15 rir 1 rest 75",
+    "  V back-extension 2x12-20 rir 1 rest 75",
     "  G dumbbell-reverse-wrist-curl 2x12-25 rir 1 rest 60",
     "2027-05-14 back-tri-shoulders M gym",
     "  P close-grip-lat-pulldown 3x8-12 rir 2 rest 105",
@@ -1222,7 +1222,7 @@
    ]
   },
   {
-   "digest": "35b235595fd05fc507c4c31f874bc4f69a64c26687d527e968bdd94799c0995c",
+   "digest": "336749812d9e0bbea44540169752f564afbd02e2a4ff8a2df559354a1f731171",
    "summary": [
     "2026-11-09 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -1305,7 +1305,7 @@
     "  I seated-leg-curl 3x12-20 rir 1 rest 75",
     "  I seated-calf-raise 2x12-20 rir 1 rest 75",
     "  V leg-press 2x12-20 rir 1 rest 75",
-    "  V smith-good-morning 2x12-15 rir 1 rest 75",
+    "  V back-extension 2x12-20 rir 1 rest 75",
     "  G farmers-carry 2x20-60s rir 1 rest 60",
     "2026-11-27 back-tri-shoulders M gym",
     "  P assisted-pull-up 3x8-12 rir 2 rest 105",
@@ -1493,7 +1493,7 @@
    ]
   },
   {
-   "digest": "fea976a95b41ab6459dbc913a20a25e7e0a359686991781d89067b34b34b3fe8",
+   "digest": "a4744d6ab7da76cef9aa21ba2a41a14bb4da9210676c4a50d1df54b497c391c4",
    "summary": [
     "2027-01-04 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -1576,7 +1576,7 @@
     "  I lying-leg-curl 3x12-20 rir 1 rest 75",
     "  I standing-calf-raise 2x12-20 rir 1 rest 75",
     "  V leg-press 2x12-20 rir 1 rest 75",
-    "  V smith-good-morning 2x12-15 rir 1 rest 75",
+    "  V back-extension 2x12-20 rir 1 rest 75",
     "  G dead-hang 2x15-60s rir 1 rest 60",
     "2027-01-22 back-tri-shoulders M gym",
     "  P assisted-pull-up 3x8-12 rir 2 rest 105",
@@ -2035,7 +2035,7 @@
    ]
   },
   {
-   "digest": "0c4c6d6012651c3ffc74b581bcd882e4d5724a6ad76a9295ad9aed5869e5163f",
+   "digest": "b222eb33d19d014bf2a8c8b580e8e4e11c0bce4c33acca69efa27d55fd1b11e1",
    "summary": [
     "2027-04-26 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -2118,7 +2118,7 @@
     "  I seated-leg-curl 3x12-20 rir 1 rest 75",
     "  I seated-calf-raise 2x12-20 rir 1 rest 75",
     "  V leg-press 2x12-20 rir 1 rest 75",
-    "  V smith-good-morning 2x12-15 rir 1 rest 75",
+    "  V back-extension 2x12-20 rir 1 rest 75",
     "  G dumbbell-reverse-wrist-curl 2x12-25 rir 1 rest 60",
     "2027-05-14 back-tri-shoulders M gym",
     "  P close-grip-lat-pulldown 3x8-12 rir 2 rest 105",
@@ -2308,7 +2308,7 @@
    ]
   },
   {
-   "digest": "a5c1f74f3799e1fda7e0ccfd1e983f3581ea0034b4118ab4f8b9669aaa0117da",
+   "digest": "e5920efa4d01868f03f2241cd19edb015c48c54a157f87757dbcf35dbda91cf8",
    "summary": [
     "2026-11-09 chest-biceps M gym",
     "  P smith-bench-press 3x8-12 rir 3 rest 105",
@@ -2391,7 +2391,7 @@
     "  I seated-leg-curl 3x12-20 rir 1 rest 75",
     "  I seated-calf-raise 2x12-20 rir 1 rest 75",
     "  V leg-press 2x12-20 rir 1 rest 75",
-    "  V smith-good-morning 2x12-15 rir 1 rest 75",
+    "  V back-extension 2x12-20 rir 1 rest 75",
     "  G farmers-carry 2x20-60s rir 1 rest 60",
     "2026-11-27 back-tri-shoulders M gym",
     "  P assisted-pull-up 3x8-12 rir 2 rest 105",
@@ -3397,7 +3397,7 @@
    ]
   },
   {
-   "digest": "c3d53de72ce113150cec16793dea194f21f0b09371925a925fe63867d5c3cee0",
+   "digest": "70340178643b872da736d3968256519ee3c177233aa3ca000bf666982c841a96",
    "summary": [
     "2027-01-04 chest-biceps M gym",
     "  P barbell-bench-press 3x8-12 rir 3 rest 105",
@@ -3480,7 +3480,7 @@
     "  I lying-leg-curl 3x12-20 rir 1 rest 75",
     "  I standing-calf-raise 2x12-20 rir 1 rest 75",
     "  V leg-press 2x12-20 rir 1 rest 75",
-    "  V smith-good-morning 2x12-15 rir 1 rest 75",
+    "  V back-extension 2x12-20 rir 1 rest 75",
     "  G dead-hang 2x15-60s rir 1 rest 60",
     "2027-01-22 back-tri-shoulders M gym",
     "  P assisted-pull-up 3x8-12 rir 2 rest 105",
@@ -3939,7 +3939,7 @@
    ]
   },
   {
-   "digest": "183ff7e35a73e7cc16319472373d2f8b7fc32538cd3bebbabf6efbf275da8cda",
+   "digest": "862c5fa4cf424447a3860682e276b6581d03685c598fb38941425fb3ff9b5569",
    "summary": [
     "2027-04-26 chest-biceps M gym",
     "  P machine-chest-press 3x8-12 rir 3 rest 105",
@@ -4022,7 +4022,7 @@
     "  I seated-leg-curl 3x12-20 rir 1 rest 75",
     "  I seated-calf-raise 2x12-20 rir 1 rest 75",
     "  V leg-press 2x12-20 rir 1 rest 75",
-    "  V smith-good-morning 2x12-15 rir 1 rest 75",
+    "  V back-extension 2x12-20 rir 1 rest 75",
     "  G dumbbell-reverse-wrist-curl 2x12-25 rir 1 rest 60",
     "2027-05-14 back-tri-shoulders M gym",
     "  P close-grip-lat-pulldown 3x8-12 rir 2 rest 105",

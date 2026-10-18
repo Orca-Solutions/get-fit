@@ -806,3 +806,37 @@ describe('progression', () => {
   });
 });
 
+
+describe('generateBlock: eight blocks in a row', () => {
+  const blocks = [gen()];
+  for (let i = 1; i < 8; i++) blocks.push(gen({ previousBlock: blocks[i - 1].block, startDate: addDays(blocks[i - 1].block.startDate, 28) }));
+
+  it('keeps axial hinges off light and deload days, variety slots included (§4.1, §4.8)', () => {
+    for (const g of blocks) {
+      for (const w of lifts(g.workouts).filter((w) => w.zone === 'L' || w.isDeload)) {
+        for (const pe of w.exercises) {
+          const ex = byId.get(pe.exerciseId)!;
+          expect(ex.movementPattern === 'hinge' && ex.axialLoad, `block ${g.block.index}: ${ex.id} on ${w.focus}`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('rotates at most one main-lift slot per day at a boundary (§4.3)', () => {
+    for (let i = 1; i < blocks.length; i++) {
+      for (const [type, day] of Object.entries(STRANGE_PERIODIZATION.days)) {
+        if (day.kind !== 'lift') continue;
+        const changed = day.base.filter((s) => (s.role === 'P' || s.role === 'C') && !s.alternateLaterality
+          && blocks[i - 1].block.baseSlots[`${type}|${s.key}`] !== blocks[i].block.baseSlots[`${type}|${s.key}`]);
+        expect(changed.length, `block ${i + 1} ${type}: ${changed.map((s) => s.key)}`).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('rotates a stalled lift away from the families later slots ran, so they keep theirs (§4.3)', () => {
+    // The stalled Smith bench would take the machine press from the third chest press, which would then rotate too.
+    const b2 = gen({ previousBlock: blocks[0].block, startDate: blocks[1].block.startDate, stalled: ['smith-bench-press'] });
+    expect(b2.block.baseSlots['chest-biceps|chest:flat-press']).toBe('dumbbell-bench-press');
+    expect(b2.block.baseSlots['chest-biceps|chest:v:press-variant']).toBe(blocks[0].block.baseSlots['chest-biceps|chest:v:press-variant']);
+  });
+});
