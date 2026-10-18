@@ -510,7 +510,7 @@ function buildLift(
     add(ex, slotKey, slot.role, n, want, note);
   });
 
-  // Anatoly-style top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1). Only on a lift the
+  // Top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1). Only on a lift the
   // lifter has logged and that held the slot last block too: a new lift's first sets are for finding its weight.
   if (zone === 'H' && p.topSet && ctx.blockIndex >= p.topSet.fromBlock) {
     const primary = exercises.find((e) => e.role === 'P');

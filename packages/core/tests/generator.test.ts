@@ -277,7 +277,7 @@ describe('generateBlock: later blocks', () => {
     expect(changed.length).toBeGreaterThanOrEqual(6);
   });
 
-  it('adds the Anatoly-style top set from block 3, only on a logged lift that held the slot last block', () => {
+  it('adds a heavy top set from block 3, only on a logged lift that held the slot last block', () => {
     const heavyLegs = (g: typeof b1) => g.workouts.find((w) => w.zone === 'H' && w.sessionType === 'legs')!;
     const squat = b2.block.baseSlots['legs|legs:squat'];
     const logged = gen({ previousBlock: b2.block, startDate: '2026-12-07', known: [squat] });
