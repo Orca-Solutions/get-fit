@@ -1,11 +1,12 @@
 // All writes go through here: every record gets updatedAt stamped (for sync) and saves immediately.
 import { CATALOG } from '../catalog.js';
 import type { Block, Exercise, ExerciseFlag, LoggedSet, PlannedWorkout, Profile, Session } from '../types.js';
+import type { RepRange } from '../program.js';
 import { addDays, daysBetween, mondayOf, today } from '../dates.js';
 import { uuid } from '../ids.js';
 import { isSyncConnected, scheduleSync } from './sync.js';
 import { generateBlock, type ExerciseFlags, type GeneratorInput } from '../generator/generateBlock.js';
-import { isOutgrown, isStalled, summarizeHistory, withoutDeloads, type SessionSummary } from '../generator/progression.js';
+import { effectiveLoad, isOutgrown, isStalled, isToppedOut, summarizeHistory, withoutDeloads, type SessionSummary } from '../generator/progression.js';
 import { db, SYNC_TABLES, type GetFitDB, type SyncTable } from './db.js';
 import { validRow } from '../validate.js';
 import { PROFILE_ID, neutralProfile } from '../profiles.js';
@@ -135,12 +136,18 @@ async function generatorInput(startDate: string, previousBlock: Block | undefine
     const w = sessionWorkout.get(h.sessionId);
     return w && !w.deletedAt ? { blockId: w.blockId, deload: w.isDeload, plannedDate: w.date } : undefined;
   };
-  const stalled = known.filter((id) => isStalled(history(id), placeOf));
   const plannedSets = new Map(planned.flatMap((w) => w.exercises.map((e) => [e.id, e.sets] as const)));
   const targetMax = (s: LoggedSet) => plannedSets.get(s.plannedExerciseId ?? '')?.find((p) => p.setIndex === s.setIndex)?.targetReps?.max;
+  // A flat block that topped out is waiting on a weight step, not stuck (§4.3).
+  const flat = known.filter((id) => isStalled(history(id), placeOf));
+  const toppedOut = flat.filter((id) => {
+    const ex = exercises.find((e) => e.id === id)!;
+    return isToppedOut(history(id), placeOf, targetMax, (s) => effectiveLoad(ex, s.weight, profile) ?? 0);
+  });
+  const stalled = flat.filter((id) => !toppedOut.includes(id));
   const outgrown = known.filter((id) => isOutgrown(withoutDeloads(history(id), (h) => !!placeOf(h)?.deload), targetMax));
   const recoveryOk = previousBlock ? !(await d.sessions.toArray()).some((s) => !s.deletedAt && s.beatUp && s.date >= previousBlock.startDate) : true;
-  return { profile, exercises, flags, startDate, previousBlock, stalled, known, outgrown, recoveryOk };
+  return { profile, exercises, flags, startDate, previousBlock, stalled, toppedOut, known, outgrown, recoveryOk };
 }
 
 async function createBlock(startDate: string, previousBlock: Block | undefined, d: GetFitDB, plannedAhead = false): Promise<Block> {
@@ -194,6 +201,19 @@ export async function deloadSessionIds(d: GetFitDB = db): Promise<Set<string>> {
   const [sessions, planned] = await Promise.all([d.sessions.toArray(), d.plannedWorkouts.toArray()]);
   const deloads = new Set(planned.filter((w) => w.isDeload && !w.deletedAt).map((w) => w.id));
   return new Set(sessions.filter((s) => !s.deletedAt && s.plannedWorkoutId && deloads.has(s.plannedWorkoutId)).map((s) => s.id));
+}
+
+/**
+ * What the weight hint needs from the plan (workoutHint): which sessions were deloads, and the planned rep target
+ * of each logged set, so the hint can tell a change of rep range from a repeat.
+ */
+export async function hintContext(d: GetFitDB = db): Promise<{ isDeload: (h: SessionSummary) => boolean; targetOf: (s: LoggedSet) => RepRange | undefined }> {
+  const [deloads, planned] = await Promise.all([deloadSessionIds(d), d.plannedWorkouts.toArray()]);
+  const sets = new Map(planned.filter((w) => !w.deletedAt).flatMap((w) => w.exercises.map((e) => [e.id, e.sets] as const)));
+  return {
+    isDeload: (h) => deloads.has(h.sessionId),
+    targetOf: (s) => sets.get(s.plannedExerciseId ?? '')?.find((p) => p.setIndex === s.setIndex)?.targetReps,
+  };
 }
 
 export async function sessionFor(plannedWorkoutId: string, d: GetFitDB = db): Promise<Session | undefined> {

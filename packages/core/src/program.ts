@@ -140,7 +140,7 @@ export type Program = {
 
 export const STRANGE_PERIODIZATION: Program = {
   id: 'strange-periodization',
-  version: '1.5.0',
+  version: '1.6.0',
   days: {
     legs: {
       kind: 'lift',
@@ -232,7 +232,7 @@ export const STRANGE_PERIODIZATION: Program = {
       grip: 60,
       core: 45,
     },
-    // Anatoly's "wider variety when the bar gets lighter", trimmed to one variety slot on light days so
+    // Wider variety when the bar gets lighter, trimmed to one variety slot on light days so
     // the main lifts keep 3 sets every session (more practice on the lifts that drive progress).
     varietySlots: { H: 0, M: 1, L: 1 },
     // The same every loading week, so every muscle grows at about the same rate. Forearms have no band:
@@ -268,7 +268,7 @@ export const STRANGE_PERIODIZATION: Program = {
     },
     // E.g. a back extension instead of an RDL on a light day.
     lightDayStandIns: ['legs:v:hip-extension', 'legs:v:hinge-variant'],
-    // Anatoly-style top set from block 3 (§4.1).
+    // A heavy top set on the main lift from block 3 (§4.1).
     topSet: { fromBlock: 3, reps: { min: 3, max: 5 }, rir: 2 },
     volumeRamp: { fromBlock: 3, maxExtraSets: 3 },
     sessionCap: { sets: 22, movements: 8 },

@@ -11,7 +11,7 @@ import { BACK_OFF_LOAD, DELOAD_LOAD } from './progression.js';
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, swapSlotKeys, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type StepUp, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.5.0';
+export const GENERATOR_VERSION = '1.6.0';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -27,6 +27,11 @@ export type GeneratorInput = {
   previousBlock?: Block;
   /** Exercises with no e1RM gain over 3 exposures, or rated down: rotated out at the boundary (§4.3). */
   stalled?: string[];
+  /**
+   * Exercises flat for a block but topped out at Right or Easy (see isToppedOut): waiting on a weight step, not
+   * stuck. Isolation slots rotate them, saying why; main lifts (P and C) keep them (§4.3).
+   */
+  toppedOut?: string[];
   /** Exercises whose load can't go up any more (see isOutgrown): slots with a step-up rule move past them (§4.8). */
   outgrown?: string[];
   /** Exercises with any logged history; others get a calibration note (§4.4.4). */
@@ -75,6 +80,7 @@ type Ctx = {
   notices: string[];
   unfilled: UnfilledSlot[];
   stalled: Set<string>;
+  toppedOut: Set<string>;
   known: Set<string>;
   outgrown: Set<string>;
 };
@@ -104,6 +110,7 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
     notices: [],
     unfilled: [],
     stalled: new Set(input.stalled ?? []),
+    toppedOut: new Set(input.toppedOut ?? []),
     known: new Set(input.known ?? []),
     outgrown: new Set(input.outgrown ?? []),
   };
@@ -351,12 +358,17 @@ function pickBase(ctx: Ctx, type: SessionType, tpl: LiftDay): (Exercise | undefi
       const fresh = pool.filter((e) => !chosen.some((c) => c.family === e.family));
       if (fresh.length) pool = fresh;
     }
-    const keep = prevId && !rotate.has(i) && !ctx.stalled.has(prevId) && pool.find((e) => e.id === prevId);
+    // A topped-out isolation lift makes way; a topped-out main lift stays for a better step or more reps (§4.3).
+    const capped = !!prevId && slot.role === 'I' && ctx.toppedOut.has(prevId);
+    const keep = prevId && !rotate.has(i) && !ctx.stalled.has(prevId) && !capped && pool.find((e) => e.id === prevId);
     const order = familyOrder(ctx, slot, pool, prevId);
-    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen) - 1.5 * (order.get(e.id) ?? 0)) || fillEmptySlot(ctx, type, slot.key, 'gym', chosen);
+    // A slot that rotates stays off the families later slots ran last block, so they can keep theirs (§4.3).
+    const later = new Set(tpl.base.slice(i + 1).flatMap((s) => { const id = prev[`${type}|${s.key}`]; const f = id && ctx.byId.get(id)?.family; return f ? [f] : []; }));
+    const pick = keep || best(pool, (e) => scoreBase(ctx, e, slot, prevId, chosen) - 1.5 * (order.get(e.id) ?? 0) - (later.has(e.family) ? 6 : 0)) || fillEmptySlot(ctx, type, slot.key, 'gym', chosen);
     out.push(pick);
     if (!pick) return;
     if (prevId && pick.id !== prevId) ctx.rotated.push(pick.id);
+    if (capped && pick.id !== prevId) ctx.notices.push(`${ctx.byId.get(prevId)?.name ?? prevId} kept reaching the top of its reps without a weight step it could make, so ${pick.name} takes its place this block.`);
     ctx.baseSlots[key] = pick.id;
     chosen.push(pick);
     if (slot.swap) {
@@ -510,7 +522,7 @@ function buildLift(
     add(ex, slotKey, slot.role, n, want, note);
   });
 
-  // Anatoly-style top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1). Only on a lift the
+  // Top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1). Only on a lift the
   // lifter has logged and that held the slot last block too: a new lift's first sets are for finding its weight.
   if (zone === 'H' && p.topSet && ctx.blockIndex >= p.topSet.fromBlock) {
     const primary = exercises.find((e) => e.role === 'P');
@@ -546,7 +558,7 @@ function buildLift(
         for (const id of first) {
           const pool = tpl.varietyPool.find((k) => candidates(ctx, k, 'gym').some((e) => e.id === id));
           const e = pool && ctx.byId.get(id);
-          if (!pool || !e || inSession.has(e.id) || !fitsBands(e, 2, proj, p.bands, 1)) continue;
+          if (!pool || !e || inSession.has(e.id) || !fitsZone(e, zone, isolationReps(zone, p)) || !fitsBands(e, 2, proj, p.bands, 1)) continue;
           pick = e;
           pickSlot = pool;
           break;
@@ -554,7 +566,7 @@ function buildLift(
       }
       if (!pick) pools.forEach((pool, rank) => {
         for (const e of candidates(ctx, pool, 'gym')) {
-          if (inSession.has(e.id) || exercises.some((x) => x.role === 'V' && ctx.byId.get(x.exerciseId)?.family === e.family)) continue;
+          if (inSession.has(e.id) || !fitsZone(e, zone, isolationReps(zone, p)) || exercises.some((x) => x.role === 'V' && ctx.byId.get(x.exerciseId)?.family === e.family)) continue;
           const need = needOf(e, proj, p.bands);
           if (need === null) continue;
           const s = need * 10 + jitter(ctx, e.id, `v${week}${v}`) - rank * 0.1 - (usedV.has(e.id) ? 2 : 0) - (baseFamilies.has(e.family) ? 1.5 : 0) + (ctx.input.flags?.[e.id]?.favourite ? 2 : 0);
@@ -762,7 +774,7 @@ function addCoverageMovement(ctx: Ctx, workouts: PlannedWorkout[], muscle: Cover
     const inSession = w.exercises.map((e) => ctx.byId.get(e.exerciseId)!);
     const pick = best(
       (ctx.program.days[w.sessionType] as LiftDay).varietyPool.flatMap((pool) => candidates(ctx, pool, w.location).map((e) => [pool, e] as const))
-        .filter(([, e]) => primaryGroups(e, p.bands).includes(muscle) && fitsBands(e, 2, coverage.weeks[week], p.bands) && !inSession.some((x) => x.id === e.id || x.family === e.family)),
+        .filter(([, e]) => primaryGroups(e, p.bands).includes(muscle) && fitsZone(e, w.zone, isolationReps(w.zone as Zone, p)) && fitsBands(e, 2, coverage.weeks[week], p.bands) && !inSession.some((x) => x.id === e.id || x.family === e.family)),
       ([, e]) => jitter(ctx, e.id, `cov${week}`),
     );
     if (!pick) continue;

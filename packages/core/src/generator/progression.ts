@@ -1,6 +1,7 @@
 // Loads and progression from what was actually logged (docs/periodization.md §4.4).
-import type { Exercise, LoggedSet, Profile } from '../types.js';
+import type { Exercise, LoggedSet, PlannedExercise, Profile } from '../types.js';
 import { daysBetween } from '../dates.js';
+import { swapSlotKeys } from '../program.js';
 
 /** Epley with reps in reserve: e1RM = load × (1 + (reps + RIR) / 30). */
 export function e1rm(load: number, reps: number, rir = 0): number {
@@ -136,6 +137,131 @@ export function e1rmLoadHint(
   return { ...hint, suggest };
 }
 
+/**
+ * The weight hint for one planned movement, as the workout screen shows it (§4.4): last time's line and a
+ * suggestion, read from loading sessions only. Lifts that come round only some weeks (the Friday deadlift)
+ * take their load from e1RM (§4.8), and so does any movement whose last session ran a different rep range
+ * (with `targetOf`): the moderate week after a heavy week suggests from e1RM at today's bottom reps and RIR
+ * instead of showing the heavy weight. At the same reps, the step up waits when the next weight is too big a
+ * jump to make the bottom of the range, and the line asks for a few more reps first. Deload weeks suggest
+ * about 10% under the working weight (§4.5). `history` is the movement's sessions, newest first, leaving out
+ * the one being logged.
+ */
+export function workoutHint(
+  ex: Exercise,
+  pe: Pick<PlannedExercise, 'slot' | 'sets'>,
+  history: SessionSummary[],
+  o: {
+    deload: boolean;
+    isDeload: (h: SessionSummary) => boolean;
+    /** A logged set's planned rep target (hintContext), which tells a change of rep range from a repeat. */
+    targetOf?: (s: LoggedSet) => { min: number; max: number } | undefined;
+    date: string;
+    profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>;
+    bandName?: (id: string) => string;
+  },
+): WeightHint | null {
+  const loading = withoutDeloads(history, o.isDeload);
+  const last = pe.sets[pe.sets.length - 1];
+  const target = last?.targetReps ?? pe.sets[0]?.targetReps;
+  const rir = last?.rir ?? 2;
+  const newest = loading[0];
+  const was = newest && o.targetOf?.(newest.sets[newest.sets.length - 1]);
+  const shifted = !!target && !!was && (was.min !== target.min || was.max !== target.max);
+  let line: WeightHint | null;
+  if (SWAP_SLOTS.has(pe.slot)) line = e1rmLoadHint(ex, loading, target, rir, o.date, o.profile, o.bandName);
+  else if (shifted && !o.deload) line = rangeShiftHint(ex, newest, was!, target!, rir, o) ?? lastTimeHint(ex, loading, target, o.bandName);
+  else line = bigStepCheck(ex, lastTimeHint(ex, loading, target, o.bandName), loading, target, rir, o.profile);
+  return o.deload ? deloadCap(ex, deloadHint(ex, line, o.profile, { history: loading, target, date: o.date }), loading, target, rir, o.profile) : line;
+}
+
+/**
+ * A deload's 10% off is taken from the weight last used, so when that weight was too heavy for these reps (5 reps
+ * where the deload asks for 10–15) the suggestion also stays under what the session's e1RM carries for the bottom
+ * of the deload's reps at its RIR.
+ */
+function deloadCap(
+  ex: Exercise,
+  hint: WeightHint | null,
+  history: SessionSummary[],
+  target: { min: number; max: number } | undefined,
+  rir: number,
+  profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>,
+): WeightHint | null {
+  const e1 = hint && history.find((h) => h.date === hint.date)?.bestE1rm;
+  if (!hint || hint.suggest == null || e1 == null || !target || ex.metric !== 'reps') return hint;
+  const most = weightFor(ex, e1 / (1 + (target.min + rir) / 30), profile);
+  if (most == null) return hint;
+  return { ...hint, suggest: ex.weightConvention === 'assist' ? Math.max(hint.suggest, most) : Math.min(hint.suggest, most) };
+}
+
+/**
+ * Last session ran other reps than today's (a heavy week before a moderate one): its heaviest set at its own
+ * reps for the line, and a suggestion from its e1RM at the bottom of today's reps and today's RIR (§4.4 item 3),
+ * rounded to the lift's increment on the light side; about 95% when it was more than 3 weeks ago. Going to fewer
+ * reps the weight goes up as far as e1RM says; going to more reps it never goes past one increment over last time
+ * (nor past it after a set tapped Hard). Null for movements without a load or an e1RM.
+ */
+function rangeShiftHint(
+  ex: Exercise,
+  h: SessionSummary,
+  was: { min: number; max: number },
+  target: { min: number; max: number },
+  rir: number,
+  o: { targetOf?: (s: LoggedSet) => { min: number; max: number } | undefined; date: string; profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>; bandName?: (id: string) => string },
+): WeightHint | null {
+  if (ex.metric !== 'reps' || h.bestE1rm == null || !ex.loadIncrementLb) return null;
+  const moved = (s: LoggedSet) => effectiveLoad(ex, s.weight, o.profile) ?? 0;
+  const weighted = h.sets.filter((s) => s.weight != null && moved(s) > 0);
+  if (!weighted.length) return null;
+  const same = weighted.filter((s) => { const t = o.targetOf?.(s); return t?.min === was.min && t.max === was.max; });
+  const top = (same.length ? same : weighted).reduce((a, b) => (moved(b) > moved(a) ? b : a));
+  let load = h.bestE1rm / (1 + (target.min + rir) / 30);
+  if (daysBetween(h.date, o.date) > 21) load *= 0.95;
+  let suggest = weightFor(ex, load, o.profile);
+  if (suggest == null) return null;
+  if (target.min >= was.min) {
+    const heaviest = weighted.reduce((a, b) => (moved(b) > moved(a) ? b : a)).weight!;
+    const cap = h.sets.some((s) => s.effort === 'hard') ? heaviest : nextLoad(ex, heaviest);
+    suggest = ex.weightConvention === 'assist' ? Math.max(suggest, cap) : Math.min(suggest, cap);
+  }
+  const label = was.min === was.max ? `${was.min}` : `${was.min}–${was.max}`;
+  return { text: `Last time at ${label}: ${describeLoad(ex, top, o.bandName)}`, date: h.date, weight: top.weight, bandId: top.bandId, stanceSteps: top.stanceSteps, suggest };
+}
+
+/**
+ * Double progression's step up only where it can land: the e1RM of last time's session has to carry the next
+ * weight for the bottom of today's reps at today's RIR. A 20 to 25 lb dumbbell is a 25% jump that topping out
+ * at 15 reps can't bridge, so the line asks for up to 3 more reps at the same weight first (§4.4; the review of
+ * 2026-10-18 on small lifts with big steps).
+ */
+function bigStepCheck(
+  ex: Exercise,
+  line: WeightHint | null,
+  history: SessionSummary[],
+  target: { min: number; max: number } | undefined,
+  rir: number,
+  profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>,
+): WeightHint | null {
+  if (!line || line.suggest == null || line.weight == null || !target || ex.metric !== 'reps') return line;
+  const e1 = history.find((h) => h.date === line.date)?.bestE1rm;
+  const next = effectiveLoad(ex, line.suggest, profile);
+  if (e1 == null || next == null || next <= 0 || e1 >= next * (1 + (target.min + rir) / 30)) return line;
+  return { ...line, suggest: undefined, text: `${line.text} · the next weight up is a big jump, so aim for ${target.max + 1}–${target.max + 3} reps first` };
+}
+
+/** The weight to log for an effective load, rounded to the lift's increment on the light side (more assistance). */
+function weightFor(ex: Exercise, load: number, profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>): number | null {
+  const inc = ex.loadIncrementLb;
+  if (!inc) return null;
+  if (ex.weightConvention === 'assist') return Math.max(0, Math.ceil((profile.bodyweightLb - load) / inc) * inc);
+  if (ex.weightConvention === 'added' && ex.loadType === 'smith') return Math.max(0, Math.floor((load - profile.smithBarLb) / inc) * inc);
+  if (ex.weightConvention === 'total' || ex.weightConvention === 'per-hand' || ex.weightConvention === 'added') return Math.max(0, Math.floor(load / inc) * inc);
+  return null;
+}
+
+const SWAP_SLOTS = swapSlotKeys();
+
 /** Deload weeks lift about 10% lighter (§4.5). */
 export const DELOAD_LOAD = 0.9;
 /** Back-off sets after a heavy top set are about 10% lighter (§4.1). */
@@ -201,6 +327,15 @@ export function deloadHint(
   return { ...out, suggest: suggest ?? undefined };
 }
 
+/**
+ * Set `i` of a planned movement is a heavy top set (§4.1): the first set, with a lower rep target than the sets
+ * after it. A top set's 3–5 reps can touch the back-off sets' 5–8, so the ranges' tops are compared.
+ */
+export function isTopSet(pe: Pick<PlannedExercise, 'sets'>, i: number): boolean {
+  const [a, b] = pe.sets;
+  return i === 0 && !!a?.targetReps && !!b?.targetReps && a.targetReps.max < b.targetReps.max;
+}
+
 /** The pre-filled weight for a back-off set after a top set at `topWeight`: about 10% lighter (§4.1). */
 export function backOffLoad(ex: Exercise, topWeight: number | null | undefined, profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>): number | null {
   return lighterLoad(ex, topWeight, profile, BACK_OFF_LOAD);
@@ -248,28 +383,56 @@ export function bestSet(ex: Exercise, history: SessionSummary[], profile: Pick<P
  */
 export type SessionPlace = { blockId: string; deload: boolean; plannedDate?: string };
 
+/** Loading sessions on the plan, by block, newest block first by when its workouts were planned. */
+function byBlock(history: SessionSummary[], placeOf: (h: SessionSummary) => SessionPlace | undefined): { id: string; sessions: SessionSummary[]; date: string }[] {
+  const blocks: { id: string; sessions: SessionSummary[]; date: string }[] = [];
+  for (const h of history) {
+    const place = placeOf(h);
+    if (!place || place.deload) continue;
+    const date = place.plannedDate ?? h.date;
+    let b = blocks.find((x) => x.id === place.blockId);
+    if (!b) blocks.push((b = { id: place.blockId, sessions: [], date }));
+    b.sessions.push(h);
+    if (date > b.date) b.date = date;
+  }
+  return blocks.sort((a, b) => b.date.localeCompare(a.date));
+}
+
 /**
  * Stalled (§4.3), so it rotates out at the next block: the best e1RM of the newest block it was trained in is not
  * at least `gain` (1%) above the best of the block before, like for like across each block's heavy, moderate and
  * light days. Deload sessions and sessions off the plan don't count, and each block needs 2 or more loading
- * sessions; otherwise it isn't stalled. `placeOf` says where a session sat (from its planned workout).
+ * sessions; otherwise it isn't stalled. `placeOf` says where a session sat (from its planned workout). A flat block
+ * that topped out (isToppedOut) is waiting on a weight step, not stuck; the caller tells the two apart.
  */
 export function isStalled(history: SessionSummary[], placeOf: (h: SessionSummary) => SessionPlace | undefined, gain = 0.01): boolean {
-  const blocks: { id: string; best: number[]; date: string }[] = [];
-  for (const h of history) {
-    const place = placeOf(h);
-    if (!place || place.deload || h.bestE1rm == null) continue;
-    const date = place.plannedDate ?? h.date;
-    let b = blocks.find((x) => x.id === place.blockId);
-    if (!b) blocks.push((b = { id: place.blockId, best: [], date }));
-    b.best.push(h.bestE1rm);
-    if (date > b.date) b.date = date;
-  }
-  // Newest block first, by when its workouts were planned.
-  blocks.sort((a, b) => b.date.localeCompare(a.date));
-  const [last, before] = blocks;
-  if (!last || !before || last.best.length < 2 || before.best.length < 2) return false;
-  return Math.max(...last.best) < Math.max(...before.best) * (1 + gain);
+  const best = byBlock(history, placeOf).map((b) => b.sessions.flatMap((h) => (h.bestE1rm == null ? [] : [h.bestE1rm])));
+  const [last, before] = best.filter((b) => b.length);
+  if (!last || !before || last.length < 2 || before.length < 2) return false;
+  return Math.max(...last) < Math.max(...before) * (1 + gain);
+}
+
+/**
+ * Topped out (§4.3, review of 2026-10-18): in the newest block's loading sessions, the heaviest set reached the top
+ * of its planned reps (`targetMax`) at Right or Easy. Double progression shows a gain only inside the rep range, so
+ * a lift whose next weight is too big a step to land (a 20 to 25 lb dumbbell is 25%) logs a flat e1RM while the
+ * lifter gets stronger; such a block is not a stall. `load` ranks sets by the weight moved (more assistance is
+ * lighter); it defaults to the logged weight.
+ */
+export function isToppedOut(
+  history: SessionSummary[],
+  placeOf: (h: SessionSummary) => SessionPlace | undefined,
+  targetMax: (s: LoggedSet) => number | undefined,
+  load: (s: LoggedSet) => number = (s) => s.weight ?? 0,
+): boolean {
+  const newest = byBlock(history, placeOf).find((b) => b.sessions.some((h) => h.bestE1rm != null));
+  const sets = newest?.sessions.flatMap((h) => h.sets.filter((s) => s.reps && s.weight != null)) ?? [];
+  if (!sets.length) return false;
+  const top = Math.max(...sets.map(load));
+  return sets.some((s) => {
+    const max = targetMax(s);
+    return load(s) === top && max != null && s.reps! >= max && (s.effort === 'right' || s.effort === 'easy');
+  });
 }
 
 /**
