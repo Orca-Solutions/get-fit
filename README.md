@@ -12,9 +12,9 @@ The app is complete and maintained for fixes. The training engine behind it, [`@
 
 ## Background
 
-get-fit began as a replacement for AnatolyFit, a subscription workout app whose "strange periodization" was worth keeping but whose bugs kept losing workouts. The project writes that training method down as explicit, tested rules and wraps it in an app that does three things reliably: say what to do today, record what was actually done (which is often not what the plan said), and show how that movement has gone before.
+get-fit began as a replacement for a subscription workout app whose "strange periodization" was worth keeping but whose bugs kept losing workouts. The project writes that training method down as explicit, tested rules and wraps it in an app that does three things reliably: say what to do today, record what was actually done (which is often not what the plan said), and show how that movement has gone before.
 
-get-fit is independent and not affiliated with AnatolyFit. The training rules, with their sources, are in [docs/periodization.md](docs/periodization.md).
+The training rules, with their sources, are in [docs/periodization.md](docs/periodization.md).
 
 ## Principles
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A single-user workout app: generate a plan in the spirit of AnatolyFit's "strange periodization", log what was actually done set by set, and show the history of the movement in hand. It works offline on a phone and syncs across the user's own devices. It exists because AnatolyFit kept losing workouts to bugs.
+A single-user workout app: generate a plan that follows "strange periodization" ([docs/periodization.md](docs/periodization.md)), log what was actually done set by set, and show the history of the movement in hand. It works offline on a phone and syncs across the user's own devices. It exists because the subscription app it replaces kept losing workouts to bugs.
 
 ## Scope
 
