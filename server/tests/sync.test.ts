@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { movementFor } from '@orca-solutions/get-fit-core';
-import { ensurePlan, getProfile, GetFitDB, getSyncStatus, liveBlocks, logSet, regenerateUpcoming, setFlagIn, setSyncToken, startSession, syncNow, updateSession } from '@orca-solutions/get-fit-core/client';
+import { ensurePlan, getProfile, GetFitDB, getSyncStatus, liveBlocks, logSet, put, regenerateUpcoming, setFlagIn, setSyncToken, startSession, syncNow, updateSession } from '@orca-solutions/get-fit-core/client';
 import { openSqliteStore as openStore } from '@orca-solutions/get-fit-core/sqlite';
 import { createApp } from '../app.js';
 
@@ -240,6 +240,60 @@ describe('syncNow', () => {
     await phone.sync();
     await laptop.sync();
     expect((await laptop.db.sessions.get('s1'))?.notes).toBe('phone again');
+  });
+
+  it('settles a tie the same way everywhere when two devices write one record at the same instant', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    const t = at(-60_000);
+    await phone.db.loggedSets.put({ ...loggedSet('l1', 10, t), weight: 50 });
+    await laptop.db.loggedSets.put({ ...loggedSet('l1', 6, t), weight: 70 });
+    await phone.db.sessions.put(session('s1', 'phone', t));
+    await laptop.db.sessions.put(session('s1', 'laptop', t));
+    for (let i = 0; i < 2; i++) {
+      await phone.sync();
+      await laptop.sync();
+    }
+    const exported = await (await server.app.request('/api/export', { headers: { Authorization: `Bearer ${TOKEN}` } })).json();
+    for (const table of ['loggedSets', 'sessions'] as const) {
+      expect(await laptop.db.table(table).toArray()).toEqual(await phone.db.table(table).toArray());
+      expect(exported.tables[table]).toEqual(await phone.db.table(table).toArray());
+    }
+  });
+
+  it('an edit wins over the copy it changed, even when that copy came from a device with a fast clock', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    // The laptop's clock is a day fast when it logs a typo.
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 86_400_000 });
+    await put('loggedSets', { ...loggedSet('l1', 8), weight: 500 }, laptop.db);
+    await laptop.sync();
+    vi.useRealTimers();
+    // The phone, on the right time, fixes it.
+    await phone.sync();
+    await put('loggedSets', { ...(await phone.db.loggedSets.get('l1'))!, weight: 50 }, phone.db);
+    await phone.sync();
+    await laptop.sync();
+    expect((await laptop.db.loggedSets.get('l1'))?.weight).toBe(50);
+    expect((await phone.db.loggedSets.get('l1'))?.weight).toBe(50);
+  });
+
+  it('still uploads sets logged after the clock is set back from running fast', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    await ensurePlan('2026-10-05', phone.db);
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 86_400_000 });
+    await phone.sync();
+    vi.useRealTimers();
+    const w = (await phone.db.plannedWorkouts.toArray())[0];
+    const s = await startSession(w.id, w.date, phone.db);
+    await logSet(s, w.exercises[0].exerciseId, w.exercises[0].id, 0, { weight: 50, reps: 10 }, phone.db);
+    await phone.sync();
+    await laptop.sync();
+    expect((await laptop.db.loggedSets.toArray()).map((x) => x.reps)).toEqual([10]);
   });
 
   it('propagates soft deletes', async () => {

@@ -11,6 +11,36 @@ export type Change = { table: SyncTable; record: SyncRecord };
 export type CursorKey = { table: string; id: string; updatedAt: string };
 export type PulledRow = { table: SyncTable; record: SyncRecord; seq: number };
 
+/** JSON with object keys sorted, so two copies of one record compare equal whatever order their fields were set in. */
+function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (v && typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o).filter((k) => o[k] !== undefined).sort().map((k) => `${JSON.stringify(k)}:${canonical(o[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(v) ?? 'null';
+}
+
+/**
+ * Last write wins: whether `a` replaces `b`. On equal timestamps the larger content wins, so the server
+ * and every device pick the same copy instead of each keeping its own.
+ */
+export function supersedes(a: Pick<SyncRecord, 'updatedAt'>, b: Pick<SyncRecord, 'updatedAt'>): boolean {
+  const ta = Date.parse(a.updatedAt);
+  const tb = Date.parse(b.updatedAt);
+  // The same instant can be written two ways (Z or +02:00), so the content compares without it.
+  return ta !== tb ? ta > tb : canonical({ ...a, updatedAt: undefined }) > canonical({ ...b, updatedAt: undefined });
+}
+
+/**
+ * A timestamp for a write: now, or just after every version this device has seen if its clock is
+ * behind one of them. So an edit always replaces the copy it was made from, even when that copy came
+ * from a device whose clock runs fast.
+ */
+export function stampAfter(...seen: (string | undefined)[]): string {
+  return new Date(Math.max(Date.now(), ...seen.filter((t): t is string => !!t).map((t) => Date.parse(t) + 1))).toISOString();
+}
+
 type MaybePromise<T> = T | Promise<T>;
 
 /**
@@ -23,7 +53,7 @@ export interface SyncStore {
   rotateEpoch(): MaybePromise<string>;
   /** False when the store no longer has the version of a record a client last pulled (it went back in time). */
   hasSeen(key: CursorKey): MaybePromise<boolean>;
-  /** Last write wins: stores each change that is new or strictly newer; returns "table/id" → seq for those written. */
+  /** Last write wins: stores each change that is new or supersedes the stored copy; returns "table/id" → seq for those written. */
   applyChanges(changes: Change[]): MaybePromise<Map<string, number>>;
   maxSeq(): MaybePromise<number>;
   /** Records with seq > cursor, oldest first, up to `limit` (plus whether more remain). */

@@ -23,5 +23,16 @@ export default defineConfig({
       url: 'http://localhost:4174/api/health',
       reuseExistingServer: false,
     },
+    // One server each for the two-device specs, so their sync data starts empty and stays their own.
+    {
+      command: 'rm -rf .e2e-sync && PORT=4175 DATA_DIR=.e2e-sync SYNC_TOKEN=e2e-token node dist-server/server/index.js',
+      url: 'http://localhost:4175/api/health',
+      reuseExistingServer: false,
+    },
+    {
+      command: 'rm -rf .e2e-rollover && PORT=4176 DATA_DIR=.e2e-rollover SYNC_TOKEN=e2e-token node dist-server/server/index.js',
+      url: 'http://localhost:4176/api/health',
+      reuseExistingServer: false,
+    },
   ],
 });

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, ensurePlan, exportAll, exportSetsCsv, getProfile, getSyncStatus, importAll, put, regenerateUpcoming, setSyncToken, syncNow, type SyncStatus } from '@orca-solutions/get-fit-core/client';
-import { parseKettlebells, type Profile, today, uuid } from '@orca-solutions/get-fit-core';
+import { readKettlebells, type Profile, today, uuid } from '@orca-solutions/get-fit-core';
 import { useProfile } from '../../lib/hooks';
 import { useRestPrefs } from '../../lib/restTimer';
 
@@ -26,7 +26,11 @@ export default function Settings() {
         <NumberField label="Bodyweight (lb), used for assisted machines" value={profile.bodyweightLb} onSave={(v) => save({ bodyweightLb: v })} />
         <NumberField label="Smith machine bar weight (lb), added to the plates you log" value={profile.smithBarLb} onSave={(v) => save({ smithBarLb: v })} />
         <label className="field-label">Kettlebells at home (lb, "25x2" for a pair)</label>
-        <TextField value={profile.kettlebells.map((k) => (k.count > 1 ? `${k.lb}x${k.count}` : `${k.lb}`)).join(', ')} onSave={(v) => save({ kettlebells: parseKettlebells(v) })} />
+        <TextField value={profile.kettlebells.map((k) => (k.count > 1 ? `${k.lb}x${k.count}` : `${k.lb}`)).join(', ')} onSave={(v) => {
+          const { kettlebells, skipped } = readKettlebells(v);
+          if (skipped.length) flash(`Couldn't read "${skipped[0]}", so the kettlebells weren't changed. Try "25x2, 35".`);
+          else void save({ kettlebells });
+        }} />
         <label className="field-label">Core day</label>
         <div className="seg">
           <button className={profile.coreWave === 'wave' ? 'on' : ''} onClick={() => save({ coreWave: 'wave' })}>Light wave</button>

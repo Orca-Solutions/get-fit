@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
-import { SYNC_TABLES as TABLES, type Change, type CursorKey, type PulledRow, type SyncRecord, type SyncStore, type SyncTable as TableName } from '../protocol.js';
+import { SYNC_TABLES as TABLES, supersedes, type Change, type CursorKey, type PulledRow, type SyncRecord, type SyncStore, type SyncTable as TableName } from '../protocol.js';
 
 export { TABLES };
 export type * from '../protocol.js';
@@ -44,6 +44,7 @@ export function openSqliteStore(file: string): SqliteStore {
   const setMetaValue = db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value');
 
   const getStored = db.prepare<[string, string], { updated_at: string }>('SELECT updated_at FROM records WHERE tbl = ? AND id = ?');
+  const getData = db.prepare<[string, string], { data: string }>('SELECT data FROM records WHERE tbl = ? AND id = ?');
   const maxSeqStmt = db.prepare<[], { m: number }>('SELECT COALESCE(MAX(seq), 0) AS m FROM records');
   const upsert = db.prepare(`
     INSERT INTO records (tbl, id, updated_at, deleted_at, data, seq) VALUES (@tbl, @id, @updatedAt, @deletedAt, @data, @seq)
@@ -52,14 +53,15 @@ export function openSqliteStore(file: string): SqliteStore {
   const since = db.prepare<[number, number], Row>('SELECT tbl, id, updated_at, data, seq FROM records WHERE seq > ? ORDER BY seq LIMIT ?');
   const live = db.prepare<[], Row>('SELECT tbl, id, updated_at, data, seq FROM records WHERE deleted_at IS NULL ORDER BY tbl, id');
 
-  /** Last write wins: a change is stored only if it is new or strictly newer than what is stored. */
+  /** Last write wins: a change is stored only if it is new or supersedes what is stored (ties go by content). */
   const applyChanges = db.transaction((changes: Change[]): Map<string, number> => {
     let seq = maxSeqStmt.get()!.m;
     const written = new Map<string, number>(); // "tbl/id" -> seq it was stored with
     for (const { table, record } of changes) {
       const updatedAt = new Date(record.updatedAt).toISOString();
       const stored = getStored.get(table, record.id);
-      if (stored && updatedAt <= stored.updated_at) continue;
+      if (stored && updatedAt < stored.updated_at) continue;
+      if (stored && updatedAt === stored.updated_at && !supersedes(record, JSON.parse(getData.get(table, record.id)!.data))) continue;
       seq += 1;
       upsert.run({ tbl: table, id: record.id, updatedAt, deletedAt: record.deletedAt ?? null, data: JSON.stringify(record), seq });
       written.set(`${table}/${record.id}`, seq);

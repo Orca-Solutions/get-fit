@@ -1,4 +1,5 @@
 // Which movement a workout slot shows, and how two devices' copies of one session merge.
+import { supersedes } from './protocol.js';
 import type { LoggedSet, PlannedExercise, Session } from './types.js';
 
 /**
@@ -47,7 +48,7 @@ export function changedFields(before: Session, patch: Partial<Session>): string[
  * differs from the newer copy, i.e. whether it needs pushing again.
  */
 export function mergeSession(a: Session, b: Session): { session: Session; changed: boolean } {
-  const [base, other] = Date.parse(b.updatedAt) > Date.parse(a.updatedAt) ? [b, a] : [a, b];
+  const [base, other] = supersedes(b, a) ? [b, a] : [a, b];
   const out: Session = { ...base, swaps: { ...(base.swaps ?? {}) }, skipped: [...(base.skipped ?? [])], fieldAt: { ...(base.fieldAt ?? {}) } };
   const o = out as Record<string, unknown>;
   let changed = false;
