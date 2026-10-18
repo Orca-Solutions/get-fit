@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import catalog from '../src/data/exercises.json';
 import { BANDS, creditOf, groupOf, weeklySets, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
-import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, isToppedOut, isTopSet, lastTimeHint, summarizeHistory, withoutDeloads, workoutHint } from '../src/generator/progression';
+import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, isToppedOut, isTopSet, lastTimeHint, summarizeHistory, withoutDeloads, withoutTopSet, workoutHint, type HintContext } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
 import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
@@ -296,6 +296,10 @@ describe('generateBlock: later blocks', () => {
     expect(heavyLegs(rotated).exercises[0].sets[0].targetReps).toEqual(heavyLegs(rotated).exercises[0].sets[1].targetReps);
     expect(heavyLegs(rotated).exercises[0].note ?? '').not.toContain('top set');
     expect(isTopSet(heavyLegs(rotated).exercises[0], 0)).toBe(false);
+    // Held the slot, but not logged in that block (a block nobody trained): no top set.
+    const untrained = gen({ previousBlock: b2.block, startDate: '2026-12-07', known: [squat], trainedLastBlock: [] });
+    expect(isTopSet(heavyLegs(untrained).exercises[0], 0)).toBe(false);
+    expect(isTopSet(heavyLegs(gen({ previousBlock: b2.block, startDate: '2026-12-07', known: [squat], trainedLastBlock: [squat] })).exercises[0], 0)).toBe(true);
   });
 
   it('keeps every muscle inside its weekly band as blocks rotate', () => {
@@ -672,7 +676,7 @@ describe('progression', () => {
     expect(isOutgrown(mk([top(50, 10, 'right')], [top(50, 10, 'right')]), () => undefined)).toBe(false);
   });
 
-  it('suggests a deadlift load from the latest e1RM: one increment at most, about 95% after 3 weeks off', () => {
+  it('suggests a deadlift load from the latest e1RM: one increment at most', () => {
     const dl = byId.get('dumbbell-deadlift')!;
     const smith = byId.get('smith-deadlift')!;
     const log = (ex: Exercise, date: string, weight: number, reps: number, effort: LoggedSet['effort']): LoggedSet => ({
@@ -685,8 +689,8 @@ describe('progression', () => {
     expect(e1rmLoadHint(dl, hist(dl, log(dl, '2026-10-02', 60, 6, 'right')), { min: 8, max: 12 }, 2, '2026-10-16', profile)!.suggest).toBe(55);
     // 40 × 15 at Easy points at 50, but one increment past last time is the most: 45.
     expect(e1rmLoadHint(dl, hist(dl, log(dl, '2026-10-02', 40, 15, 'easy')), { min: 5, max: 8 }, 2, '2026-10-16', profile)!.suggest).toBe(45);
-    // More than 3 weeks off: 95% of 61.6 is 58.5, rounded down to 55.
-    expect(e1rmLoadHint(dl, hist(dl, log(dl, '2026-09-01', 60, 6, 'right')), { min: 5, max: 8 }, 2, '2026-10-16', profile)!.suggest).toBe(55);
+    // Its own 95% after 3 weeks off is retired (§4.5 rev 3.9): long gaps are workoutHint's, for every lift.
+    expect(e1rmLoadHint(dl, hist(dl, log(dl, '2026-09-01', 60, 6, 'right')), { min: 5, max: 8 }, 2, '2026-10-16', profile)!.suggest).toBe(60);
     // Smith plates: 100 + the 20 lb bar × 6 at Right is an e1RM of 152; 123.2 at 5–8, less the bar, is 100.
     expect(e1rmLoadHint(smith, hist(smith, log(smith, '2026-10-02', 100, 6, 'right')), { min: 5, max: 8 }, 2, '2026-10-16', profile)!.suggest).toBe(100);
     expect(e1rmLoadHint(dl, [], { min: 5, max: 8 }, 2, '2026-10-16', profile)).toBeNull();
@@ -847,8 +851,15 @@ describe('workoutHint (§4.4)', () => {
     }));
   const targetOf = (s: LoggedSet) => { const [min, max] = s.plannedExerciseId!.split('|')[1].split('-').map(Number); return { min, max }; };
   const plan = (target: { min: number; max: number }, rir: number, n = 3) => ({ slot: 'legs:hinge', sets: Array.from({ length: n }, (_, i) => ({ setIndex: i, targetReps: target, rir, restSec: 90 })) });
-  const hint = (ex: Exercise, sets: LoggedSet[], pe: ReturnType<typeof plan>, o: { deload?: boolean; targets?: boolean } = {}) =>
-    workoutHint(ex, pe, summarizeHistory(ex, sets, profile), { deload: !!o.deload, isDeload: () => false, targetOf: o.targets === false ? undefined : targetOf, date: '2026-10-16', profile });
+  const hint = (ex: Exercise, sets: LoggedSet[], pe: ReturnType<typeof plan>, o: { deload?: boolean; targets?: boolean; date?: string; ctx?: Partial<HintContext> & { blockId?: string } } = {}) =>
+    workoutHint(ex, pe, summarizeHistory(ex, sets, profile), { deload: !!o.deload, isDeload: () => false, targetOf: o.targets === false ? undefined : targetOf, date: o.date ?? '2026-10-16', profile, ...o.ctx });
+  /** A heavy day: a 3–5 top set, then back-off sets at 5–8. */
+  const squat = byId.get('smith-machine-squat')!;
+  const topDay = (n = 4) => ({ slot: 'legs:squat', sets: Array.from({ length: n }, (_, i) => ({ setIndex: i, targetReps: i ? range(5, 8) : range(3, 5), rir: 2, restSec: 150 })) });
+  const heavySession = (date: string, top: [number, number], back: [number, number][], effort: LoggedSet['effort'] = 'right') => [
+    ...session(squat, `h${date}`, date, range(3, 5), [[...top, effort]]),
+    ...session(squat, `h${date}`, date, range(5, 8), back.map(([w, r]) => [w, r, effort] as [number, number, LoggedSet['effort']])).map((s, i) => ({ ...s, id: `h${date}-b${i}`, setIndex: i + 1, loggedAt: `${date}T10:1${i}:00Z` })),
+  ];
 
   it('suggests from e1RM when last time ran other reps: the moderate week after a heavy week', () => {
     const heavy = session(rdl, 'h', '2026-10-09', range(5, 8), [[30, 8, 'right'], [30, 8, 'right'], [30, 7, 'right']]);
@@ -860,18 +871,73 @@ describe('workoutHint (§4.4)', () => {
 
   it('goes up as far as e1RM says when the reps drop: the heavy week after a light week', () => {
     const light = session(press, 'l', '2026-10-09', range(12, 20), [[100, 20, 'right'], [100, 18, 'right']]);
-    // 100 × 20 at Right is an e1RM of 173; 5–8 at RIR 2 gives 140.5, so 140, not one increment past 100.
-    expect(hint(press, light, plan(range(5, 8), 2))).toMatchObject({ text: 'Last time at 12–20: 100 lb', suggest: 140 });
+    // 100 × 20 at Right is an e1RM of 173; 5–8 at RIR 2, plus a rep in reserve for the drop in reps, gives 136.8:
+    // 130, well past one increment over 100.
+    expect(hint(press, light, plan(range(5, 8), 2, 2))).toMatchObject({ text: 'Last time at 12–20: 100 lb', suggest: 130 });
   });
 
   it('holds the step up when the next weight is too big a jump to make the bottom of the range', () => {
     const topped = (ex: Exercise, w: number) => session(ex, 's', '2026-10-09', range(10, 15), [[w, 15, 'right'], [w, 15, 'right']]);
     // 20 × 15 at Right is an e1RM of 31.3; 25 lb for 10 reps at RIR 2 needs 35, so more reps first.
-    expect(hint(rdl, topped(rdl, 20), plan(range(10, 15), 2))).toMatchObject({
+    expect(hint(rdl, topped(rdl, 20), plan(range(10, 15), 2, 2))).toMatchObject({
       text: 'Last time at 10–15: 20 lb each · the next weight up is a big jump, so aim for 16–18 reps first', suggest: undefined,
     });
     // A 10 lb step on a 100 lb leg press lands: an e1RM of 156.7 carries 110 for 10 at RIR 2 (154).
-    expect(hint(press, topped(press, 100), plan(range(10, 15), 2))!.suggest).toBe(110);
+    expect(hint(press, topped(press, 100), plan(range(10, 15), 2, 2))!.suggest).toBe(110);
+  });
+
+  it('steps up a heavy day when its top set reaches the top of its own range, with the back-off weight to match', () => {
+    // Smith squat, top set 100 lb of plates × 5 at Right, back-offs 90 × 8: the 3–5 top set topped out, so 105, and
+    // back-offs about 90% of the 125 lb moved, less the bar: 92.5, so 90.
+    const h = heavySession('2026-10-09', [100, 5], [[90, 8], [90, 8], [90, 7]]);
+    expect(hint(squat, h, topDay())).toMatchObject({ text: 'Top set last time: 100 lb plates × 5', suggest: 105, backOff: 90 });
+    // Two back-off sets under 5 reps hold it, top set or not.
+    const short = heavySession('2026-10-09', [100, 5], [[90, 4], [90, 4], [90, 6]]);
+    expect(hint(squat, short, topDay())).toMatchObject({ text: 'Top set last time: 100 lb plates × 5 · two sets fell short of the range, so hold this weight', suggest: undefined, backOff: 85 });
+  });
+
+  it('never steps up after a session logged short of its planned sets', () => {
+    const one = session(rdl, 's', '2026-10-09', range(8, 12), [[60, 12, 'right']]);
+    expect(hint(rdl, one, plan(range(8, 12), 2))!.suggest).toBeUndefined();
+    // The same set, when one set was all the plan asked for.
+    expect(hint(rdl, one, plan(range(8, 12), 2), { ctx: { setsPlanned: () => 1 } })!.suggest).toBe(65);
+  });
+
+  it('reads the least-assisted set as the heaviest on an assisted machine', () => {
+    const pull = byId.get('assisted-pull-up')!;
+    const sets = session(pull, 'a', '2026-10-09', range(8, 12), [[50, 12, 'right'], [40, 12, 'right'], [40, 12, 'right']]);
+    expect(hint(pull, sets, plan(range(8, 12), 2))).toMatchObject({ text: 'Last time at 8–12: 40 lb assist', suggest: 30 });
+    expect(lastTimeHint(pull, summarizeHistory(pull, sets, profile), range(8, 12))).toMatchObject({ text: 'Last time at 8–12: 40 lb assist', suggest: 30 });
+  });
+
+  it('eases back in after a gap in logged work: 10% after 10 days, 20% after 4 weeks, a fresh start after 8 (§4.5 rev 3.9)', () => {
+    const last = session(rdl, 's', '2026-10-02', range(8, 12), [[60, 12, 'right'], [60, 12, 'right']]);
+    const at = (date: string, ctx?: Partial<HintContext>) => hint(rdl, last, plan(range(8, 12), 2, 2), { date, ctx });
+    // A week on: the usual step up.
+    expect(at('2026-10-09')!.suggest).toBe(65);
+    // 12 days: 90% of 60 is 54, so 50, and no step up.
+    expect(at('2026-10-14')).toMatchObject({ text: 'Last time at 8–12: 60 lb each · first session back after 12 days, so about 10% lighter', suggest: 50 });
+    // 5 weeks: 80%, 48, so 45.
+    expect(at('2026-11-06')).toMatchObject({ text: 'Last time at 8–12: 60 lb each · first session back after 5 weeks, so about 20% lighter', suggest: 45 });
+    // 9 weeks: no number; the weight is found again like a new lift's.
+    expect(at('2026-12-04')).toMatchObject({ text: 'Last time at 8–12: 60 lb each · first session back after 9 weeks: ramp up across sets to a weight that leaves about 3 reps in the tank', suggest: undefined });
+    // A gap the plan made (nothing planned for this lift was missed, and other work was logged) is no time off.
+    expect(at('2026-10-30', { timeOffFrom: () => undefined })!.suggest).toBe(65);
+    // Rotated out, then due and missed once 10 days before coming back: 10 + 7 days off, not the whole gap.
+    expect(at('2026-12-04', { timeOffFrom: () => '2026-11-17' })).toMatchObject({ text: expect.stringContaining('after 2 weeks, so about 10% lighter') });
+  });
+
+  it('drops the heavy top set for the rest of the block after 4+ weeks off', () => {
+    const h = heavySession('2026-09-01', [100, 5], [[90, 8], [90, 8], [90, 8]]);
+    const back = hint(squat, h, topDay(), { date: '2026-10-09' })!;
+    expect(back).toMatchObject({ noTopSet: true, backOff: undefined });
+    expect(withoutTopSet(topDay()).sets[0]).toEqual({ setIndex: 0, targetReps: range(5, 8), rir: 2, restSec: 150 });
+    // Later in the same block, after the return session was logged.
+    const ret = session(squat, 'r', '2026-10-09', range(5, 8), [[80, 8, 'right'], [80, 8, 'right'], [80, 8, 'right'], [80, 8, 'right']]);
+    const blockOf = (x: { sessionId: string }) => (x.sessionId === 'r' ? 'b2' : 'b1');
+    expect(hint(squat, [...h, ...ret], topDay(), { date: '2026-10-16', ctx: { blockOf, blockId: 'b2' } })!.noTopSet).toBe(true);
+    // Next block, it's back.
+    expect(hint(squat, [...h, ...ret], topDay(), { date: '2026-10-23', ctx: { blockOf, blockId: 'b3' } })!.noTopSet).toBeUndefined();
   });
 
   it('keeps a deload suggestion under what e1RM carries when last time was too heavy for the reps', () => {

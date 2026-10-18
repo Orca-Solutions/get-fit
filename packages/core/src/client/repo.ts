@@ -1,12 +1,11 @@
 // All writes go through here: every record gets updatedAt stamped (for sync) and saves immediately.
 import { CATALOG } from '../catalog.js';
 import type { Block, Exercise, ExerciseFlag, LoggedSet, PlannedWorkout, Profile, Session } from '../types.js';
-import type { RepRange } from '../program.js';
 import { addDays, daysBetween, mondayOf, today } from '../dates.js';
 import { uuid } from '../ids.js';
 import { isSyncConnected, scheduleSync } from './sync.js';
 import { generateBlock, type ExerciseFlags, type GeneratorInput } from '../generator/generateBlock.js';
-import { effectiveLoad, isOutgrown, isStalled, isToppedOut, summarizeHistory, withoutDeloads, type SessionSummary } from '../generator/progression.js';
+import { effectiveLoad, isOutgrown, isStalled, isToppedOut, summarizeHistory, withoutDeloads, type HintContext, type SessionSummary } from '../generator/progression.js';
 import { db, SYNC_TABLES, type GetFitDB, type SyncTable } from './db.js';
 import { validRow } from '../validate.js';
 import { PROFILE_ID, neutralProfile } from '../profiles.js';
@@ -116,8 +115,25 @@ async function blockCovering(date: string, d: GetFitDB): Promise<Block> {
   if (ahead) return ahead;
   const last = blocks[blocks.length - 1];
   const thisMonday = mondayOf(date);
-  const start = last && blockEnd(last) >= addDays(thisMonday, -1) ? addDays(blockEnd(last), 1) : thisMonday;
-  return createBlock(start, last, d);
+  if (!last || blockEnd(last) >= addDays(thisMonday, -1)) return createBlock(last ? addDays(blockEnd(last), 1) : thisMonday, last, d);
+  // Back after the app sat unopened past the end of the plan: blocks nobody logged in (the one planned ahead) are
+  // dropped, and the new block follows the last block with logs, so it numbers on from there and plans top sets
+  // only for lifts trained in it.
+  const logged = await workoutsWithLogs(d);
+  const trained = new Set((await d.plannedWorkouts.toArray()).filter((w) => logged.has(w.id)).map((w) => w.blockId));
+  const lastTrained = blocks.filter((b) => trained.has(b.id)).pop();
+  for (const b of blocks.filter((b) => !lastTrained || b.startDate > lastTrained.startDate)) await dropBlock(b, d);
+  return createBlock(thisMonday, lastTrained, d);
+}
+
+/** Soft-delete a block nobody logged in, with its workouts, so every device drops it on sync. */
+async function dropBlock(block: Block, d: GetFitDB): Promise<void> {
+  const t = nowIso();
+  const workouts = await d.plannedWorkouts.where('blockId').equals(block.id).toArray();
+  await d.transaction('rw', d.blocks, d.plannedWorkouts, async () => {
+    await d.blocks.put({ ...block, deletedAt: t, updatedAt: t });
+    await d.plannedWorkouts.bulkPut(workouts.map((w) => ({ ...w, deletedAt: t, updatedAt: t })));
+  });
 }
 
 /** Everything the generator needs from the device: profile, catalog, flags and what the logs say. */
@@ -146,8 +162,10 @@ async function generatorInput(startDate: string, previousBlock: Block | undefine
   });
   const stalled = flat.filter((id) => !toppedOut.includes(id));
   const outgrown = known.filter((id) => isOutgrown(withoutDeloads(history(id), (h) => !!placeOf(h)?.deload), targetMax));
+  // Top sets go only on lifts logged in the block before, so a block nobody trained doesn't count (§4.1).
+  const trainedLastBlock = previousBlock ? [...new Set(live.filter((s) => { const w = sessionWorkout.get(s.sessionId); return w && !w.deletedAt && w.blockId === previousBlock.id; }).map((s) => s.exerciseId))] : [];
   const recoveryOk = previousBlock ? !(await d.sessions.toArray()).some((s) => !s.deletedAt && s.beatUp && s.date >= previousBlock.startDate) : true;
-  return { profile, exercises, flags, startDate, previousBlock, stalled, toppedOut, known, outgrown, recoveryOk };
+  return { profile, exercises, flags, startDate, previousBlock, stalled, toppedOut, known, trainedLastBlock, outgrown, recoveryOk };
 }
 
 async function createBlock(startDate: string, previousBlock: Block | undefined, d: GetFitDB, plannedAhead = false): Promise<Block> {
@@ -204,15 +222,32 @@ export async function deloadSessionIds(d: GetFitDB = db): Promise<Set<string>> {
 }
 
 /**
- * What the weight hint needs from the plan (workoutHint): which sessions were deloads, and the planned rep target
- * of each logged set, so the hint can tell a change of rep range from a repeat.
+ * What the weight hint needs from the plan (workoutHint): which sessions were deloads, each logged set's planned rep
+ * target and set count (a change of reps, a partly logged session), each session's block, and the planned days a
+ * movement went unlogged (a long gap). All of it reads logged work and the plan, never when the app was opened.
  */
-export async function hintContext(d: GetFitDB = db): Promise<{ isDeload: (h: SessionSummary) => boolean; targetOf: (s: LoggedSet) => RepRange | undefined }> {
-  const [deloads, planned] = await Promise.all([deloadSessionIds(d), d.plannedWorkouts.toArray()]);
-  const sets = new Map(planned.filter((w) => !w.deletedAt).flatMap((w) => w.exercises.map((e) => [e.id, e.sets] as const)));
+export async function hintContext(d: GetFitDB = db): Promise<Required<HintContext>> {
+  const [sessions, planned, logged] = await Promise.all([d.sessions.toArray(), d.plannedWorkouts.toArray(), d.loggedSets.toArray()]);
+  const live = new Map(planned.filter((w) => !w.deletedAt).map((w) => [w.id, w]));
+  const workoutOf = new Map(sessions.filter((s) => !s.deletedAt && s.plannedWorkoutId).map((s) => [s.id, live.get(s.plannedWorkoutId!)]));
+  const sets = new Map([...live.values()].flatMap((w) => w.exercises.map((e) => [e.id, e.sets] as const)));
+  const kept = logged.filter((s) => !s.deletedAt);
+  const done = new Set(kept.map((s) => s.plannedExerciseId));
+  const trainedOn = [...new Set(kept.map((s) => s.date))].sort();
+  // Each movement's planned days, and whether anything was logged for it there. Workouts of a block dropped after a
+  // long gap count too: they were planned and missed.
+  const days = new Map<string, { date: string; done: boolean }[]>();
+  for (const w of planned) for (const e of w.exercises) days.set(e.exerciseId, [...(days.get(e.exerciseId) ?? []), { date: w.date, done: done.has(e.id) }]);
   return {
-    isDeload: (h) => deloads.has(h.sessionId),
+    isDeload: (h) => !!workoutOf.get(h.sessionId)?.isDeload,
     targetOf: (s) => sets.get(s.plannedExerciseId ?? '')?.find((p) => p.setIndex === s.setIndex)?.targetReps,
+    setsPlanned: (s) => sets.get(s.plannedExerciseId ?? '')?.length,
+    blockOf: (h) => workoutOf.get(h.sessionId)?.blockId,
+    timeOffFrom: (id, from, to) => {
+      if (!trainedOn.some((t) => t > from && t < to)) return from;
+      const first = days.get(id)?.filter((p) => p.date > from && p.date < to && !p.done).map((p) => p.date).sort()[0];
+      return first && [from, addDays(first, -7)].sort()[1];
+    },
   };
 }
 

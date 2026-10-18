@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GetFitDB } from '../src/client/db';
 import { configureSync } from '../src/client/sync';
-import { deloadSessionIds, ensurePlan, hintContext, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/client/repo';
+import { blockEnd, deloadSessionIds, ensurePlan, hintContext, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/client/repo';
 import { addDays, mondayOf, today } from '../src/dates';
 
 let n = 0;
@@ -138,6 +138,48 @@ describe('repo', () => {
     const set = (await d.loggedSets.toArray())[0];
     expect(ctx.targetOf(set)).toEqual(pe.sets[1].targetReps);
     expect(ctx.targetOf({ ...set, plannedExerciseId: null })).toBeUndefined();
+  });
+
+  it('numbers on from the last block with logs after the app sat unopened past the plan, dropping the untrained block', async () => {
+    const d = await fresh();
+    const start = mondayOf(today());
+    const b1 = await ensurePlan(start, d);
+    const w = (await d.plannedWorkouts.where('blockId').equals(b1.id).toArray()).find((x) => x.sessionType === 'legs')!;
+    const s = await startSession(w.id, w.date, d);
+    await logSet(s, w.exercises[0].exerciseId, w.exercises[0].id, 0, { weight: 50, reps: 8 }, d);
+    // Block 2 was planned ahead and never trained; the lifter comes back 9 weeks after block 1 ended.
+    const back = await ensurePlan(addDays(blockEnd(b1), 65), d);
+    expect(back.index).toBe(2);
+    expect(back.startDate).toBe(mondayOf(addDays(blockEnd(b1), 65)));
+    const blocks = await liveBlocks(d);
+    expect(blocks.map((b) => b.index)).toEqual([1, 2, 3]);
+    expect(blocks.some((b) => b.startDate === addDays(blockEnd(b1), 1))).toBe(false);
+    // The dropped block's workouts go with it.
+    expect((await d.plannedWorkouts.where('blockId').equals(`block-${addDays(blockEnd(b1), 1)}`).toArray()).every((x) => x.deletedAt)).toBe(true);
+  });
+
+  it('tells the hint when a movement\'s time off began, from logged work only', async () => {
+    const d = await fresh();
+    const start = mondayOf(today());
+    await ensurePlan(start, d);
+    const legs = (await d.plannedWorkouts.toArray()).filter((x) => x.sessionType === 'legs' && !x.isDeload).sort((a, b) => a.date.localeCompare(b.date));
+    const [wk1, wk2, wk3] = legs;
+    const squat = wk1.exercises[0].exerciseId;
+    const log = async (w: typeof wk1, i = 0) => logSet(await startSession(w.id, w.date, d), w.exercises[i].exerciseId, w.exercises[i].id, 0, { weight: 50, reps: 8 }, d);
+    await log(wk1);
+    // Week 2's legs day was opened but nothing was logged: time off from the last log, though the app was in use.
+    await startSession(wk2.id, wk2.date, d);
+    expect((await hintContext(d)).timeOffFrom(squat, wk1.date, wk3.date)).toBe(wk1.date);
+    // Week 2's other movement logged, the squat not: off from a week before its unlogged day, which is week 1.
+    await log(wk2, 1);
+    expect((await hintContext(d)).timeOffFrom(squat, wk1.date, addDays(wk3.date, 1))).toBe(wk1.date);
+    // Logged in week 2: no time off, and none for a movement that wasn't planned.
+    await log(wk2);
+    const ctx = await hintContext(d);
+    expect(ctx.timeOffFrom(squat, wk1.date, wk3.date)).toBeUndefined();
+    expect(ctx.timeOffFrom('barbell-deadlift', wk1.date, wk3.date)).toBeUndefined();
+    // Nothing logged at all in between: the whole gap, whatever the plan said.
+    expect(ctx.timeOffFrom('barbell-deadlift', wk2.date, addDays(wk2.date, 30))).toBe(wk2.date);
   });
 
   it('merges a partial update into the stored set instead of reverting other fields', async () => {

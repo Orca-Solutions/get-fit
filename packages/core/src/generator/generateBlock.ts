@@ -11,7 +11,7 @@ import { BACK_OFF_LOAD, DELOAD_LOAD } from './progression.js';
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, swapSlotKeys, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type StepUp, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.6.0';
+export const GENERATOR_VERSION = '1.7.0';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -36,6 +36,8 @@ export type GeneratorInput = {
   outgrown?: string[];
   /** Exercises with any logged history; others get a calibration note (§4.4.4). */
   known?: string[];
+  /** Exercises logged in `previousBlock`; when given, only these can open a heavy day with a top set (§4.1). */
+  trainedLastBlock?: string[];
   /** False after an early deload in the last block: skip the volume ramp (§4.1). */
   recoveryOk?: boolean;
   now?: string;
@@ -522,12 +524,13 @@ function buildLift(
     add(ex, slotKey, slot.role, n, want, note);
   });
 
-  // Top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1). Only on a lift the
-  // lifter has logged and that held the slot last block too: a new lift's first sets are for finding its weight.
+  // Top set: the P slot on a heavy day opens with one heavy, low-rep set (§4.1). Only on a lift the lifter
+  // logged in the block before, holding the same slot: a new lift's first sets are for finding its weight.
   if (zone === 'H' && p.topSet && ctx.blockIndex >= p.topSet.fromBlock) {
     const primary = exercises.find((e) => e.role === 'P');
     const slot = primary && `${type}|${primary.slot}`;
-    const settled = !!primary && ctx.known.has(primary.exerciseId) && ctx.input.previousBlock?.baseSlots[slot!] === primary.exerciseId;
+    const trained = !ctx.input.trainedLastBlock || (!!primary && ctx.input.trainedLastBlock.includes(primary.exerciseId));
+    const settled = !!primary && trained && ctx.known.has(primary.exerciseId) && ctx.input.previousBlock?.baseSlots[slot!] === primary.exerciseId;
     if (primary && settled && primary.sets[0]?.targetReps) {
       primary.sets[0] = { ...primary.sets[0], targetReps: { ...p.topSet.reps }, rir: p.topSet.rir };
       primary.note = [primary.note, `Set 1 is a heavy top set; the rest are back-off sets about ${Math.round((1 - BACK_OFF_LOAD) * 100)}% lighter.`].filter(Boolean).join(' ');
