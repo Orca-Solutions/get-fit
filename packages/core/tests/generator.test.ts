@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import catalog from '../src/data/exercises.json';
 import { BANDS, creditOf, groupOf, weeklySets, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
-import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, lastTimeHint, summarizeHistory } from '../src/generator/progression';
+import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, lastTimeHint, summarizeHistory, withoutDeloads } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
 import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
@@ -735,6 +735,25 @@ describe('progression', () => {
     // A Hard hold doesn't carry into the deload line.
     const held = { ...last, text: `${last.text} · that was Hard, so hold this weight` };
     expect(deloadHint(curl, held, profile)!.text).toBe('Last time at 8–12: 70 lb each');
+  });
+
+  it('builds the week after a deload on the loading weeks, not the lighter deload', () => {
+    const bench = byId.get('barbell-bench-press')!;
+    const week = (id: string, date: string, weight: number, reps: number[], effort: LoggedSet['effort']) =>
+      reps.map((r, i): LoggedSet => ({ ...set(id, date, weight, r, i), exerciseId: bench.id, effort }));
+    // A block's moderate, light and heavy weeks, then the deload's 2 × 12 at 110 tapped Easy.
+    const history = summarizeHistory(bench, [
+      ...week('m', '2026-09-14', 125, [10, 9, 8], 'right'), ...week('l', '2026-09-21', 125, [11, 10, 10], 'right'),
+      ...week('h', '2026-09-28', 130, [8, 8, 8], 'right'), ...week('d', '2026-10-05', 110, [12, 12], 'easy'),
+    ], profile);
+    const target = { min: 8, max: 12 };
+    // Read with the deload, the first moderate week of the next block would suggest 115, under every loading week.
+    expect(lastTimeHint(bench, history, target)).toMatchObject({ weight: 110, suggest: 115 });
+    const loading = withoutDeloads(history, (h) => h.sessionId === 'd');
+    expect(loading.map((h) => h.sessionId)).toEqual(['h', 'l', 'm']);
+    expect(lastTimeHint(bench, loading, target)).toMatchObject({ text: 'Last time at 8–12: 130 lb', weight: 130, suggest: undefined });
+    // With nothing but a deload logged, it still has something to go on.
+    expect(withoutDeloads(history.filter((h) => h.sessionId === 'd'), () => true)).toHaveLength(1);
   });
 
   it('holds the weight instead of suggesting more when a topped-out session had a Hard set', () => {

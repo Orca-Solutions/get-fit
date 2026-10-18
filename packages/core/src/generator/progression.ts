@@ -28,6 +28,15 @@ export function setE1rm(ex: Exercise, s: LoggedSet, profile: Pick<Profile, 'body
 
 export type SessionSummary = { sessionId: string; date: string; sets: LoggedSet[]; bestE1rm: number | null };
 
+/**
+ * The sessions the weight hint reads (§4.4): deload sessions are lighter on purpose, so they're left out
+ * while any loading session remains, or the week after a deload would suggest building on the deload weight.
+ */
+export function withoutDeloads(history: SessionSummary[], isDeload: (h: SessionSummary) => boolean): SessionSummary[] {
+  const loading = history.filter((h) => !isDeload(h));
+  return loading.length ? loading : history;
+}
+
 /** Group a movement's logged sets into sessions, newest first. */
 export function summarizeHistory(ex: Exercise, sets: LoggedSet[], profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>): SessionSummary[] {
   const bySession = new Map<string, LoggedSet[]>();
