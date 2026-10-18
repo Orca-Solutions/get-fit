@@ -9,6 +9,9 @@ const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
 const arr = (v: unknown) => Array.isArray(v);
 const obj = (v: unknown): v is Row => !!v && typeof v === 'object' && !Array.isArray(v);
 const date = (v: unknown) => typeof v === 'string' && !Number.isNaN(Date.parse(v));
+const optional = (check: (v: unknown) => boolean) => (v: unknown) => v === undefined || v === null || check(v);
+const amount = optional((v) => num(v) && (v as number) >= 0);
+const effort = optional((v) => v === 'easy' || v === 'right' || v === 'hard');
 
 const plannedExercise = (e: unknown) => obj(e) && str(e.id) && str(e.exerciseId) && arr(e.sets) && (e.sets as unknown[]).every((s) => obj(s) && num(s.setIndex));
 
@@ -17,7 +20,10 @@ const CHECKS: Record<SyncTable, (r: Row) => boolean> = {
   blocks: (r) => str(r.startDate) && num(r.weeks) && num(r.index) && obj(r.baseSlots),
   plannedWorkouts: (r) => str(r.blockId) && str(r.date) && str(r.sessionType) && str(r.location) && num(r.weekIndex) && arr(r.exercises) && (r.exercises as unknown[]).every(plannedExercise),
   sessions: (r) => str(r.date) && (r.swaps === undefined || obj(r.swaps)) && (r.skipped === undefined || arr(r.skipped)),
-  loggedSets: (r) => str(r.sessionId) && str(r.exerciseId) && num(r.setIndex) && str(r.date) && str(r.loggedAt),
+  // A string or NaN weight would crash the load text, and a string rep count would inflate e1RM.
+  loggedSets: (r) =>
+    str(r.sessionId) && str(r.exerciseId) && num(r.setIndex) && str(r.date) && str(r.loggedAt) &&
+    amount(r.weight) && amount(r.reps) && amount(r.seconds) && optional(num)(r.stanceSteps) && effort(r.effort),
   exerciseFlags: () => true,
   customExercises: (r) => str(r.name) && arr(r.slots) && arr(r.primaryMuscles) && arr(r.secondaryMuscles) && arr(r.equipment) && obj(r.repRange),
 };

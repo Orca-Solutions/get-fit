@@ -2,7 +2,8 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GetFitDB } from '../src/client/db';
 import { configureSync } from '../src/client/sync';
-import { blockEnd, deloadSessionIds, ensurePlan, hintContext, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, workoutsWithLogs } from '../src/client/repo';
+import { blockEnd, deloadSessionIds, ensurePlan, hintContext, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, unlogSet, workoutState, workoutsWithLogs } from '../src/client/repo';
+import { validRow } from '../src/validate';
 import { addDays, mondayOf, today } from '../src/dates';
 
 let n = 0;
@@ -109,6 +110,41 @@ describe('repo', () => {
     expect(set.date).toBe(today());
     expect((await d.sessions.get(s.id))!.date).toBe(today());
     expect(await workoutsWithLogs(d)).toEqual(new Set([w.id]));
+  });
+
+  it("keeps a session's day when its only set is deleted and logged again", async () => {
+    const d = await fresh();
+    await ensurePlan(today(), d);
+    const w = (await d.plannedWorkouts.toArray())[0];
+    const pe = w.exercises[0];
+    const s = await startSession(w.id, today(), d);
+    const first = await logSet(s, pe.exerciseId, pe.id, 0, { weight: 50, reps: 8 }, d);
+    const old = addDays(today(), -9);
+    await d.sessions.update(s.id, { date: old });
+    await d.loggedSets.update(first.id, { date: old });
+    await unlogSet(first.id, d);
+    const again = await logSet({ id: s.id, date: old }, pe.exerciseId, pe.id, 0, { weight: 55, reps: 8 }, d);
+    expect(again.date).toBe(old);
+    expect((await d.sessions.get(s.id))!.date).toBe(old);
+  });
+
+  it('calls a workout done a day early done, and one after its window done late', () => {
+    const w = { date: '2026-10-21', exercises: [] } as unknown as Parameters<typeof workoutState>[0];
+    const on = (date: string) => ({ date }) as Parameters<typeof workoutState>[1];
+    expect(workoutState(w, on('2026-10-20'), 8, 8, '2026-10-20', '2026-01-01')).toBe('done');
+    expect(workoutState(w, on('2026-10-21'), 8, 8, '2026-10-21', '2026-01-01')).toBe('done');
+    expect(workoutState(w, on('2026-10-22'), 8, 8, '2026-10-22', '2026-01-01')).toBe('done-late');
+    expect(workoutState({ ...w, windowEnd: '2026-10-22' }, on('2026-10-22'), 8, 8, '2026-10-22', '2026-01-01')).toBe('done');
+  });
+
+  it('refuses a logged set whose weight, reps or time is not a usable number', () => {
+    const t = '2026-10-18T10:00:00.000Z';
+    const ok = { id: 'x', updatedAt: t, sessionId: 's', exerciseId: 'goblet-squat', setIndex: 0, date: '2026-10-18', loggedAt: t, weight: 50, reps: 8, effort: 'right' };
+    expect(validRow('loggedSets', ok)).toBe(true);
+    expect(validRow('loggedSets', { ...ok, weight: null, reps: undefined, seconds: 30, effort: null })).toBe(true);
+    for (const bad of [{ weight: '135' }, { reps: '8' }, { weight: NaN }, { weight: -5 }, { reps: Infinity }, { seconds: '30' }, { effort: 'max' }]) {
+      expect(validRow('loggedSets', { ...ok, ...bad })).toBe(false);
+    }
   });
 
   it('lists the sessions logged against a deload workout', async () => {

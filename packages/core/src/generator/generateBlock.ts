@@ -11,7 +11,7 @@ import { BACK_OFF_LOAD, DELOAD_LOAD } from './progression.js';
 import { GROUP_LABEL, coverageReport, creditOf, weeklySets, type CoverageGroup, type CoverageReport } from './coverage.js';
 import { STRANGE_PERIODIZATION, coreDayType, liftDays, swapSlotKeys, validateProgram, type BaseSlot, type CoreDay, type LiftDay, type Program, type StepUp, type TrainingParams } from '../program.js';
 
-export const GENERATOR_VERSION = '1.7.0';
+export const GENERATOR_VERSION = '1.7.1';
 export const BLOCK_WEEKS = 4;
 
 export type ExerciseFlags = Record<string, { avoid?: boolean; unavailable?: boolean; unavailableAt?: Location[]; favourite?: boolean }>;
@@ -168,6 +168,22 @@ export function generateBlock(input: GeneratorInput): GeneratedBlock {
 }
 
 /**
+ * Day offsets (from Monday) of a session's window. A window covers its weekdays as one run of days,
+ * so Sun+Mon is Sunday through the next Monday rather than the whole week; the run starts after the
+ * longest gap between its days, and the end can fall past Sunday (an offset of 7 or more).
+ */
+function windowOffsets(weekdays: Weekday[]): [number, number] {
+  const o = [...new Set(weekdays.map((d) => WEEKDAY_OFFSET[d]))].sort((a, b) => a - b);
+  let start = 0;
+  let gap = -1;
+  o.forEach((x, i) => {
+    const g = (i + 1 < o.length ? o[i + 1] : o[0] + 7) - x;
+    if (g > gap || (g === gap && i + 1 === o.length)) [gap, start] = [g, (i + 1) % o.length];
+  });
+  return [o[start], start === 0 ? o[o.length - 1] : o[start - 1] + 7];
+}
+
+/**
  * Place every session of the block. With `projected` (sets per muscle per week from the base movements
  * alone) the variety slots and heavy-day extra sets go to muscles under their band; without it the
  * lifting days get their base movements only.
@@ -182,9 +198,9 @@ function layOut(ctx: Ctx, base: Record<string, (Exercise | undefined)[]>, coreBa
   for (let week = 0; week < BLOCK_WEEKS; week++) {
     const weekStart = addDays(input.startDate, week * 7);
     for (const entry of input.profile.schedule) {
-      const offsets = entry.weekdays.map((d) => WEEKDAY_OFFSET[d]).sort((a, b) => a - b);
-      const date = addDays(weekStart, offsets[0]);
-      const windowEnd = offsets.length > 1 ? addDays(weekStart, offsets[offsets.length - 1]) : undefined;
+      const [first, last] = windowOffsets(entry.weekdays);
+      const date = addDays(weekStart, first);
+      const windowEnd = last > first ? addDays(weekStart, last) : undefined;
       const common = { blockId, date, windowEnd, weekIndex: week, location: entry.location };
       const day = ctx.program.days[entry.type];
       if (!day) throw new Error(`The schedule has a "${entry.type}" day, which program ${ctx.program.id} doesn't define.`);

@@ -4,6 +4,7 @@
 // A device's first sync joins the server's plan instead of pushing its own (see joinServer).
 import { db as defaultDb, SYNC_TABLES, type GetFitDB, type SyncTable } from './db.js';
 import type { Session } from '../types.js';
+import { stampAfter, supersedes } from '../protocol.js';
 import { mergeSession } from '../session.js';
 import { validRow } from '../validate.js';
 
@@ -153,7 +154,10 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
 
     let cursor = (await getMeta<number>(db, 'syncCursor')) ?? 0;
     let cursorKey = await getMeta<CursorKey>(db, 'syncCursorKey');
-    let outbox = await collectChanges(db, lastPushedAt);
+    // A watermark ahead of this clock means the clock has gone back since the last sync (it was fast),
+    // so writes made since carry earlier times than the watermark: push everything once instead.
+    const since = newer(lastPushedAt, new Date(startedAt).toISOString()) ? '' : lastPushedAt;
+    let outbox = await collectChanges(db, since);
     let pushed = 0;
     let resetDone = false;
     const knownEpoch = await getMeta<string>(db, 'serverEpoch');
@@ -188,7 +192,7 @@ async function runSync(db: GetFitDB, opts: SyncOptions): Promise<SyncResult> {
     }
 
     const watermark = new Date(startedAt - WATERMARK_MARGIN_MS).toISOString();
-    if (!lastPushedAt || newer(watermark, lastPushedAt)) await setMeta(db, 'lastPushedAt', watermark);
+    if (!since || newer(watermark, since)) await setMeta(db, 'lastPushedAt', watermark);
     await db.meta.bulkPut([
       { key: 'lastSyncedAt', value: new Date().toISOString() },
       { key: 'lastError', value: null },
@@ -279,7 +283,7 @@ async function applyPulled(db: GetFitDB, changes: Change[], cursor: number, serv
       if (local && table === 'sessions') {
         const { session, changed } = mergeSession(local as Session, record as Session);
         if (changed) {
-          const stamped = { ...session, updatedAt: laterThan(local.updatedAt, record.updatedAt) };
+          const stamped = { ...session, updatedAt: stampAfter(local.updatedAt, record.updatedAt) };
           await db.sessions.put(stamped);
           repush.push({ table, record: stamped });
           applied++;
@@ -290,13 +294,13 @@ async function applyPulled(db: GetFitDB, changes: Change[], cursor: number, serv
         // Keep the earliest createdAt: the calendar tracks missed days from it, and a device set up
         // later must agree with the first one even when neither profile has been edited.
         const first = [record.createdAt, local.createdAt].sort()[0];
-        if (!newer(record.updatedAt, local.updatedAt)) {
+        if (!supersedes(record, local)) {
           if (first !== local.createdAt) await db.profile.update(record.id, { createdAt: first });
           continue;
         }
         record.createdAt = first;
       }
-      if (local && !serverWins.includes(table) && !newer(record.updatedAt, local.updatedAt)) continue;
+      if (local && !serverWins.includes(table) && !supersedes(record, local)) continue;
       if (local && table === 'plannedWorkouts' && !serverWins.includes(table)) {
         logged ??= await loggedWorkoutIds(db);
         if (logged.has(record.id)) continue;
@@ -308,12 +312,6 @@ async function applyPulled(db: GetFitDB, changes: Change[], cursor: number, serv
     if (cursorKey) await setMeta(db, 'syncCursorKey', cursorKey);
     return applied;
   });
-}
-
-/** Now, or just after the later of two timestamps if a clock is ahead. */
-function laterThan(a: string, b: string): string {
-  const t = Math.max(Date.now(), Date.parse(a) + 1, Date.parse(b) + 1);
-  return new Date(t).toISOString();
 }
 
 async function loggedWorkoutIds(db: GetFitDB): Promise<Set<string>> {

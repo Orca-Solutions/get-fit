@@ -10,6 +10,7 @@ import { db, SYNC_TABLES, type GetFitDB, type SyncTable } from './db.js';
 import { validRow } from '../validate.js';
 import { PROFILE_ID, neutralProfile } from '../profiles.js';
 import { changedFields } from '../session.js';
+import { stampAfter } from '../protocol.js';
 
 export { CATALOG, PROFILE_ID };
 
@@ -26,9 +27,13 @@ export function defaultProfile(t?: string): Profile {
 
 const nowIso = () => new Date().toISOString();
 
-/** Stamp and save. Soft-deletes go through here too, so they sync. */
+/**
+ * Stamp and save. Soft-deletes go through here too, so they sync. The stamp is later than the stored
+ * copy's, so an edit wins over the version it changed even if that came from a device with a fast clock.
+ */
 export async function put<T extends { id: string; createdAt: string; updatedAt: string }>(table: SyncTable, rec: T, d: GetFitDB = db): Promise<T> {
-  const stamped = { ...rec, updatedAt: nowIso() };
+  const stored = (await d.table(table).get(rec.id)) as { updatedAt?: string } | undefined;
+  const stamped = { ...rec, updatedAt: stampAfter(stored?.updatedAt) };
   await (d.table(table) as unknown as { put(r: T): Promise<unknown> }).put(stamped);
   scheduleSync();
   return stamped;
@@ -139,7 +144,9 @@ async function dropBlock(block: Block, d: GetFitDB): Promise<void> {
 /** Everything the generator needs from the device: profile, catalog, flags and what the logs say. */
 async function generatorInput(startDate: string, previousBlock: Block | undefined, d: GetFitDB): Promise<GeneratorInput> {
   const [profile, exercises, flags, sets, planned, sessions] = await Promise.all([getProfile(d), allExercises(d), flagMap(d), d.loggedSets.toArray(), d.plannedWorkouts.toArray(), d.sessions.toArray()]);
-  const live = sets.filter((s) => !s.deletedAt);
+  // Only what was logged before the block starts, so rebuilding a block part way through (a kit change, a new
+  // Avoid) plans it as it was planned on its first day, rather than judging stalls on the block's own weeks.
+  const live = sets.filter((s) => !s.deletedAt && s.date < startDate);
   const known = [...new Set(live.map((s) => s.exerciseId))];
   const history = (id: string) => {
     const ex = exercises.find((e) => e.id === id);
@@ -164,7 +171,7 @@ async function generatorInput(startDate: string, previousBlock: Block | undefine
   const outgrown = known.filter((id) => isOutgrown(withoutDeloads(history(id), (h) => !!placeOf(h)?.deload), targetMax));
   // Top sets go only on lifts logged in the block before, so a block nobody trained doesn't count (§4.1).
   const trainedLastBlock = previousBlock ? [...new Set(live.filter((s) => { const w = sessionWorkout.get(s.sessionId); return w && !w.deletedAt && w.blockId === previousBlock.id; }).map((s) => s.exerciseId))] : [];
-  const recoveryOk = previousBlock ? !(await d.sessions.toArray()).some((s) => !s.deletedAt && s.beatUp && s.date >= previousBlock.startDate) : true;
+  const recoveryOk = previousBlock ? !sessions.some((s) => !s.deletedAt && s.beatUp && s.date >= previousBlock.startDate && s.date < startDate) : true;
   return { profile, exercises, flags, startDate, previousBlock, stalled, toppedOut, known, trainedLastBlock, outgrown, recoveryOk };
 }
 
@@ -286,11 +293,13 @@ export async function logSet(
   d: GetFitDB = db,
 ): Promise<LoggedSet> {
   const t = nowIso();
-  const inSession = (await d.loggedSets.where('sessionId').equals(session.id).toArray()).filter((s) => !s.deletedAt);
+  const everLogged = await d.loggedSets.where('sessionId').equals(session.id).toArray();
+  const inSession = everLogged.filter((s) => !s.deletedAt);
   const existing = inSession.find((s) => s.exerciseId === exerciseId && s.plannedExerciseId === plannedExerciseId && s.setIndex === setIndex);
   let date = session.date;
-  if (!inSession.length) {
-    // A session opened earlier but never logged counts from the day its first set is logged.
+  if (!everLogged.length) {
+    // A session opened earlier but never logged counts from the day its first set is logged. Once a set
+    // has been logged (even if since deleted), the session keeps its day, so fixing an old one doesn't move it.
     date = today();
     const s = await d.sessions.get(session.id);
     if (s && (s.date !== date || !s.startedAt)) await put('sessions', { ...s, date, startedAt: t }, d);
@@ -319,7 +328,7 @@ export type DayState = 'planned' | 'done' | 'partial' | 'missed' | 'done-late' |
 
 export function workoutState(w: PlannedWorkout, session: Session | undefined, loggedCount: number, plannedCount: number, date: string, trackedFrom: string): DayState {
   if (session && loggedCount > 0) {
-    const late = session.date !== w.date && (!w.windowEnd || session.date > w.windowEnd);
+    const late = session.date > (w.windowEnd ?? w.date);
     if (loggedCount >= plannedCount || session.endedAt) return late ? 'done-late' : 'done';
     return 'partial';
   }

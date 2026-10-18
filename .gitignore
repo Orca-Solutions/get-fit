@@ -24,3 +24,5 @@ playwright-report/
 *.log
 .e2e-data/
 .e2e-release/
+.e2e-sync/
+.e2e-rollover/

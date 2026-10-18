@@ -6,8 +6,8 @@ import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown,
 import { referenceProfile } from '../src/profiles';
 import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
-import { parseKettlebells } from '../src/kettlebells';
-import type { Equipment, Exercise, LoggedSet, PlannedWorkout, Profile } from '../src/types';
+import { parseKettlebells, readKettlebells } from '../src/kettlebells';
+import type { Equipment, Exercise, LoggedSet, PlannedWorkout, Profile, Weekday } from '../src/types';
 
 const exercises = catalog as unknown as Exercise[];
 const byId = new Map(exercises.map((e) => [e.id, e]));
@@ -49,6 +49,12 @@ describe('generateBlock: block 1', () => {
     expect(workouts[3].windowEnd).toBe('2026-10-18');
     expect(block.index).toBe(1);
     expect(block.rationale).toContain('same sets per muscle');
+  });
+
+  it('runs a Sun+Mon window from Sunday into the next Monday, not across the whole week', () => {
+    const schedule = [...profile.schedule.filter((e) => e.type !== 'core'), { weekdays: [0, 1] as Weekday[], type: 'core', location: 'home' as const }];
+    const core = gen({ profile: { ...profile, schedule } }).workouts.filter((w) => w.sessionType === 'core');
+    expect(core.slice(0, 2).map((w) => [w.date, w.windowEnd])).toEqual([['2026-10-18', '2026-10-19'], ['2026-10-25', '2026-10-26']]);
   });
 
   it('rotates zones by one day each week, then deloads', () => {
@@ -620,6 +626,17 @@ describe('kettlebells', () => {
   it('parses a pair and a single bell', () => {
     expect(parseKettlebells('25x2, 35')).toEqual([{ lb: 25, count: 2 }, { lb: 35, count: 1 }]);
     expect(parseKettlebells('35, 25 x 2, junk')).toEqual([{ lb: 25, count: 2 }, { lb: 35, count: 1 }]);
+  });
+
+  it('reads units, count-first pairs and kg, and reports what it could not read', () => {
+    const pair25 = { lb: 25, count: 2 };
+    expect(readKettlebells('35 lbs, 25lbs x2')).toEqual({ kettlebells: [pair25, { lb: 35, count: 1 }], skipped: [] });
+    expect(readKettlebells('2 x 25').kettlebells).toEqual([pair25]);
+    expect(readKettlebells('2 × 25 lb').kettlebells).toEqual([pair25]);
+    expect(readKettlebells('16kg, 2x12 kg').kettlebells).toEqual([{ lb: 26, count: 2 }, { lb: 35, count: 1 }]);
+    expect(readKettlebells('lbs')).toEqual({ kettlebells: [], skipped: ['lbs'] });
+    expect(readKettlebells('25x1.5, 0').skipped).toEqual(['25x1.5', '0']);
+    expect(readKettlebells(' , ')).toEqual({ kettlebells: [], skipped: [] });
   });
 
   it('only programs double-bell moves when there is a matched pair', () => {
