@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import catalog from '../src/data/exercises.json';
 import { BANDS, creditOf, groupOf, weeklySets, type CoverageGroup } from '../src/generator/coverage';
 import { generateBlock, type GeneratorInput } from '../src/generator/generateBlock';
-import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, lastTimeHint, summarizeHistory, withoutDeloads } from '../src/generator/progression';
+import { backOffLoad, deloadHint, e1rm, e1rmLoadHint, effectiveLoad, isOutgrown, isStalled, isTopSet, lastTimeHint, summarizeHistory, withoutDeloads } from '../src/generator/progression';
 import { referenceProfile } from '../src/profiles';
 import { STRANGE_PERIODIZATION, type LiftDay, type Program } from '../src/program';
 import { addDays } from '../src/dates';
@@ -284,6 +284,9 @@ describe('generateBlock: later blocks', () => {
     expect(heavyLegs(logged).exercises[0].exerciseId).toBe(squat);
     expect(heavyLegs(logged).exercises[0].sets[0].targetReps).toEqual({ min: 3, max: 5 });
     expect(heavyLegs(logged).exercises[0].note).toContain('Set 1 is a heavy top set');
+    // 3–5 touches the back-off sets' 5–8 from block 3, and still reads as a top set.
+    expect(heavyLegs(logged).exercises[0].sets[1].targetReps).toEqual({ min: 5, max: 8 });
+    expect([0, 1].map((i) => isTopSet(heavyLegs(logged).exercises[0], i))).toEqual([true, false]);
     expect(heavyLegs(b1).exercises[0].sets[0].targetReps).toEqual({ min: 6, max: 8 });
     // Never logged: the first sets find its weight, no top set.
     expect(heavyLegs(b3).exercises[0].sets[0].targetReps).toEqual({ min: 5, max: 8 });
@@ -292,6 +295,7 @@ describe('generateBlock: later blocks', () => {
     expect(heavyLegs(rotated).exercises[0].exerciseId).not.toBe(squat);
     expect(heavyLegs(rotated).exercises[0].sets[0].targetReps).toEqual(heavyLegs(rotated).exercises[0].sets[1].targetReps);
     expect(heavyLegs(rotated).exercises[0].note ?? '').not.toContain('top set');
+    expect(isTopSet(heavyLegs(rotated).exercises[0], 0)).toBe(false);
   });
 
   it('keeps every muscle inside its weekly band as blocks rotate', () => {

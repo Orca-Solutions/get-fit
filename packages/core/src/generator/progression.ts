@@ -1,6 +1,7 @@
 // Loads and progression from what was actually logged (docs/periodization.md §4.4).
-import type { Exercise, LoggedSet, Profile } from '../types.js';
+import type { Exercise, LoggedSet, PlannedExercise, Profile } from '../types.js';
 import { daysBetween } from '../dates.js';
+import { swapSlotKeys } from '../program.js';
 
 /** Epley with reps in reserve: e1RM = load × (1 + (reps + RIR) / 30). */
 export function e1rm(load: number, reps: number, rir = 0): number {
@@ -136,6 +137,29 @@ export function e1rmLoadHint(
   return { ...hint, suggest };
 }
 
+/**
+ * The weight hint for one planned movement, as the workout screen shows it (§4.4): last time's line and a
+ * suggestion, read from loading sessions only. Lifts that come round only some weeks (the Friday deadlift)
+ * take their load from e1RM (§4.8), and deload weeks suggest about 10% under the working weight (§4.5).
+ * `history` is the movement's sessions, newest first, leaving out the one being logged.
+ */
+export function workoutHint(
+  ex: Exercise,
+  pe: Pick<PlannedExercise, 'slot' | 'sets'>,
+  history: SessionSummary[],
+  o: { deload: boolean; isDeload: (h: SessionSummary) => boolean; date: string; profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>; bandName?: (id: string) => string },
+): WeightHint | null {
+  const loading = withoutDeloads(history, o.isDeload);
+  const last = pe.sets[pe.sets.length - 1];
+  const target = last?.targetReps ?? pe.sets[0]?.targetReps;
+  const line = SWAP_SLOTS.has(pe.slot)
+    ? e1rmLoadHint(ex, loading, target, last?.rir ?? 2, o.date, o.profile, o.bandName)
+    : lastTimeHint(ex, loading, target, o.bandName);
+  return o.deload ? deloadHint(ex, line, o.profile, { history: loading, target, date: o.date }) : line;
+}
+
+const SWAP_SLOTS = swapSlotKeys();
+
 /** Deload weeks lift about 10% lighter (§4.5). */
 export const DELOAD_LOAD = 0.9;
 /** Back-off sets after a heavy top set are about 10% lighter (§4.1). */
@@ -199,6 +223,15 @@ export function deloadHint(
   }
   const suggest = lighterLoad(ex, out.weight, profile, DELOAD_LOAD);
   return { ...out, suggest: suggest ?? undefined };
+}
+
+/**
+ * Set `i` of a planned movement is a heavy top set (§4.1): the first set, with a lower rep target than the sets
+ * after it. A top set's 3–5 reps can touch the back-off sets' 5–8, so the ranges' tops are compared.
+ */
+export function isTopSet(pe: Pick<PlannedExercise, 'sets'>, i: number): boolean {
+  const [a, b] = pe.sets;
+  return i === 0 && !!a?.targetReps && !!b?.targetReps && a.targetReps.max < b.targetReps.max;
 }
 
 /** The pre-filled weight for a back-off set after a top set at `topWeight`: about 10% lighter (§4.1). */

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, deloadSessionIds, logSet, sessionFor, startSession, unlogSet, updateSession } from '@orca-solutions/get-fit-core/client';
-import { backOffLoad, deloadHint, e1rmLoadHint, type Exercise, fmtNum, lastTimeHint, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory, swapSlotKeys, withoutDeloads } from '@orca-solutions/get-fit-core';
+import { backOffLoad, type Exercise, isTopSet, fmtNum, type LoggedSet, movementFor, type PlannedExercise, prescription, type Session, summarizeHistory, workoutHint } from '@orca-solutions/get-fit-core';
 import { useExercises, useProfile, useToday, useWakeLock } from '../../lib/hooks';
 import { Photo } from '../../ui/Photo';
 import { HistoryPanel } from './HistoryPanel';
@@ -133,8 +133,6 @@ function NextButton({ pe, next, sets, names, session, onClick }: { pe: PlannedEx
   );
 }
 
-const SWAP_SLOTS = swapSlotKeys();
-
 /** Rest after a set on a movement added mid-workout, which has no planned rest. */
 const DEFAULT_REST_SEC = 90;
 
@@ -149,20 +147,13 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement, de
   const history = useMemo(() => summarizeHistory(ex, allHistory.filter((s) => s.sessionId !== sessionId), profile), [ex, allHistory, sessionId, profile]);
   // The weight hint builds on loading weeks, not the deliberately light deload (§4.4).
   const deloads = useLiveQuery(() => deloadSessionIds(), []);
-  const loading = useMemo(() => withoutDeloads(history, (h) => !!deloads?.has(h.sessionId)), [history, deloads]);
   // Sets for this slot and this movement: after a swap, the other movement's sets stay in its own history.
   const mine = sets.filter((s) => s.plannedExerciseId === pe.id && s.exerciseId === ex.id).sort((a, b) => a.setIndex - b.setIndex);
   const [extraRows, setExtraRows] = useState(0);
   const [focusWeightRow, setFocusWeightRow] = useState<number | null>(null);
   const rowCount = Math.max(pe.sets.length + extraRows, mine.length ? mine[mine.length - 1].setIndex + 1 : 0);
-  const mainTarget = pe.sets[pe.sets.length - 1]?.targetReps ?? pe.sets[0]?.targetReps;
   const bandName = (id: string) => profile.bands.find((b) => b.id === id)?.name ?? 'band';
-  // Lifts that come round only some weeks (the Friday deadlift) take their load from e1RM (§4.8).
-  const lastTime = SWAP_SLOTS.has(pe.slot)
-    ? e1rmLoadHint(ex, loading, mainTarget, pe.sets[pe.sets.length - 1]?.rir ?? 2, sessionDate, profile, bandName)
-    : lastTimeHint(ex, loading, mainTarget, bandName);
-  // Deload weeks suggest about 10% under the working weight (§4.5).
-  const hint = deload ? deloadHint(ex, lastTime, profile, { history: loading, target: mainTarget, date: sessionDate }) : lastTime;
+  const hint = workoutHint(ex, pe, history, { deload, isDeload: (h) => !!deloads?.has(h.sessionId), date: sessionDate, profile, bandName });
   const allDone = mine.length >= pe.sets.length;
   const effort = mine.find((s) => s.effort)?.effort;
   // The plan is written at block start, so its "first time" advice goes stale once the movement has history.
@@ -173,7 +164,7 @@ function MovementLogger({ pe, ex, sessionId, sessionDate, sets, lastMovement, de
     const before = mine.filter((s) => s.setIndex < i);
     const src = before[before.length - 1] ?? mine[mine.length - 1];
     // After a heavy top set, the back-off sets start about 10% lighter (§4.1).
-    const topSet = src && i > src.setIndex && pe.sets[src.setIndex]?.targetReps && pe.sets[i]?.targetReps && pe.sets[src.setIndex].targetReps!.max < pe.sets[i].targetReps!.min;
+    const topSet = src && i > src.setIndex && isTopSet(pe, src.setIndex);
     if (src) return { weight: topSet ? backOffLoad(ex, src.weight, profile) ?? src.weight : src.weight, bandId: src.bandId, stanceSteps: src.stanceSteps };
     // Band movements start from last time's band and stance; weights stay blank on purpose.
     if (ex.weightConvention === 'band' && hint) return { bandId: hint.bandId, stanceSteps: hint.stanceSteps };
