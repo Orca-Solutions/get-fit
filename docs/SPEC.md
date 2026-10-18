@@ -8,7 +8,7 @@ What the app does, how its screens behave, the records it stores, and how it is 
 
 A single-user workout app for the gym, used mainly on a phone and also from a desktop browser. Three jobs, nothing else:
 
-1. **Say what to do today:** a generated plan in the spirit of AnatolyFit's "strange periodization".
+1. **Say what to do today:** a generated plan that follows "strange periodization" ([periodization.md](periodization.md)).
 2. **Record what was actually done:** reps and weight per set, with the plan pre-filled and easy to override.
 3. **Show the history of the movement in hand,** right where it's being logged.
 

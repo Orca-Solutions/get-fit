@@ -6,60 +6,44 @@ Each rule below is implemented unless it is marked **Not yet implemented**. Thos
 
 The program was built and tuned for one lifter, captured in the core's `referenceProfile()`: a beginner aiming for muscle, about 6 ft and 168 lb, who runs 2 miles every morning, trains at a Planet Fitness-style gym (Smith machine, no free barbells) and does core work at home with bands, kettlebells and an ab wheel. Where a rule depends on that setup, it says so.
 
-## Background: Anatoly and AnatolyFit
+## Background
 
-**The man.** "Anatoly" is the on-screen persona of **Vladimir Shmondenko**, a Ukrainian powerlifter born in 1999 who grew up on a farm and began training at 15 in a homemade gym built "from old tractor parts, car wheels, and bricks" [13].
-- **Competition:** as a junior he won the Kyiv Cup in 2017 and 2018 and took bronze at the 2018 GPA Worlds (teen 18–19). He competed at about 74–79 kg bodyweight [13][16].
-- **How he got famous:** his straight training videos went nowhere for three years. Fame came in 2019 with the prank format: he poses as a frail-looking gym janitor, then casually lifts enormous weights with a 32 kg mop and bucket [13][15].
-- **Since 2022:** he left Russia for Dubai after the invasion, switched to English-language pranks, and grew to tens of millions of followers. He trained with Arnold Schwarzenegger in July 2025 [13][15].
-- **Size:** about 180 cm and 78 kg [13][14].
-- **Lifts:** his brand claims gym bests of 320 kg deadlift, 225 kg squat and 150 kg bench [14][16]. Wikipedia lists 290 / 210 / 150 [13]. His best *competition* lifts are much lower: 245 kg deadlift, 150 kg squat and 122.5 kg bench [16]. Treat the gym numbers as marketing.
+The method follows a pattern common in strength training. Heavier periods use more working sets, fewer reps and a gradual increase in load; lighter periods use a wider variety of exercises and less weight on the bar. Heavy periods narrow the exercise list and push load, and lighter periods widen it and back off. Load goes up in small steps, and only while form holds: add weight while form stays stable, hold it when form starts to slip, and reduce it when fatigue changes the movement. A new week is not by itself a reason to add a plate.
 
-**His philosophy, in his brand's own words.** The persona rests on being strong without looking big. The blog says he "wanted to be strong" rather than pursue size, and credits technique, coordination and "generating force in complex positions" for his strength [14]. It also says plainly that "strength and size don't always increase at the same rate… muscle growth is significantly influenced by the total volume of hard work" [14]. Three statements map directly onto this document's rules:
-- **Two kinds of periods.** "During more intense periods, athletes use more working sets, fewer repetitions, and a gradual increase in load; in less intense periods, incorporate a wider variety of exercises and reduce the weight on the barbell." [17] This is the closest thing to a published definition of the method. Heavy periods narrow the exercise list and push load; lighter periods widen the exercise list and back off load.
-- **Form decides the load.** "Add weight as long as your form remains stable; maintain it when your form becomes unstable; reduce the load when fatigue begins to affect your movement." [17] This is autoregulation, and it shapes the progression rules in §4.4.
-- **Small steps, earned.** "You don't add a new weight plate to the bar just because a new week has started." Steps are 1.5–2.5 kg [17].
-
-**The products.** Several Anatoly-branded products exist, and it isn't clear which ones he runs day to day:
-- **anatolyfit.com:** a Dubai-based web subscription. In June 2026 it relaunched its program as "APS" (Anatoly's Power System), described as a weekly-refreshing personalized plan, and claims 90,000+ users [2][15][20]. On Trustpilot it scores 2.6/5 from 23 reviews; 70% of reviews are one-star, citing refund refusals, generic plans, missing progression guidance and, for a while, no phone app [3].
-- **"Anatoly Fitness":** an Android app published by Saasfactory LLC, rated 2.9 stars [18].
-- **shmondenkovladimir.com:** his own site, selling fixed 1–16-week PDF and video programs [19].
-
-**How this shapes the design (inference).** Anatoly's own method is a powerlifter's method: heavy top sets, alternating intensity periods, load earned by form, and a small exercise menu built around three competition lifts. AnatolyFit wraps that in a weekly-regenerated, general-population plan without exposing its load logic or the user's history. For a beginner whose goal is muscle, the useful parts are:
+That pattern comes from powerlifting, where it sits on heavy top sets and a small exercise menu built around three competition lifts. For a beginner whose goal is muscle, the useful parts are:
 - the heavy/light alternation, with variety concentrated in the lighter periods
 - form-gated small increments
 - the heavy-set-then-volume session shape
 
-What get-fit doesn't copy:
+What get-fit doesn't take:
 - powerlifting specificity (heavy singles and doubles from day one)
-- the opaque regeneration
+- a plan that changes with no visible logic behind it
 
-## 1. What AnatolyFit actually publishes
+## 1. The method in brief
 
-There is no published spec called "strange periodization." The phrase does not appear in AnatolyFit's materials or in the sports-science literature (searched 2026-10-07). What AnatolyFit does say publicly:
+There is no published spec called "strange periodization," and the phrase does not appear in the sports-science literature (searched 2026-10-07). As get-fit uses it, the method is:
 
-- **Phases alternate between heavy and volume work.** "One phase is aimed at developing strength under heavy loads. The other focuses on increasing volume." [1]
-- **Each session starts with one heavy, low-rep set and then builds volume.** "The workout begins with a 1×2 set, and the remaining exercises are used to increase the volume." Secondary lifts run 4×6 to 4×12 and accessories 3×10 to 3×15. [1]
-- **Anatoly's own week:** Monday legs; Wednesday chest & biceps; Friday back, triceps & shoulders; Saturday cardio. Grip, wrists, abs and core are trained separately or tacked on. [1]
-- **Weight goes up in small steps, and only with clean form.** "An increase in weight of 1.5–2.5 kg is considered progress if form remains consistent." Sets or exercises get added before weight does. [1]
-- **Exercise variety goes up when load goes down.** Lighter periods "incorporate a wider variety of exercises and reduce the weight on the barbell." [17]
-- **The plan refreshes every week.** "New plan every week… progressive overload built in." Sessions are shown as set and exercise counts, for example "17 Sets | 6 Exercises." [2]
-- **The app knows too little about the user's history.** Reviewers say it gives "no recommended weight increases… and no transparent overview of previous training data," and some got lopsided splits, such as two leg days and one upper day. [3]
+- **Phases alternate between heavy and volume work.** One phase develops strength under heavy loads; the other increases volume.
+- **Each heavy session starts with one heavy, low-rep set and then builds volume.** Secondary lifts run in the 6–12 rep range and accessories 10–15.
+- **Weight goes up in small steps, and only with clean form.** About 1.5–2.5 kg (3–5 lb) is progress if form stays the same. Sets or exercises get added before weight does.
+- **Exercise variety goes up when load goes down.**
+- **Sessions are sized in sets and movements,** for example "17 sets, 6 movements."
+- **The plan knows the lifter's history.** It recommends weight increases from what was logged, shows previous training next to the current set, and keeps the week balanced (never, say, two leg days and one upper day).
 
-**Inference:** the "strange" feel is most likely three things stacked together. Rep ranges change from session to session (undulating periodization). The movement chosen for a muscle changes from week to week, and changes most in lighter periods (conjugate-style variation). And the plan is regenerated weekly with no visible logic behind it. Each of these is a known method; AnatolyFit just doesn't show the rules. This document writes them down.
+**Inference:** the "strange" feel is most likely three things stacked together. Rep ranges change from session to session (undulating periodization). The movement chosen for a muscle changes from week to week, and changes most in lighter periods (conjugate-style variation). And the variation follows rules the lifter never sees. Each of these is a known method; this document writes the rules down.
 
 ## 2. What the research says about each lever
 
 | Lever | Evidence | What get-fit does with it |
 |---|---|---|
-| Undulating rep ranges vs. fixed (linear) | For hypertrophy, the method doesn't matter much when volume is equal [4][5]. For strength, undulating beats linear, but mostly in trained lifters (ES 0.61); in beginners the gap is near zero (ES 0.06) [5]. | Undulate, because it keeps training fresh and costs nothing. Don't expect magic: volume and progression drive growth. |
-| Rep range | Hypertrophy is similar from about 6 to 30 reps when sets are taken close to failure. Strength is best with heavier loads [6]. | Three zones: heavy, moderate, light. All three build muscle, and the heavy zone also builds strength. |
-| Weekly volume | More sets give more growth, with diminishing returns. Strength plateaus sooner than size. Indirect work counts for about half a set [7]. | Count sets per muscle, with indirect sets at 0.5, against a target band per muscle. |
-| Frequency | Once volume is equal, frequency matters little for size and somewhat for strength [7]. | The default split trains each muscle directly once a week. Arms also get indirect work on the other upper day. That costs little for size. |
-| Exercise variation | Systematic variation helps regional growth. Random or excessive rotation hurts [8]. | Rotate on a schedule, a few exercises at a time, within movement families. Never shuffle randomly. |
-| Effort (RIR) | Reps in reserve (RIR) is a valid way to set effort [9]. | Prescribe by RIR and log an optional one-tap effort rating. |
-| Deloads | Deloads are commonly pre-planned every 4–8 weeks by reducing volume, effort or frequency. They can also be triggered by fatigue [10][11]. | A planned deload in week 4 of each block. |
-| Daily running | Concurrent training slightly blunts growth of type I muscle fibers, and running blunts it more than cycling (SMD −0.81) [12]. | Runs stay outside the app and are never scheduled or changed. Running first thing and lifting later already separates the two; the plan keeps leg-day fatigue moderate. |
+| Undulating rep ranges vs. fixed (linear) | For hypertrophy, the method doesn't matter much when volume is equal [1][2]. For strength, undulating beats linear, but mostly in trained lifters (ES 0.61); in beginners the gap is near zero (ES 0.06) [2]. | Undulate, because it keeps training fresh and costs nothing. Don't expect magic: volume and progression drive growth. |
+| Rep range | Hypertrophy is similar from about 6 to 30 reps when sets are taken close to failure. Strength is best with heavier loads [3]. | Three zones: heavy, moderate, light. All three build muscle, and the heavy zone also builds strength. |
+| Weekly volume | More sets give more growth, with diminishing returns. Strength plateaus sooner than size. Indirect work counts for about half a set [4]. | Count sets per muscle, with indirect sets at 0.5, against a target band per muscle. |
+| Frequency | Once volume is equal, frequency matters little for size and somewhat for strength [4]. | The default split trains each muscle directly once a week. Arms also get indirect work on the other upper day. That costs little for size. |
+| Exercise variation | Systematic variation helps regional growth. Random or excessive rotation hurts [5]. | Rotate on a schedule, a few exercises at a time, within movement families. Never shuffle randomly. |
+| Effort (RIR) | Reps in reserve (RIR) is a valid way to set effort [6]. | Prescribe by RIR and log an optional one-tap effort rating. |
+| Deloads | Deloads are commonly pre-planned every 4–8 weeks by reducing volume, effort or frequency. They can also be triggered by fatigue [7][8]. | A planned deload in week 4 of each block. |
+| Daily running | Concurrent training slightly blunts growth of type I muscle fibers, and running blunts it more than cycling (SMD −0.81) [9]. | Runs stay outside the app and are never scheduled or changed. Running first thing and lifting later already separates the two; the plan keeps leg-day fatigue moderate. |
 | Core periodization | No good trials compare periodized and fixed core training. Core muscles respond to overload like any other muscle, and core work is low-fatigue (inference). | A light version of the same wave; see §4.2, Core day. |
 
 ## 3. The default schedule and settings
@@ -70,7 +54,7 @@ The default schedule comes from `neutralProfile()` and `referenceProfile()` in [
 |---|---|---|---|---|---|---|
 | **Chest & biceps** (gym) | — | **Legs** (gym) | — | **Back, triceps & shoulders** (gym) | **Core** (home), Saturday or Sunday | |
 
-- The upper-body pairing is Anatoly's own published split: chest and biceps, then back, triceps and shoulders, with grip, wrists and abs done separately [1]. The two days barely overlap, yet arms are hit twice: biceps directly on Monday and indirectly through Friday's rows, triceps directly on Friday and indirectly through Monday's presses.
+- The upper-body pairing is a common powerlifting split: chest and biceps, then back, triceps and shoulders, with grip, wrists and abs done separately. The two days barely overlap, yet arms are hit twice: biceps directly on Monday and indirectly through Friday's rows, triceps directly on Friday and indirectly through Monday's presses.
 - Legs sit midweek so a weekend long run doesn't land the day before leg day.
 - The core day is a Saturday–Sunday window: either day counts, and it isn't missed until Sunday ends.
 - Runs are not part of the plan. The generator never schedules, moves or adjusts them.
@@ -94,7 +78,7 @@ The default schedule comes from `neutralProfile()` and `referenceProfile()` in [
   - **I** (isolation)
   - **V** (variety: an extra movement that appears only on lighter days)
   - **G** (grip finisher) and **K** (core) for the finishers and the core day
-- **Zone:** each lifting day has a zone for that week. The zone sets the reps and, following Anatoly's two kinds of periods, the session's shape. Heavy days have fewer movements and more sets each; moderate and light days add a variety movement and a grip finisher, so variety widens as load drops [17]. The main lifts keep at least 3 sets on every loading day, so they get steady practice whatever the zone.
+- **Zone:** each lifting day has a zone for that week. The zone sets the reps and, following the two kinds of periods in the Background, the session's shape. Heavy days have fewer movements and more sets each; moderate and light days add a variety movement and a grip finisher, so variety widens as load drops. The main lifts keep at least 3 sets on every loading day, so they get steady practice whatever the zone.
 
 | Zone | Compound reps | Rest (compound / other) | Movements | Typical sets |
 |---|---|---|---|---|
@@ -118,7 +102,7 @@ Sets per slot:
 - **Isolation and variety slots ignore the zone's compound rep range.** They run 10–15 reps on H and M days and 12–20 on L days.
 - **A movement's own limits win.** Every catalog entry has a sensible rep range, and a slot's reps clamp into it, keeping a window of at least 2 reps (for example a split squat on an H day runs 8–10, and an assisted pull-up on an L day 10–12).
 - **Light-day stand-ins:** Romanian deadlifts and other axial hinges are never programmed on an L day or in a deload week. The generator swaps in a hip-extension or hinge-variant movement instead, such as a back extension, a hip thrust or a cable pull-through. With the leg-day hinge on H and M weeks only, the Romanian deadlift runs twice per block (§4.8).
-- **Anatoly-style top set:** from block 3 on, the P slot on an H day opens with one set of 3–5 reps at RIR 2, followed by its other sets as back-off sets about 10% lighter (the app pre-fills that weight, §4.4). Only a settled lift gets one: the lifter has logged it before and it held the same slot the block before. A lift new to the lifter or to the slot keeps plain working sets while its weight is found.
+- **Heavy top set:** from block 3 on, the P slot on an H day opens with one set of 3–5 reps at RIR 2, followed by its other sets as back-off sets about 10% lighter (the app pre-fills that weight, §4.4). Only a settled lift gets one: the lifter has logged it before and it held the same slot the block before. A lift new to the lifter or to the slot keeps plain working sets while its weight is found.
 - **Volume ramp across blocks:** from block 3 on, heavy days add one set to an isolation slot per block (block 3: one slot, block 4: two, block 5 onward: three). A block that follows one where any session was marked "beat up" skips the ramp.
 - **Grip & forearm finishers:** the M and L days end with a 2-set grip or forearm finisher (about 4 minutes). The H day, already the biggest session, gets none, and neither does a deload week. The finisher always comes last, so pulling work is never done with tired hands. It rotates through the grip families from session to session:
   - support (dead hang, farmer's carry)
@@ -202,7 +186,7 @@ Monday runs P, C, I, I, I, C: slot 3 is a fly and slot 6 a third press, so chest
 - **Under:** a set is added to an isolation or variety slot, then a compound, in a session with room under 22 sets, as long as it pushes no other muscle over. Failing that, a 2-set variety movement is added on a moderate or light day with room.
 - **Floors:** major muscles should not drop below 4 sets in any week, and calves, rear delts, forearms and lower back below 2. A week under a floor is reported as a warning.
 
-A missed session just means fewer sets that week; nothing carries over. Forearms have no target because grip finishers and pulling work cover them, and daily running counts for something on calves. The core day is checked differently: every session contains all 8 dynamics. Its sets count toward lower back only (the hip-extension slot's bird dogs, supermen and swings), never toward the lifting targets. This check is what prevents the lopsided weeks AnatolyFit reviewers describe.
+A missed session just means fewer sets that week; nothing carries over. Forearms have no target because grip finishers and pulling work cover them, and daily running counts for something on calves. The core day is checked differently: every session contains all 8 dynamics. Its sets count toward lower back only (the hip-extension slot's bird dogs, supermen and swings), never toward the lifting targets. This check is what prevents lopsided weeks, such as two leg days and one upper day.
 
 ### 4.3 Exercise selection and variety
 
@@ -220,7 +204,7 @@ The highest-scoring candidate wins. Scoring:
 
 Rotation rules:
 - **Base slots keep the same exercise for the whole block,** so progress is measurable.
-- **V slots are where novelty lives.** They draw from the day's pool, avoid repeating a family already in the session, and can change every week. They only appear on M and L days, which is Anatoly's "wider variety when the bar gets lighter."
+- **V slots are where novelty lives.** They draw from the day's pool, avoid repeating a family already in the session, and can change every week. They only appear on M and L days, which is the Background's wider variety as the bar gets lighter.
 - **At each block boundary,** each lifting day rotates one isolation slot, and on even-numbered blocks one compound slot too (secondary compounds before the primary lift, so the main lift sticks around longest). Any exercise that has **stalled** also rotates out: its best e1RM in the newest block it was trained in is not at least 1% above its best in the block before. Blocks compare like for like, since each one covers a heavy, a moderate and a light day; deload weeks and sessions done off the plan don't count, and each of the two blocks needs at least 2 loading sessions with the lift, or it isn't stalled.
 - **A main lift with nowhere else to go moves along its own family.** When a compound slot rotates and every candidate is in the same family as the outgoing movement, the next one in catalog order wins (for the shoulder press: Smith overhead press, then seated dumbbell press, then machine press). A load-type bonus, such as a barbell kit's, still outranks that order.
 - **Main presses stay two-sided.** Press slots on P and C roles skip free-standing one-arm presses, so Friday's shoulder press moves from the Smith overhead press to the seated dumbbell press at block 4 rather than to a half-kneeling single-arm press. One-arm rows and single-arm pulldowns still count as main lifts.
@@ -414,7 +398,7 @@ The golden test (`packages/core/tests/golden.test.ts`) pins blocks 1 to 8 of thi
 
 The places where the rules could reasonably have gone another way, and what was chosen:
 
-1. **Upper pairing:** Monday chest & biceps and Friday back, triceps & shoulders (Anatoly's own split), rather than push and pull days.
+1. **Upper pairing:** Monday chest & biceps and Friday back, triceps & shoulders rather than push and pull days.
 2. **Core day:** a weekend window, Saturday or Sunday.
 3. **Core periodization:** the light wave in §4.2, with a flat option in Settings.
 4. **Heavy top set:** one set of 3–5 reps on heavy days from block 3, rather than from day one or never.
@@ -428,31 +412,20 @@ The places where the rules could reasonably have gone another way, and what was 
 
 ## Sources
 
-1. AnatolyFit, "How Does Anatoly Train? Vladimir Shmondenko's Real Training Routine." https://anatolyfit.com/blog/how-does-anatoly-train-vladimir-shmondenko-s-real-training-routine
-2. AnatolyFit homepage (APS program description). https://anatolyfit.com/
-3. Trustpilot reviews of AnatolyFit. https://www.trustpilot.com/review/anatolyfit.com
-4. Grgic J, et al. Effects of linear and daily undulating periodized resistance training programs on measures of muscle hypertrophy: a systematic review and meta-analysis. *PeerJ* 2017;5:e3695. https://peerj.com/articles/3695
-5. Moesgaard L, Beck MM, Christiansen L, Aagaard P, Lundbye-Jensen J. Effects of periodization on strength and muscle hypertrophy in volume-equated resistance training programs: a systematic review and meta-analysis. *Sports Med* 2022;52(7):1647–1666. Summary: https://sci-sport.com/en/effects-intensity-volume-periodization-strength-hypertrophy-238/
-6. Schoenfeld BJ, et al. Loading recommendations for muscle strength, hypertrophy, and local endurance: a re-examination of the repetition continuum. *Sports* 2021;9(2):32. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7927075/
-7. Pelland JC, et al. The resistance training dose-response: meta-regressions exploring the effects of weekly volume and frequency on muscle hypertrophy and strength gain. 2024 preprint, SportRxiv. Summary: https://biolayne.com/reps/issue-31/the-king-of-volume-metas/
-8. Kassiano W, et al. Does varying resistance exercises promote superior muscle hypertrophy and strength gains? A systematic review. *J Strength Cond Res* 2022;36(6):1753–1762. https://lida.sport-iat.de/ta/Record/4077216?lng=en
-9. Zourdos MC, Helms ER, et al. Novel resistance training-specific rating of perceived exertion scale measuring repetitions in reserve. *J Strength Cond Res* 2016;30(1):267–275.
-10. Bell L, et al. Integrating deloading into strength and physique sports training programmes: an international Delphi consensus approach. *Sports Med Open* 2023;9(1). https://doi.org/10.1186/s40798-023-00633-0
-11. Bell L, et al. A practical approach to deloading: recommendations and considerations for strength and physique sports. *Strength Cond J* 2025;47(3). https://shura.shu.ac.uk/35313/
-12. Schumann M, et al. Compatibility of concurrent aerobic and strength training for skeletal muscle size and function: an updated systematic review and meta-analysis. *Sports Med* 2022;52(10):2391–2403. https://doi.org/10.1007/s40279-022-01688-x
-13. Wikipedia, "Vladimir Shmondenko (weightlifter)." https://en.wikipedia.org/wiki/Vladimir_Shmondenko_(weightlifter)
-14. AnatolyFit, "How Is Anatoly So Strong but Not Big? His Real Height, Weight, and Body Type Explained." https://anatolyfit.com/blog/how-is-anatoly-so-strong-but-not-big-his-real-height-weight-and-body-type-explained
-15. AnatolyFit, "Anatoly's Story: From a 15-Year-Old Blogger to Training With Arnold Schwarzenegger." https://anatolyfit.com/blog/anatoly-s-full-story-from-a-15-year-old-blogger-with-no-views-to-training-with-arnold-schwarzenegger
-16. AnatolyFit, "Anatoly's Real Strength Numbers: Bench, Squat, and Deadlift." https://anatolyfit.com/blog/anatoly-s-real-strength-numbers-bench-squat-and-deadlift
-17. AnatolyFit, "What Is Anatoly's Secret? The Strength Behind the Mop." https://anatolyfit.com/blog/what-is-anatoly-s-secret-the-real-strength-behind-the-mop-and-why-it-s-more-than-a-joke
-18. Google Play, "Anatoly Fitness - Workouts" (Saasfactory LLC). https://play.google.com/store/apps/details?id=app.anatoly.fitness
-19. Vladimir Shmondenko programs site. https://shmondenkovladimir.com/
-20. Manila Times newswire, "Anatoly Fit Launches APS System…" 2026-06-19. https://www.manilatimes.net/2026/06/19/tmt-newswire/plentisoft/anatoly-fit-launches-aps-system-to-streamline-its-online-workout-program/2369179
+1. Grgic J, et al. Effects of linear and daily undulating periodized resistance training programs on measures of muscle hypertrophy: a systematic review and meta-analysis. *PeerJ* 2017;5:e3695. https://peerj.com/articles/3695
+2. Moesgaard L, Beck MM, Christiansen L, Aagaard P, Lundbye-Jensen J. Effects of periodization on strength and muscle hypertrophy in volume-equated resistance training programs: a systematic review and meta-analysis. *Sports Med* 2022;52(7):1647–1666. Summary: https://sci-sport.com/en/effects-intensity-volume-periodization-strength-hypertrophy-238/
+3. Schoenfeld BJ, et al. Loading recommendations for muscle strength, hypertrophy, and local endurance: a re-examination of the repetition continuum. *Sports* 2021;9(2):32. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7927075/
+4. Pelland JC, et al. The resistance training dose-response: meta-regressions exploring the effects of weekly volume and frequency on muscle hypertrophy and strength gain. 2024 preprint, SportRxiv. Summary: https://biolayne.com/reps/issue-31/the-king-of-volume-metas/
+5. Kassiano W, et al. Does varying resistance exercises promote superior muscle hypertrophy and strength gains? A systematic review. *J Strength Cond Res* 2022;36(6):1753–1762. https://lida.sport-iat.de/ta/Record/4077216?lng=en
+6. Zourdos MC, Helms ER, et al. Novel resistance training-specific rating of perceived exertion scale measuring repetitions in reserve. *J Strength Cond Res* 2016;30(1):267–275.
+7. Bell L, et al. Integrating deloading into strength and physique sports training programmes: an international Delphi consensus approach. *Sports Med Open* 2023;9(1). https://doi.org/10.1186/s40798-023-00633-0
+8. Bell L, et al. A practical approach to deloading: recommendations and considerations for strength and physique sports. *Strength Cond J* 2025;47(3). https://shura.shu.ac.uk/35313/
+9. Schumann M, et al. Compatibility of concurrent aerobic and strength training for skeletal muscle size and function: an updated systematic review and meta-analysis. *Sports Med* 2022;52(10):2391–2403. https://doi.org/10.1007/s40279-022-01688-x
 
 **Inferred rather than cited:**
-- How Anatoly's powerlifting method relates to the AnatolyFit product, and which parts to copy (Background)
-- The reading of what makes AnatolyFit feel "strange" (§1)
-- The specific zone rep ranges, the role × zone set table, the day slot templates and the V-slot mechanism (synthesized from refs 4–8, 17 and the target session size)
+- The description of the method and which parts of it to keep (Background, §1)
+- The reading of what makes the method feel "strange" (§1)
+- The specific zone rep ranges, the role × zone set table, the day slot templates and the V-slot mechanism (synthesized from refs 1–5 and the target session size)
 - The weekly floors and the per-muscle weekly targets
 - The handling of missed sessions
 - The 8-dynamic core template, the core wave and the decision to keep it
