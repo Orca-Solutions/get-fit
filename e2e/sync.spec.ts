@@ -77,6 +77,8 @@ test('sets logged and edited offline survive a reload and all reach the server o
   await expect.poll(async () => wed(await liveSets(phone.page)).find((s) => s.plannedExerciseId === `${WED}-0` && s.setIndex === 0)?.reps).toBe(9);
   await phone.page.getByRole('button', { name: /^Next/ }).click();
   await expect(phone.page).toHaveURL(/m=1/);
+  // The next movement has rendered once its set 1 can be logged (the first movement's set 1 shows Undo).
+  await expect(phone.page.getByRole('button', { name: 'Log set 1', exact: true })).toBeVisible();
   await logSet(phone.page, 1, { weight: '20', reps: '12' });
   await logSet(phone.page, 2);
 
