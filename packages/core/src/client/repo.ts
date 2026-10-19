@@ -378,18 +378,17 @@ export async function exportSetsCsv(d: GetFitDB = db): Promise<string> {
 /**
  * Restore a backup made by exportAll, in one transaction. Rows merge by id and only replace older
  * copies, so logged sets already on this device are never removed; rows missing required fields are
- * skipped. On a device with no logged sets yet, the backup's profile and plan replace the ones this
- * device made for itself: they're re-stamped so they win everywhere, and the device's own blocks and
- * workouts are deleted through sync (not just locally), so other devices don't keep both plans.
+ * skipped. On a device with no logged sets that has never synced, the backup's profile and plan replace
+ * the ones this device made for itself. They keep their own timestamps, so once the device connects,
+ * anything changed on the account since the backup still wins.
  * Throws on a file that isn't a get-fit backup.
  */
 export async function importAll(data: { app?: string; tables: Record<string, unknown> }, d: GetFitDB = db): Promise<{ imported: number; skipped: number }> {
   if (!data || typeof data.tables !== 'object' || data.tables === null || (data.app !== undefined && data.app !== 'get-fit')) throw new Error('Not a get-fit backup.');
-  const t = nowIso();
   let imported = 0;
   let skipped = 0;
-  // A device with nothing logged takes the backup's plan as its own, unless it's already connected to
-  // sync: then its plan is everyone's, and a re-stamped old plan would replace it on every device.
+  // A device with nothing logged takes the backup's plan as its own, unless it's connected to sync: then its
+  // plan is everyone's. An unconnected device's own plan never left it, so it's simply replaced here.
   // Checked before the transaction, which can't wait on the app's sign-in headers.
   const connected = await isSyncConnected(d);
   await d.transaction('rw', [...SYNC_TABLES.map((name) => d.table(name)), d.meta], async () => {
@@ -410,15 +409,12 @@ export async function importAll(data: { app?: string; tables: Record<string, unk
         const row = r as { id: string; updatedAt: string };
         kept.add(row.id);
         const local = (await table.get(row.id)) as { updatedAt: string } | undefined;
-        if (force) await table.put({ ...row, updatedAt: stampAfter(local?.updatedAt) });
+        if (force) await table.put(row);
         else if (!local || Date.parse(row.updatedAt) > Date.parse(local.updatedAt)) await table.put(row);
         else continue;
         imported++;
       }
-      if (force && name !== 'profile') {
-        const mine = (await table.toArray()) as { id: string; updatedAt: string; deletedAt?: string | null }[];
-        for (const m of mine) if (!kept.has(m.id) && !m.deletedAt) await table.put({ ...m, deletedAt: t, updatedAt: stampAfter(m.updatedAt) });
-      }
+      if (force && name !== 'profile') await table.filter((m: { id: string }) => !kept.has(m.id)).delete();
     }
     // Imported rows keep their old timestamps: reset the push watermark so the next sync sends them all.
     await d.meta.delete('lastPushedAt');

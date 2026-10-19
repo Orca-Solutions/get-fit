@@ -299,20 +299,21 @@ describe('repo', () => {
     await expect(importAll({ app: 'get-fit', tables: { loggedSets: 'oops' } }, phone)).rejects.toThrow('get-fit backup');
   });
 
-  it("restoring on a new device retires the plan it made for itself, through sync", async () => {
+  it('restoring on a new device replaces the plan it made for itself, keeping the backup\'s timestamps', async () => {
     const source = await fresh();
     await ensurePlan('2026-10-14', source);
     const backup = JSON.parse(JSON.stringify(await exportAll(source)));
 
-    // This device was opened weeks later and planned its own blocks (possibly already pushed).
+    // This device was opened weeks later and planned its own blocks, which never left it.
     const phone = await fresh();
-    await ensurePlan('2026-11-25', phone);
+    const own = await ensurePlan('2026-11-25', phone);
+    await new Promise((r) => setTimeout(r, 5));
     await importAll(backup, phone);
-    const own = (await phone.blocks.toArray()).filter((b) => !backup.tables.blocks.some((x: { id: string }) => x.id === b.id));
-    expect(own.length).toBeGreaterThan(0);
-    // Deleted with a fresh timestamp, so the deletion reaches the server and other devices.
-    expect(own.every((b) => b.deletedAt && Date.parse(b.updatedAt) > Date.parse(backup.exportedAt))).toBe(true);
-    expect((await liveBlocks(phone)).some((b) => b.id === 'block-2026-10-12')).toBe(true);
+    expect(await phone.blocks.get(own.id)).toBeUndefined();
+    expect(await phone.plannedWorkouts.where('blockId').equals(own.id).count()).toBe(0);
+    // Not re-stamped as newest, so whatever the account changed since the backup still wins when this device connects.
+    const restored = backup.tables.blocks.find((b: { id: string }) => b.id === 'block-2026-10-12');
+    expect((await phone.blocks.get('block-2026-10-12'))!.updatedAt).toBe(restored.updatedAt);
   });
 
   it('restoring on a device already connected to sync leaves the shared plan alone', async () => {
