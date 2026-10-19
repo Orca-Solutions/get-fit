@@ -9,6 +9,7 @@ export * from './data/muscleGroups.js';
 export * from './dates.js';
 export * from './ids.js';
 export * from './format.js';
+export * from './csv.js';
 export * from './kettlebells.js';
 export * from './session.js';
 export * from './validate.js';
