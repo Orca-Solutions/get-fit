@@ -876,7 +876,7 @@ A rebuild (`plannedAhead` or `regenerateUpcoming`) updates the block's `baseSlot
 - Throws `Error('Not a get-fit backup.')` when `tables` is missing, `app` is present and not `'get-fit'`, or a table's value is not an array. Tables absent from the file are left alone; unknown tables are ignored. The sync server's `/api/export` output (which has no `app` field) is accepted.
 - Rows that fail `validRow` are skipped and counted in `skipped`.
 - Normally rows merge by id: a row is written only when it is new or its `updatedAt` is strictly newer than the local copy. Nothing local is removed, so logged sets on the device are kept.
-- When the device has no live logged sets and isn't connected to sync (`isSyncConnected` is false), the backup's plan replaces the device's own: `profile`, `blocks` and `plannedWorkouts` rows from the file are written with `updatedAt` set to now, so they win everywhere, and the device's own blocks and workouts not in the file are soft-deleted (so the deletion syncs too).
+- When the device has no live logged sets and isn't connected to sync (`isSyncConnected` is false), the backup's plan replaces the device's own: `profile`, `blocks` and `plannedWorkouts` rows from the file are written as they are, keeping their `updatedAt`, and the device's own blocks and workouts not in the file are removed (they never left the device). Once the device connects, anything changed on the account since the backup is newer and wins.
 - Clears `lastPushedAt`, so the next sync pushes every record; then calls `getProfile`, `ensurePlan(today())` and schedules a sync.
 
 ### Sync engine

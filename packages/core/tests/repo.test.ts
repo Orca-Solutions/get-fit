@@ -14,6 +14,7 @@ async function fresh() {
 }
 
 describe('repo', () => {
+  afterEach(() => vi.useRealTimers());
   it('plans the current block plus the next one, and never stacks blocks when one starts later', async () => {
     const d = await fresh();
     const b = await ensurePlan(today(), d);
@@ -56,8 +57,6 @@ describe('repo', () => {
   });
 
   describe('stalls at block boundaries', () => {
-    afterEach(() => vi.useRealTimers());
-
     /** Log the squat on every leg day of blocks 1 and 2 (heavy, moderate, light, deload weights), then start block 3. */
     async function liveTwoBlocks(block2: number[]) {
       const d = await fresh();
@@ -196,12 +195,16 @@ describe('repo', () => {
 
   it('tells the hint when a movement\'s time off began, from logged work only', async () => {
     const d = await fresh();
-    const start = mondayOf(today());
-    await ensurePlan(start, d);
+    // A set is dated the day it's logged, so the clock is set to each workout's day (and the test doesn't depend on today's).
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-12T12:00:00Z') });
+    await ensurePlan('2026-10-12', d);
     const legs = (await d.plannedWorkouts.toArray()).filter((x) => x.sessionType === 'legs' && !x.isDeload).sort((a, b) => a.date.localeCompare(b.date));
     const [wk1, wk2, wk3] = legs;
     const squat = wk1.exercises[0].exerciseId;
-    const log = async (w: typeof wk1, i = 0) => logSet(await startSession(w.id, w.date, d), w.exercises[i].exerciseId, w.exercises[i].id, 0, { weight: 50, reps: 8 }, d);
+    const log = async (w: typeof wk1, i = 0) => {
+      vi.setSystemTime(new Date(`${w.date}T17:00:00Z`));
+      return logSet(await startSession(w.id, w.date, d), w.exercises[i].exerciseId, w.exercises[i].id, 0, { weight: 50, reps: 8 }, d);
+    };
     await log(wk1);
     // Week 2's legs day was opened but nothing was logged: time off from the last log, though the app was in use.
     await startSession(wk2.id, wk2.date, d);
@@ -296,20 +299,21 @@ describe('repo', () => {
     await expect(importAll({ app: 'get-fit', tables: { loggedSets: 'oops' } }, phone)).rejects.toThrow('get-fit backup');
   });
 
-  it("restoring on a new device retires the plan it made for itself, through sync", async () => {
+  it('restoring on a new device replaces the plan it made for itself, keeping the backup\'s timestamps', async () => {
     const source = await fresh();
     await ensurePlan('2026-10-14', source);
     const backup = JSON.parse(JSON.stringify(await exportAll(source)));
 
-    // This device was opened weeks later and planned its own blocks (possibly already pushed).
+    // This device was opened weeks later and planned its own blocks, which never left it.
     const phone = await fresh();
-    await ensurePlan('2026-11-25', phone);
+    const own = await ensurePlan('2026-11-25', phone);
+    await new Promise((r) => setTimeout(r, 5));
     await importAll(backup, phone);
-    const own = (await phone.blocks.toArray()).filter((b) => !backup.tables.blocks.some((x: { id: string }) => x.id === b.id));
-    expect(own.length).toBeGreaterThan(0);
-    // Deleted with a fresh timestamp, so the deletion reaches the server and other devices.
-    expect(own.every((b) => b.deletedAt && Date.parse(b.updatedAt) > Date.parse(backup.exportedAt))).toBe(true);
-    expect((await liveBlocks(phone)).some((b) => b.id === 'block-2026-10-12')).toBe(true);
+    expect(await phone.blocks.get(own.id)).toBeUndefined();
+    expect(await phone.plannedWorkouts.where('blockId').equals(own.id).count()).toBe(0);
+    // Not re-stamped as newest, so whatever the account changed since the backup still wins when this device connects.
+    const restored = backup.tables.blocks.find((b: { id: string }) => b.id === 'block-2026-10-12');
+    expect((await phone.blocks.get('block-2026-10-12'))!.updatedAt).toBe(restored.updatedAt);
   });
 
   it('restoring on a device already connected to sync leaves the shared plan alone', async () => {

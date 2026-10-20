@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { movementFor } from '@orca-solutions/get-fit-core';
-import { ensurePlan, getProfile, GetFitDB, getSyncStatus, liveBlocks, logSet, put, regenerateUpcoming, setFlagIn, setSyncToken, startSession, syncNow, updateSession } from '@orca-solutions/get-fit-core/client';
+import { ensurePlan, exportAll, getProfile, GetFitDB, getSyncStatus, importAll, liveBlocks, logSet, put, regenerateUpcoming, setFlagIn, setSyncToken, startSession, syncNow, updateSession } from '@orca-solutions/get-fit-core/client';
 import { openSqliteStore as openStore } from '@orca-solutions/get-fit-core/sqlite';
 import { createApp } from '../app.js';
 
@@ -278,6 +278,55 @@ describe('syncNow', () => {
     await laptop.sync();
     expect((await laptop.db.loggedSets.get('l1'))?.weight).toBe(50);
     expect((await phone.db.loggedSets.get('l1'))?.weight).toBe(50);
+  });
+
+  it('a plan rebuilt on the right clock wins over the plan a fast-clock device made', async () => {
+    const server = makeServer();
+    const phone = await makeDevice(server.fetch);
+    const laptop = await makeDevice(server.fetch);
+    // The laptop's clock is a day fast when it plans the block.
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 86_400_000 });
+    const block = await ensurePlan('2026-10-14', laptop.db);
+    await laptop.sync();
+    vi.useRealTimers();
+    // The phone, on the right time, avoids the squat and rebuilds the rest of the block.
+    await phone.sync();
+    const legs = (await phone.db.plannedWorkouts.where('blockId').equals(block.id).toArray()).find((w) => w.sessionType === 'legs')!;
+    const squat = legs.exercises[0].exerciseId;
+    await setFlagIn(phone.db, squat, { avoid: true });
+    await regenerateUpcoming(legs.date, phone.db);
+    const rebuilt = (await phone.db.plannedWorkouts.get(legs.id))!;
+    expect(rebuilt.exercises[0].exerciseId).not.toBe(squat);
+    await phone.sync();
+    await laptop.sync();
+    await phone.sync();
+    for (const device of [phone, laptop]) {
+      expect((await device.db.plannedWorkouts.get(legs.id))!.exercises).toEqual(rebuilt.exercises);
+      expect((await device.db.blocks.get(block.id))!.updatedAt).toBe((await phone.db.blocks.get(block.id))!.updatedAt);
+    }
+  });
+
+  it('a backup restored on a new phone before it connects never undoes what changed on the account since', async () => {
+    const server = makeServer();
+    const laptop = await makeDevice(server.fetch);
+    await ensurePlan('2026-10-14', laptop.db);
+    await put('profile', { ...(await getProfile(laptop.db)), bodyweightLb: 170 }, laptop.db);
+    await laptop.sync();
+    const backup = JSON.parse(JSON.stringify(await exportAll(laptop.db)));
+    await new Promise((r) => setTimeout(r, 5));
+    await put('profile', { ...(await getProfile(laptop.db)), bodyweightLb: 190 }, laptop.db);
+    await laptop.sync();
+
+    // A new phone restores the older backup, then signs in.
+    const phone = await makeDevice(server.fetch, null);
+    await ensurePlan('2026-10-14', phone.db);
+    await importAll(backup, phone.db);
+    expect((await getProfile(phone.db)).bodyweightLb).toBe(170);
+    await setSyncToken(TOKEN, phone.db);
+    await phone.sync();
+    await laptop.sync();
+    expect((await getProfile(phone.db)).bodyweightLb).toBe(190);
+    expect((await getProfile(laptop.db)).bodyweightLb).toBe(190);
   });
 
   it('still uploads sets logged after the clock is set back from running fast', async () => {

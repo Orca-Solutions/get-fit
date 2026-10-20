@@ -39,6 +39,12 @@ export async function put<T extends { id: string; createdAt: string; updatedAt: 
   return stamped;
 }
 
+/** Many rows stamped as put() stamps one: each later than its stored copy. For plan writes, which save a block at once. */
+async function stampedAfterStored<T extends { id: string; updatedAt: string }>(table: SyncTable, rows: T[], d: GetFitDB): Promise<T[]> {
+  const stored = (await d.table(table).bulkGet(rows.map((r) => r.id))) as ({ updatedAt?: string } | undefined)[];
+  return rows.map((r, i) => ({ ...r, updatedAt: stampAfter(stored[i]?.updatedAt) }));
+}
+
 export async function getProfile(d: GetFitDB = db): Promise<Profile> {
   const p = await d.profile.get(PROFILE_ID);
   if (p) return p;
@@ -136,8 +142,8 @@ async function dropBlock(block: Block, d: GetFitDB): Promise<void> {
   const t = nowIso();
   const workouts = await d.plannedWorkouts.where('blockId').equals(block.id).toArray();
   await d.transaction('rw', d.blocks, d.plannedWorkouts, async () => {
-    await d.blocks.put({ ...block, deletedAt: t, updatedAt: t });
-    await d.plannedWorkouts.bulkPut(workouts.map((w) => ({ ...w, deletedAt: t, updatedAt: t })));
+    await d.blocks.bulkPut(await stampedAfterStored('blocks', [{ ...block, deletedAt: t }], d));
+    await d.plannedWorkouts.bulkPut(await stampedAfterStored('plannedWorkouts', workouts.map((w) => ({ ...w, deletedAt: t })), d));
   });
 }
 
@@ -177,10 +183,12 @@ async function generatorInput(startDate: string, previousBlock: Block | undefine
 
 async function createBlock(startDate: string, previousBlock: Block | undefined, d: GetFitDB, plannedAhead = false): Promise<Block> {
   const { block, workouts } = generateBlock(await generatorInput(startDate, previousBlock, d));
-  const stored = plannedAhead ? { ...block, plannedAhead: true } : block;
+  let stored = plannedAhead ? { ...block, plannedAhead: true } : block;
   await d.transaction('rw', d.blocks, d.plannedWorkouts, async () => {
+    // Ids come from the dates, so a block planned again (after one was dropped) replaces the stored copy.
+    [stored] = await stampedAfterStored('blocks', [stored], d);
     await d.blocks.put(stored);
-    await d.plannedWorkouts.bulkPut(workouts);
+    await d.plannedWorkouts.bulkPut(await stampedAfterStored('plannedWorkouts', workouts, d));
   });
   scheduleSync();
   return stored;
@@ -192,14 +200,14 @@ async function rebuildFrom(block: Block, from: string, d: GetFitDB, keepPlannedA
   const { block: fresh, workouts } = generateBlock(await generatorInput(block.startDate, previous, d));
   const existing = (await d.plannedWorkouts.where('blockId').equals(block.id).toArray()).filter((w) => !w.deletedAt);
   const started = await workoutsWithLogs(d);
-  const t = nowIso();
+  const rebuilt = existing.flatMap((old) => {
+    if (old.date < from || started.has(old.id)) return [];
+    const w = workouts.find((x) => x.date === old.date && x.sessionType === old.sessionType);
+    return w ? [{ ...w, id: old.id, blockId: block.id, createdAt: old.createdAt }] : [];
+  });
   await d.transaction('rw', d.blocks, d.plannedWorkouts, async () => {
-    await d.blocks.put({ ...block, baseSlots: fresh.baseSlots, rationale: fresh.rationale, generatorVersion: fresh.generatorVersion, plannedAhead: keepPlannedAhead && !!block.plannedAhead, updatedAt: t });
-    for (const old of existing) {
-      if (old.date < from || started.has(old.id)) continue;
-      const w = workouts.find((x) => x.date === old.date && x.sessionType === old.sessionType);
-      if (w) await d.plannedWorkouts.put({ ...w, id: old.id, blockId: block.id, createdAt: old.createdAt, updatedAt: t });
-    }
+    await d.blocks.bulkPut(await stampedAfterStored('blocks', [{ ...block, baseSlots: fresh.baseSlots, rationale: fresh.rationale, generatorVersion: fresh.generatorVersion, plannedAhead: keepPlannedAhead && !!block.plannedAhead }], d));
+    await d.plannedWorkouts.bulkPut(await stampedAfterStored('plannedWorkouts', rebuilt, d));
   });
   scheduleSync();
 }
@@ -370,18 +378,17 @@ export async function exportSetsCsv(d: GetFitDB = db): Promise<string> {
 /**
  * Restore a backup made by exportAll, in one transaction. Rows merge by id and only replace older
  * copies, so logged sets already on this device are never removed; rows missing required fields are
- * skipped. On a device with no logged sets yet, the backup's profile and plan replace the ones this
- * device made for itself: they're re-stamped so they win everywhere, and the device's own blocks and
- * workouts are deleted through sync (not just locally), so other devices don't keep both plans.
+ * skipped. On a device with no logged sets that has never synced, the backup's profile and plan replace
+ * the ones this device made for itself. They keep their own timestamps, so once the device connects,
+ * anything changed on the account since the backup still wins.
  * Throws on a file that isn't a get-fit backup.
  */
 export async function importAll(data: { app?: string; tables: Record<string, unknown> }, d: GetFitDB = db): Promise<{ imported: number; skipped: number }> {
   if (!data || typeof data.tables !== 'object' || data.tables === null || (data.app !== undefined && data.app !== 'get-fit')) throw new Error('Not a get-fit backup.');
-  const t = nowIso();
   let imported = 0;
   let skipped = 0;
-  // A device with nothing logged takes the backup's plan as its own, unless it's already connected to
-  // sync: then its plan is everyone's, and a re-stamped old plan would replace it on every device.
+  // A device with nothing logged takes the backup's plan as its own, unless it's connected to sync: then its
+  // plan is everyone's. An unconnected device's own plan never left it, so it's simply replaced here.
   // Checked before the transaction, which can't wait on the app's sign-in headers.
   const connected = await isSyncConnected(d);
   await d.transaction('rw', [...SYNC_TABLES.map((name) => d.table(name)), d.meta], async () => {
@@ -402,15 +409,12 @@ export async function importAll(data: { app?: string; tables: Record<string, unk
         const row = r as { id: string; updatedAt: string };
         kept.add(row.id);
         const local = (await table.get(row.id)) as { updatedAt: string } | undefined;
-        if (force) await table.put({ ...row, updatedAt: t });
+        if (force) await table.put(row);
         else if (!local || Date.parse(row.updatedAt) > Date.parse(local.updatedAt)) await table.put(row);
         else continue;
         imported++;
       }
-      if (force && name !== 'profile') {
-        const mine = (await table.toArray()) as { id: string; deletedAt?: string | null }[];
-        for (const m of mine) if (!kept.has(m.id) && !m.deletedAt) await table.put({ ...m, deletedAt: t, updatedAt: t });
-      }
+      if (force && name !== 'profile') await table.filter((m: { id: string }) => !kept.has(m.id)).delete();
     }
     // Imported rows keep their old timestamps: reset the push watermark so the next sync sends them all.
     await d.meta.delete('lastPushedAt');
