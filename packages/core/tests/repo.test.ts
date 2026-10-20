@@ -4,6 +4,7 @@ import { GetFitDB } from '../src/client/db';
 import { configureSync } from '../src/client/sync';
 import { blockEnd, deloadSessionIds, ensurePlan, hintContext, exportAll, exportSetsCsv, getProfile, importAll, liveBlocks, logSet, planAfterSync, regenerateUpcoming, startSession, unlogSet, workoutState, workoutsWithLogs } from '../src/client/repo';
 import { validRow } from '../src/validate';
+import { CATALOG } from '../src/catalog';
 import { addDays, mondayOf, today } from '../src/dates';
 
 let n = 0;
@@ -275,6 +276,29 @@ describe('repo', () => {
 
     await expect(importAll(JSON.parse('{"hello":1}'), phone)).rejects.toThrow('get-fit backup');
     await expect(importAll({ app: 'other', tables: {} }, phone)).rejects.toThrow('get-fit backup');
+  });
+
+  it('exports names that could read as formulas as text, from a restored backup too', async () => {
+    const source = await fresh();
+    const profile = await getProfile(source);
+    const bands = [{ ...profile.bands[0], id: 'b-sum', name: '@SUM(1,1)' }, { ...profile.bands[0], id: 'b-neg', name: '-2 heavy, "red"' }];
+    await source.profile.put({ ...profile, bands, updatedAt: '2026-10-01T00:00:00.000Z' });
+    const t = '2026-10-01T00:00:00.000Z';
+    await source.customExercises.put({ ...CATALOG[0], id: 'custom-eq', name: '=1+1', createdAt: t, updatedAt: t, deletedAt: null } as never);
+    const set = { createdAt: t, updatedAt: t, deletedAt: null, sessionId: 's1', plannedExerciseId: null, date: '2026-10-01', loggedAt: t, reps: 10, seconds: null, weight: null, effort: null };
+    await source.loggedSets.bulkPut([
+      { ...set, id: 'l1', exerciseId: 'custom-eq', setIndex: 0, weight: 12.5 },
+      { ...set, id: 'l2', exerciseId: CATALOG[0].id, setIndex: 0, bandId: 'b-sum', stanceSteps: -2 },
+      { ...set, id: 'l3', exerciseId: CATALOG[0].id, setIndex: 1, bandId: 'b-neg', stanceSteps: 0 },
+    ]);
+    const phone = await fresh();
+    await importAll(JSON.parse(JSON.stringify(await exportAll(source))), phone);
+    expect((await exportSetsCsv(phone)).split('\n').slice(1)).toEqual([
+      `2026-10-01,'=1+1,1,12.5,10,,,,,${t}`,
+      `2026-10-01,${CATALOG[0].name},1,,10,,"'@SUM(1,1)",-2,,${t}`,
+      `2026-10-01,${CATALOG[0].name},2,,10,,"'-2 heavy, ""red""",0,,${t}`,
+      '',
+    ]);
   });
 
   it('keeps the next block marked as planned ahead after a manual regenerate', async () => {

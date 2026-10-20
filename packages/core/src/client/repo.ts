@@ -11,6 +11,7 @@ import { validRow } from '../validate.js';
 import { PROFILE_ID, neutralProfile } from '../profiles.js';
 import { changedFields } from '../session.js';
 import { stampAfter } from '../protocol.js';
+import { toCsv } from '../csv.js';
 
 export { CATALOG, PROFILE_ID };
 
@@ -358,21 +359,20 @@ export async function exportAll(d: GetFitDB = db) {
   return { app: 'get-fit', version: 1, exportedAt: nowIso(), tables: out };
 }
 
-/** Every logged set as CSV, oldest first, for opening in a spreadsheet. Weights are in lb. */
+/**
+ * Every logged set as CSV, oldest first, for opening in a spreadsheet. Weights are in lb. Names that could
+ * read as a formula open as text (see toCsv).
+ */
 export async function exportSetsCsv(d: GetFitDB = db): Promise<string> {
   const [sets, exercises, profile] = await Promise.all([d.loggedSets.toArray(), allExercises(d), getProfile(d)]);
   const name = new Map(exercises.map((e) => [e.id, e.name]));
   const band = new Map(profile.bands.map((b) => [b.id, b.name]));
-  const cell = (v: unknown) => {
-    const s = v == null ? '' : String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
   const rows = sets
     .filter((s) => !s.deletedAt)
     .sort((a, b) => a.date.localeCompare(b.date) || a.loggedAt.localeCompare(b.loggedAt))
     .map((s) => [s.date, name.get(s.exerciseId) ?? s.exerciseId, s.setIndex + 1, s.weight, s.reps, s.seconds, s.bandId ? band.get(s.bandId) ?? s.bandId : null, s.stanceSteps, s.effort, s.loggedAt]);
   const header = ['date', 'exercise', 'set', 'weight_lb', 'reps', 'seconds', 'band', 'stance_steps', 'effort', 'logged_at'];
-  return [header, ...rows].map((r) => r.map(cell).join(',')).join('\n') + '\n';
+  return toCsv([header, ...rows]);
 }
 
 /**

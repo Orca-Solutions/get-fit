@@ -742,6 +742,13 @@ All take and return `YYYY-MM-DD` strings in local time unless noted.
 | `WEEKDAYS` | `string[]` | `['Sun', ..., 'Sat']`. |
 | `sessionLetter` | `(type: string) => string` | `L` for `legs`, `C` for `core`, `U` otherwise (original program's day types). |
 
+### CSV (`csv.ts`)
+
+| Export | Signature | Description |
+|---|---|---|
+| `csvCell` | `(v: string \| number \| boolean \| null \| undefined) => string` | One CSV cell. Text that a spreadsheet could read as a formula gets a leading `'`: text starting with `=`, `+`, `-`, `@` (or their full-width forms), also after leading spaces, control characters or invisible format characters (such as a zero-width space), and text starting with a tab or carriage return. Numbers (negatives included) are never changed; `null`/`undefined` are empty. A cell holding a comma, quote, CR or LF is quoted with quotes doubled. The `'` stays in the file, so text read back from the CSV keeps it. |
+| `toCsv` | `(rows) => string` | Rows of cells to CSV lines, ending with a newline. |
+
 ### Kettlebells and muscle groups
 
 | Export | Signature | Description |
@@ -868,7 +875,7 @@ A rebuild (`plannedAhead` or `regenerateUpcoming`) updates the block's `baseSlot
 | Export | Signature | Description |
 |---|---|---|
 | `exportAll` | `(d?) => Promise<{ app: string; version: number; exportedAt: string; tables: Record<string, unknown[]> }>` | Every row of the seven synced tables, soft-deleted rows included, as `{ app: 'get-fit', version: 1, exportedAt, tables }`. `meta` (and so the sync token) is not exported. |
-| `exportSetsCsv` | `(d?) => Promise<string>` | Every non-deleted logged set as CSV, oldest first. Columns: `date, exercise, set, weight_lb, reps, seconds, band, stance_steps, effort, logged_at`. `set` is 1-based; exercise and band ids are replaced by names. |
+| `exportSetsCsv` | `(d?) => Promise<string>` | Every non-deleted logged set as CSV, oldest first. Columns: `date, exercise, set, weight_lb, reps, seconds, band, stance_steps, effort, logged_at`. `set` is 1-based; exercise and band ids are replaced by names, written with `toCsv`, so a name that could read as a formula opens as text with a leading `'`. |
 | `importAll` | `(data: { app?: string; tables: Record<string, unknown> }, d?) => Promise<{ imported: number; skipped: number }>` | Restore a backup in one transaction. |
 
 `importAll` semantics:
