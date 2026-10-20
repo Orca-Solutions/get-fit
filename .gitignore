@@ -1,7 +1,5 @@
-# Agent tooling and operating documents: the code is public, the method is not.
+# Private companion guides and local agent state remain excluded where listed.
 /.claude
-CLAUDE.md
-AGENTS.md
 PR_WORKFLOW.md
 docs/AGENT_ROLES.md
 HANDOFF_TEMPLATES.md
@@ -26,3 +24,6 @@ playwright-report/
 .e2e-release/
 .e2e-sync/
 .e2e-rollover/
+
+# Personal agent overrides stay local.
+CLAUDE.local.md
