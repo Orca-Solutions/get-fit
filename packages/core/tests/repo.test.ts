@@ -222,6 +222,20 @@ describe('repo', () => {
     expect(ctx.timeOffFrom('barbell-deadlift', wk2.date, addDays(wk2.date, 30))).toBe(wk2.date);
   });
 
+  it("dates every set of a session by the day its first set was logged, even from the caller's older copy", async () => {
+    const d = await fresh();
+    await ensurePlan('2026-10-12', d);
+    const w = (await d.plannedWorkouts.toArray()).find((x) => x.sessionType === 'legs')!;
+    // Opened on its planned day, logged later: the screen still holds the session as it was opened.
+    const opened = await startSession(w.id, w.date, d);
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(`${addDays(w.date, 2)}T17:00:00Z`) });
+    const first = await logSet(opened, w.exercises[0].exerciseId, w.exercises[0].id, 0, { weight: 50, reps: 8 }, d);
+    const second = await logSet(opened, w.exercises[0].exerciseId, w.exercises[0].id, 1, { weight: 50, reps: 8 }, d);
+    expect(first.date).toBe(addDays(w.date, 2));
+    expect(second.date).toBe(first.date);
+    expect((await d.sessions.get(opened.id))!.date).toBe(first.date);
+  });
+
   it('merges a partial update into the stored set instead of reverting other fields', async () => {
     const d = await fresh();
     await ensurePlan(today(), d);
