@@ -3,7 +3,7 @@ import { csvCell, toCsv } from '../src/csv';
 
 describe('csvCell', () => {
   it('opens text a spreadsheet could read as a formula as text', () => {
-    for (const s of ['=1+1', '+1+1', '-1+1', '@SUM(1,1)', '\t=1+1', '\r=1+1', ' =1+1', '\u0000=1+1', ' =1+1', '＝1+1', '＋1', '－1', '＠SUM(1)', '-', '=']) {
+    for (const s of ['=1+1', '+1+1', '-1+1', '@SUM(1,1)', '\t=1+1', '\r=1+1', ' =1+1', '\u0000=1+1', ' =1+1', '＝1+1', '＋1', '－1', '＠SUM(1)', '-', '=', '\u200b=1', '\u2060=1', '\u200e=1', '\u00ad=1', '\ufeff=1']) {
       expect(csvCell(s).replace(/^"|"$/g, '')).toMatch(/^'/);
     }
     expect(csvCell('=1+1')).toBe("'=1+1");

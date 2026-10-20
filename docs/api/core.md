@@ -746,7 +746,7 @@ All take and return `YYYY-MM-DD` strings in local time unless noted.
 
 | Export | Signature | Description |
 |---|---|---|
-| `csvCell` | `(v: string \| number \| boolean \| null \| undefined) => string` | One CSV cell. Text that a spreadsheet could read as a formula gets a leading `'`: text starting with `=`, `+`, `-`, `@` (or their full-width forms), also after leading spaces or control characters, and text starting with a tab or carriage return. Numbers (negatives included) are never changed; `null`/`undefined` are empty. A cell holding a comma, quote, CR or LF is quoted with quotes doubled. The `'` stays in the file, so text read back from the CSV keeps it. |
+| `csvCell` | `(v: string \| number \| boolean \| null \| undefined) => string` | One CSV cell. Text that a spreadsheet could read as a formula gets a leading `'`: text starting with `=`, `+`, `-`, `@` (or their full-width forms), also after leading spaces, control characters or invisible format characters (such as a zero-width space), and text starting with a tab or carriage return. Numbers (negatives included) are never changed; `null`/`undefined` are empty. A cell holding a comma, quote, CR or LF is quoted with quotes doubled. The `'` stays in the file, so text read back from the CSV keeps it. |
 | `toCsv` | `(rows) => string` | Rows of cells to CSV lines, ending with a newline. |
 
 ### Kettlebells and muscle groups
