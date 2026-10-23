@@ -1,5 +1,13 @@
 # Working record
 
+## Node security proposal (2026-10-23, source only)
+
+- NODE-GF01 branch starts from main `1a0f867e312eb9b9ec451cd727911b09d46d65b2`, separately from feature PR #32. No app merge, provider change, deployment or client activity is included.
+- Root engine/lock selection is 22.23.4; dependencies are unchanged. A guard in the actual server entry refuses unsupported Node before data-directory creation, SQLite/epoch work or listening, while allowing later stable 22 patches. Authenticated `/api/runtime` reports only that serving process's version, without database access. Public health and auth-first unknown rotation-check behavior are unchanged.
+- Seven focused tests passed: version floor/default process version, mocked startup-before-effects and supported startup, authenticated no-DB metadata, refusal without a token and unchanged rotation-check/health. The five runtime tests were rerun after a TypeScript-only fixture repair; both startup results were reused. Server TypeScript check passes. Local verification used existing Node 26.9.0 and locked dependencies, with explicit synthetic versions for startup tests; this is not actual patched 22 runtime acceptance. Full build/browser suites and live deployment were not rerun here; existing PR CI supplies normal integration checks.
+- Review: focused independent review required for startup availability and the authenticated metadata boundary. DevOps/Security review the exact draft before Jason's coordinated merge. The actual Railway builder remains unproven, and neither package selection nor restart/redeploy alone establishes the deployed patch. See [deployment guidance](docs/DEPLOYMENT.md#node-security-release-selection-and-acceptance) and [runtime API](docs/api/sync-server.md#get-apiruntime).
+- First PR CI run39983491411 selected actual Node22.23.3 from the previous broad `22` selector. Its compiled server correctly refused startup before Playwright could run. CI now selects exact22.23.4, matching the package engine; the runtime guard remains intact. The successor CI result determines actual patched22/native-SQLite/browser source acceptance, independently of Railway production adoption.
+
 ## Current state (2026-10-16)
 
 - The app is complete for a single user: planning, logging, swap and skip, history, calendar, library, settings, export and restore, multi-device sync, the rest timer, in-app updates and a responsive desktop layout. It is maintained for fixes and gets no new features; development continues in the core package.

@@ -4,6 +4,36 @@ How to run get-fit in production: how it's built, what it needs, and how rollout
 
 The server's HTTP API is documented in [api/sync-server.md](api/sync-server.md).
 
+## Node security release selection and acceptance
+
+The root package and lockfile select Node 22.23.4, the patched Node 22 release from
+[October 21, 2026](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases).
+Before creating the data directory, opening SQLite, processing an epoch reset or
+listening, the server checks its actual `process.version`. Stable 22.x versions
+at or above 22.23.4 pass; older versions, prereleases and other major lines refuse
+startup. Later patched 22 releases remain compatible with this guard; changing
+the selected build patch is a separate normal source change. No environment
+variable can override the guard or the reported version.
+
+An engine selection is not proof of the deployed builder or runtime. Railpack
+[documents version precedence](https://railpack.com/languages/node), including
+provider overrides; Nixpacks [documents major-only Node selection](https://nixpacks.com/docs/providers/node).
+This change does not choose or migrate the existing Railway builder. An old or
+incorrectly selected runtime fails startup rather than becoming an accepted
+release. A restart reuses its image; a same-source rebuild does not independently
+prove which patch was selected.
+
+Coordinate this source merge with DevOps: main can deploy automatically. Use one
+reviewed adoption with the token-response operation when its runtime selection
+is ready. Preserve the volume, data directory and epoch configuration; do not use
+sync, restore, a reset, or customer-data changes to check the Node patch.
+After adoption, bind the accepted deployment/source/image and serving route to
+the authenticated `GET /api/runtime` response. It reports only the serving
+process's actual Node version without querying the database. A helper-process
+`node -v`, healthy deployment status or public `/api/health` alone is insufficient.
+The authentication-first unknown `GET /api/rotation-check` path remains unchanged.
+Source tests or a merge do not close NODE-GF01 before actual runtime acceptance.
+
 ## What gets deployed
 
 get-fit is an offline-first PWA plus a small sync server, built from this repo as **one service**:
