@@ -64,10 +64,24 @@ Authentication runs before routing within `/api/*`, so an unknown API path answe
 | Method and path | Auth | Description |
 |---|---|---|
 | `GET /api/health` | none | Liveness check. Always `200 { "ok": true }`, even without a configured token. |
+| `GET /api/runtime` | Bearer | Serving process Node version only; no database access and `Cache-Control: no-store`. |
 | `POST /api/sync` | Bearer | Push changes and pull everything stored since a cursor. See below. |
 | `GET /api/export` | Bearer | Every non-deleted record, grouped by table. |
 | any other `/api/*` | Bearer | `404 { "error": "Not found." }` |
 | `GET` anything else | none | Static files from `STATIC_DIR`, with an SPA fallback. See [Static files](#static-files). |
+
+### `GET /api/runtime`
+
+Returns only `{ "nodeVersion": "v22.23.4" }` (the actual serving process's
+`process.version`, not a configured string or a separately executed Node command).
+The normal token checks run first: wrong/missing token returns 401, and an
+unconfigured token returns 503. A successful response is `no-store`. It reads no
+workout records, cursor, epoch, configuration values, executable paths or process
+inventory. The existing public health response stays unchanged.
+
+Unknown authenticated paths still return 404, including `GET /api/rotation-check`.
+That endpoint remains suitable for its separately reviewed auth-first, no-DB
+token check; runtime metadata does not invoke sync or reset any epoch.
 
 ### `GET /api/export`
 

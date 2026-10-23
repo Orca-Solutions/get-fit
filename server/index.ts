@@ -3,6 +3,10 @@ import { join, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { createApp } from './app.js';
 import { openSqliteStore } from '@orca-solutions/get-fit-core/sqlite';
+import { assertPatchedNode } from './runtime.js';
+
+// Refuse an old runtime before creating data directories, opening SQLite or listening.
+assertPatchedNode();
 
 const port = Number(process.env.PORT ?? 3000);
 const dataDir = resolve(process.env.DATA_DIR ?? './data');

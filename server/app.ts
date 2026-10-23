@@ -71,6 +71,12 @@ export function createApp({ db, token, staticDir, pageSize = 2000 }: AppOptions)
     await next();
   });
 
+  // This runs in the serving process, behind the same token check, without touching the store.
+  app.get('/api/runtime', (c) => {
+    c.header('Cache-Control', 'no-store');
+    return c.json({ nodeVersion: process.version });
+  });
+
   app.post(
     '/api/sync',
     bodyLimit({ maxSize: MAX_BODY_BYTES, onError: (c) => c.json({ error: 'Request body too large.' }, 413) }),
