@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22.23.4'
           cache: npm
       # A workflow file that isn't valid YAML never runs, and only shows up as a failed run on the next push.
       - name: Lint workflow files
