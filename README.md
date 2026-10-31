@@ -101,3 +101,7 @@ The start and end photos for 139 movements come from [free-exercise-db](https://
 ## License
 
 get-fit is source-available under the [Functional Source License, Version 1.1, MIT Future License](LICENSE) (FSL-1.1-MIT). The code may be used, modified and shared for any purpose other than a competing commercial product or service, and each release becomes available under the MIT license two years after it is published. Code published before the change to FSL, including core-v0.1.0, remains available under MIT.
+
+## Shared agent instructions
+
+`AGENTS.md` and `CLAUDE.md` are shared project instructions and stay tracked in this repository so local and cloud agents can read them. Keep personal overrides in ignored `CLAUDE.local.md`; credentials and session state stay private. Existing project-specific instructions and permissions continue to apply.
