@@ -78,8 +78,8 @@ Above the sets, a line shows what was lifted last time at a similar rep count, f
 - In a deload week the hint suggests about 10% under the working weight.
 - After a heavy top set on the first lift, the back-off sets are pre-filled about 10% lighter.
 - The Friday deadlift, which only comes round some weeks, gets its suggestion from its estimated one-rep max. It also holds the weight after a Hard set.
-- **After a break** from a lift, the first session back starts lighter: about 10% after 10 days off, about 20% after 4 weeks (with no heavy top set for the rest of that block), and after 8 weeks there's no number at all, so ramp up as for a new movement. Time off counts from when that lift was due and went unlogged (or from your last workout, if you logged nothing at all since). Opening the app doesn't count as training, and weeks the plan itself skipped a lift don't count as time off.
-- **A lift the plan kept away** for 3 weeks or more (the Friday deadlift, or one rotated out for a block) starts about 5% lighter, since its last number is weeks old.
+- **After a break** from a lift, the first session back starts lighter: about 10% after 10 days off, about 20% after 4 weeks (with no heavy top set for the rest of that block), and after 8 weeks there's no number at all, so ramp up as for a new movement. Time off counts from when that lift was due and went unlogged, or from the start of any 10 days or more with nothing logged at all. Opening the app doesn't count as training, and weeks the plan itself skipped a lift don't count as time off.
+- **A lift back after the plan rotated it out for a block** starts about 5% lighter for one session, since its last number is weeks old. Lifts the plan only runs some weeks, like the Friday deadlift, don't get this cut.
 
 ### How did that feel?
 

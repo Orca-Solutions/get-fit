@@ -4,7 +4,7 @@ Notable changes to get-fit. Releases of the core package are tagged `core-v<vers
 
 ## Unreleased (on `main`, after core-v0.6.2)
 
-- **Core 0.6.10:** a lift the plan kept away for 3 weeks or more (rotated out for a block, or the Friday deadlift) starts about 5% lighter for one session. After any break, the suggestion also stays under what last time's e1RM carries for today's reps.
+- **Core 0.6.10:** a lift back from a block rotated out, 4+ weeks since its last log, starts about 5% lighter for one session. Lifts the plan runs only some weeks (the Friday deadlift, the heavy-week Romanian deadlift) don't, and a lift doesn't take the cut twice running. A stretch of 10+ days with nothing logged at all now counts as time off. After any break, the suggestion also stays under what last time's e1RM carries for today's reps, and the line says the real cut. A lift that topped its range keeps its earned step when the next session asks for no more reps.
 - **Core 0.6.5, program 1.7.0:**
   - **Breaks:** a lift's first session back after 10+ days off is about 10% lighter, after 4+ weeks about 20% lighter with no top set for the rest of the block, and after 8+ weeks it starts over like a new lift. Time off counts from when the lift was due and went unlogged, never from app opens, and gaps the plan made don't count. This replaces the deadlift's own 95% after 3 weeks.
   - **Heavy days step up from the top set,** with two or more short back-off sets holding the weight, and the hint gives the back-off weight. Each set is judged against its own planned target, and a session logged short of its planned sets earns no step.
