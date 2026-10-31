@@ -5,7 +5,7 @@ import { addDays, daysBetween, mondayOf, today } from '../dates.js';
 import { uuid } from '../ids.js';
 import { isSyncConnected, scheduleSync } from './sync.js';
 import { generateBlock, type ExerciseFlags, type GeneratorInput } from '../generator/generateBlock.js';
-import { effectiveLoad, isOutgrown, isStalled, isToppedOut, summarizeHistory, withoutDeloads, type HintContext, type SessionSummary } from '../generator/progression.js';
+import { effectiveLoad, LONG_GAP, isOutgrown, isStalled, isToppedOut, summarizeHistory, withoutDeloads, type HintContext, type SessionSummary } from '../generator/progression.js';
 import { db, SYNC_TABLES, type GetFitDB, type SyncTable } from './db.js';
 import { validRow } from '../validate.js';
 import { PROFILE_ID, neutralProfile } from '../profiles.js';
@@ -237,6 +237,16 @@ export async function deloadSessionIds(d: GetFitDB = db): Promise<Set<string>> {
   return new Set(sessions.filter((s) => !s.deletedAt && s.plannedWorkoutId && deloads.has(s.plannedWorkoutId)).map((s) => s.id));
 }
 
+/** The start of the first stretch of 10+ days with nothing logged at all between `from` and `to` (sorted `trainedOn`). */
+function quietFrom(trainedOn: string[], from: string, to: string): string | undefined {
+  let prev = from;
+  for (const t of [...trainedOn.filter((x) => x > from && x < to), to]) {
+    if (daysBetween(prev, t) >= LONG_GAP.days) return prev;
+    prev = t;
+  }
+  return undefined;
+}
+
 /**
  * What the weight hint needs from the plan (workoutHint): which sessions were deloads, each logged set's planned rep
  * target and set count (a change of reps, a partly logged session), each session's block, and the planned days a
@@ -254,6 +264,15 @@ export async function hintContext(d: GetFitDB = db): Promise<Required<HintContex
   // long gap count too: they were planned and missed.
   const days = new Map<string, { date: string; done: boolean }[]>();
   for (const w of planned) for (const e of w.exercises) days.set(e.exerciseId, [...(days.get(e.exerciseId) ?? []), { date: w.date, done: done.has(e.id) }]);
+  // Each block as planned now: its first and last day and the movements in it.
+  const blocks = new Map<string, { first: string; last: string; ids: Set<string> }>();
+  for (const w of live.values()) {
+    const b = blocks.get(w.blockId) ?? { first: w.date, last: w.date, ids: new Set<string>() };
+    if (w.date < b.first) b.first = w.date;
+    if (w.date > b.last) b.last = w.date;
+    for (const e of w.exercises) b.ids.add(e.exerciseId);
+    blocks.set(w.blockId, b);
+  }
   return {
     isDeload: (h) => !!workoutOf.get(h.sessionId)?.isDeload,
     targetOf: (s) => sets.get(s.plannedExerciseId ?? '')?.find((p) => p.setIndex === s.setIndex)?.targetReps,
@@ -262,8 +281,12 @@ export async function hintContext(d: GetFitDB = db): Promise<Required<HintContex
     timeOffFrom: (id, from, to) => {
       if (!trainedOn.some((t) => t > from && t < to)) return from;
       const first = days.get(id)?.filter((p) => p.date > from && p.date < to && !p.done).map((p) => p.date).sort()[0];
-      return first && [from, addDays(first, -7)].sort()[1];
+      const missed = first && [from, addDays(first, -7)].sort()[1];
+      // A break from everything counts too, while the plan had this movement off.
+      const quiet = quietFrom(trainedOn, from, to);
+      return [missed, quiet].filter((d): d is string => !!d).sort()[0];
     },
+    rotatedOut: (id, from, to) => [...blocks.values()].some((b) => b.first > from && b.last < to && !b.ids.has(id)),
   };
 }
 
