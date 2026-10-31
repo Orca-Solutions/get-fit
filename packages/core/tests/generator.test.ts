@@ -989,6 +989,24 @@ describe('workoutHint (§4.4)', () => {
     expect(hint(rdl, r, plan(range(5, 8), 2), { date: '2026-10-09', ctx: cadence })!.suggest).toBe(65);
   });
 
+  it('climbs a lift that comes round once every 4 weeks and tops out, and never cuts it twice running', () => {
+    // Every set at the top of 8–12 tapped Easy, the suggestion taken each visit, 28 days apart.
+    const visits = (rotatedOut: () => boolean) => {
+      const sets: LoggedSet[] = [];
+      const out = [60];
+      for (let k = 0; k < 6; k++) {
+        const date = addDays('2026-01-05', 28 * k);
+        if (k) out.push(hint(rdl, sets, plan(range(8, 12), 2), { date, ctx: { timeOffFrom: () => undefined, rotatedOut } })!.suggest ?? out[k - 1]);
+        sets.push(...session(rdl, `v${k}`, date, range(8, 12), [[out[k], 12, 'easy'], [out[k], 12, 'easy'], [out[k], 12, 'easy']]));
+      }
+      return out;
+    };
+    // The plan's own rhythm: a step every visit.
+    expect(visits(() => false)).toEqual([60, 65, 70, 75, 80, 85]);
+    // Rotated out between every visit: one 5% cut, then that's its rhythm, so a step every visit after.
+    expect(visits(() => true)).toEqual([60, 55, 60, 65, 70, 75]);
+  });
+
   it('steps a lift that topped out when today asks no more reps, or asks for more reps when the step is too big', () => {
     // 30 lb hammer curls topped at 12–15; today 10–15 at RIR 1. e1RM from 15 reps says 30, but the range was topped,
     // so the step: 35 for 10 at RIR 1 needs an e1RM of 47.8, more than 30 × 15 shows (45), so more reps first.

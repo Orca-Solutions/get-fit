@@ -206,7 +206,9 @@ export function workoutHint(
   };
   const gap = history[0] ? off(history[0].date, o.date) : 0;
   const since = history[0] ? daysBetween(history[0].date, o.date) : 0;
-  const stale = !o.deload && since >= LONG_GAP.staleDays && !!o.rotatedOut?.(ex.id, history[0].date, o.date);
+  // Back from a block rotated out, unless last time was such a return too: then that is its rhythm, not a stale number.
+  const rotatedBack = (from: SessionSummary, to: string) => daysBetween(from.date, to) >= LONG_GAP.staleDays && !!o.rotatedOut?.(ex.id, from.date, to);
+  const stale = !o.deload && !!history[0] && rotatedBack(history[0], o.date) && !(history[1] && rotatedBack(history[1], history[0].date));
   const returned = returnedThisBlock(loading, gap, off, o);
   const last = pe.sets[pe.sets.length - 1];
   const target = last?.targetReps ?? pe.sets[0]?.targetReps;
