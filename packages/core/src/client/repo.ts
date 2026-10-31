@@ -305,13 +305,14 @@ export async function logSet(
   const everLogged = await d.loggedSets.where('sessionId').equals(session.id).toArray();
   const inSession = everLogged.filter((s) => !s.deletedAt);
   const existing = inSession.find((s) => s.exerciseId === exerciseId && s.plannedExerciseId === plannedExerciseId && s.setIndex === setIndex);
-  let date = session.date;
+  // A session opened earlier but never logged counts from the day its first set is logged. Once a set
+  // has been logged (even if since deleted), the session keeps its day, so fixing an old one doesn't move it.
+  // The day is read from the stored session, which the caller's copy may predate.
+  const stored = await d.sessions.get(session.id);
+  let date = stored?.date ?? session.date;
   if (!everLogged.length) {
-    // A session opened earlier but never logged counts from the day its first set is logged. Once a set
-    // has been logged (even if since deleted), the session keeps its day, so fixing an old one doesn't move it.
     date = today();
-    const s = await d.sessions.get(session.id);
-    if (s && (s.date !== date || !s.startedAt)) await put('sessions', { ...s, date, startedAt: t }, d);
+    if (stored && (stored.date !== date || !stored.startedAt)) await put('sessions', { ...stored, date, startedAt: t }, d);
   }
   // Merge into the stored record so a partial update (e.g. just the effort tap) never reverts other fields.
   // A planned set's id comes from its session, slot, movement and index, so the same set logged on two
