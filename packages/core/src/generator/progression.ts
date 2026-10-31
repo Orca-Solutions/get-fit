@@ -115,7 +115,7 @@ export function lastTimeHint(
  * with a suggested load from the latest session's e1RM at the bottom of today's reps and planned RIR. That
  * links sessions planned at different rep ranges. The suggestion rounds down to the lift's increment, never
  * goes more than one increment past last time's top weight (nor past it at all after a set tapped Hard). Long gaps
- * are workoutHint's (§4.5 rev 3.9, which retired this hint's own 95% after 3 weeks); the date argument is kept for callers.
+ * are workoutHint's (§4.5 rev 3.9), stale numbers included; the date argument is kept for callers.
  */
 export function e1rmLoadHint(
   ex: Exercise,
@@ -160,8 +160,12 @@ export type HintContext = {
   timeOffFrom?: (exerciseId: string, from: string, to: string) => string | undefined;
 };
 
-/** Long gaps, counted per lift from its last logged loading session (§4.5 rev 3.9): days, and the load factor. */
-export const LONG_GAP = { days: 10, factor: 0.9, monthDays: 28, monthFactor: 0.8, newDays: 56 } as const;
+/**
+ * Long gaps, counted per lift from its last logged loading session (§4.5 rev 3.9): days, and the load factor. A gap
+ * the plan made (rotation, a lift that comes round only some weeks) is no time off, but after `staleDays` the
+ * lift's number is stale, so it starts at `staleFactor`.
+ */
+export const LONG_GAP = { days: 10, factor: 0.9, monthDays: 28, monthFactor: 0.8, newDays: 56, staleDays: 21, staleFactor: 0.95 } as const;
 
 /**
  * The weight hint for one planned movement, as the workout screen shows it (§4.4): last time's line and a
@@ -177,6 +181,8 @@ export const LONG_GAP = { days: 10, factor: 0.9, monthDays: 28, monthFactor: 0.8
  * - After a long gap in this lift's logged work (never app opens or sign-ins), counted from when it was due and went
  *   unlogged (`timeOffFrom`): 90% of last time after 10 days, 80% and no top set for the
  *   rest of the block after 4 weeks, and a fresh start after 8 weeks (§4.5 rev 3.9).
+ * - Back after 3 weeks or more the plan kept it away (rotated out for a block, say) with less time off than that:
+ *   about 5% lighter for one session, since its number is stale. A deload week is lighter already.
  */
 export function workoutHint(
   ex: Exercise,
@@ -192,6 +198,7 @@ export function workoutHint(
     return start ? daysBetween(start, to) : 0;
   };
   const gap = history[0] ? off(history[0].date, o.date) : 0;
+  const since = history[0] ? daysBetween(history[0].date, o.date) : 0;
   const returned = returnedThisBlock(loading, gap, off, o);
   const last = pe.sets[pe.sets.length - 1];
   const target = last?.targetReps ?? pe.sets[0]?.targetReps;
@@ -212,7 +219,11 @@ export function workoutHint(
   }
   if (o.deload) line = deloadCap(ex, deloadHint(ex, line, o.profile, { history: loading, target, date: o.date }), loading, target, rir, o.profile);
   if (line && topDay && !o.deload) line = { ...line, backOff: backOffLoad(ex, line.suggest ?? line.weight, o.profile) ?? undefined };
-  if (line && gap >= LONG_GAP.days) line = afterBreak(ex, line, fromE1 && !o.deload ? line.suggest : line.weight, gap, o);
+  const stale = !o.deload && since >= LONG_GAP.staleDays;
+  if (line && (gap >= LONG_GAP.days || stale)) {
+    const most = e1rmCeiling(ex, line, loading, lead.target, lead.rir, o.profile);
+    line = afterBreak(ex, line, fromE1 && !o.deload ? line.suggest : line.weight, most, gap, since, o);
+  }
   return line && returned && isTopSet(pe, 0) ? { ...line, noTopSet: true, backOff: undefined } : line;
 }
 
@@ -275,26 +286,35 @@ const SHORT = ' · two sets fell short of the range, so hold this weight';
 /**
  * The first session back after a long gap in this lift's logged work (§4.5 rev 3.9): `base` (last time's weight,
  * or the e1RM suggestion when the reps changed) about 10% lighter after 10 days and 20% after 4 weeks, with no step
- * up; after 8 weeks no number at all, and the lift is found again like a new one (§4.4 item 4).
+ * up; after 8 weeks no number at all, and the lift is found again like a new one (§4.4 item 4). With less time off
+ * than 10 days, the gap is the plan's (`since` days since the last log): about 5% lighter, for a stale number. The
+ * suggestion also stays under `most`, what last time's e1RM carries for today's reps: a cut too small to round
+ * (40 lb on 10 lb kettlebell steps) mustn't leave a weight last time fell well short with.
  */
 function afterBreak(
   ex: Exercise,
   line: WeightHint,
   base: number | null | undefined,
+  most: number | null,
   gap: number,
+  since: number,
   o: { deload: boolean; profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'> },
 ): WeightHint {
-  const ago = gap >= 14 ? `${Math.floor(gap / 7)} weeks` : `${gap} days`;
+  const stale = gap < LONG_GAP.days;
+  const days = stale ? since : gap;
+  const ago = days >= 14 ? `${Math.floor(days / 7)} weeks` : `${days} days`;
   const text = line.text.replace(HOLD, '').replace(SHORT, '').replace(/ · the next weight up is a big jump.*$/, '');
   if (gap >= LONG_GAP.newDays) {
     return { ...line, suggest: undefined, backOff: undefined, text: `${text} · first session back after ${ago}: ramp up across sets to a weight that leaves about 3 reps in the tank` };
   }
-  const factor = gap >= LONG_GAP.monthDays ? LONG_GAP.monthFactor : LONG_GAP.factor;
+  const factor = stale ? LONG_GAP.staleFactor : gap >= LONG_GAP.monthDays ? LONG_GAP.monthFactor : LONG_GAP.factor;
   let suggest = lighterLoad(ex, base, o.profile, factor) ?? undefined;
+  if (suggest != null && most != null) suggest = lighterOf(ex, suggest, most);
   // A deload week after a gap takes the lighter of the two.
-  if (o.deload && suggest != null && line.suggest != null) suggest = ex.weightConvention === 'assist' ? Math.max(suggest, line.suggest) : Math.min(suggest, line.suggest);
+  if (o.deload && suggest != null && line.suggest != null) suggest = lighterOf(ex, suggest, line.suggest);
   const backOff = line.backOff != null ? backOffLoad(ex, suggest ?? base, o.profile) ?? undefined : undefined;
-  return { ...line, suggest, backOff, text: `${text} · first session back after ${ago}, so about ${Math.round((1 - factor) * 100)}% lighter` };
+  const when = stale ? `first time in ${ago}` : `first session back after ${ago}`;
+  return { ...line, suggest, backOff, text: `${text} · ${when}, so about ${Math.round((1 - factor) * 100)}% lighter` };
 }
 
 /**
@@ -310,12 +330,26 @@ function deloadCap(
   rir: number,
   profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>,
 ): WeightHint | null {
-  const e1 = hint && history.find((h) => h.date === hint.date)?.bestE1rm;
-  if (!hint || hint.suggest == null || e1 == null || !target || ex.metric !== 'reps') return hint;
-  const most = weightFor(ex, e1 / (1 + (target.min + rir) / 30), profile);
-  if (most == null) return hint;
-  return { ...hint, suggest: ex.weightConvention === 'assist' ? Math.max(hint.suggest, most) : Math.min(hint.suggest, most) };
+  const most = hint?.suggest != null ? e1rmCeiling(ex, hint, history, target, rir, profile) : null;
+  return most == null ? hint : { ...hint!, suggest: lighterOf(ex, hint!.suggest!, most) };
 }
+
+/** The most the session a hint reads from carries for the bottom of `target` at `rir`, by its e1RM; null without one. */
+function e1rmCeiling(
+  ex: Exercise,
+  hint: WeightHint | null,
+  history: SessionSummary[],
+  target: { min: number; max: number } | undefined,
+  rir: number,
+  profile: Pick<Profile, 'bodyweightLb' | 'smithBarLb'>,
+): number | null {
+  const e1 = hint && history.find((h) => h.date === hint.date)?.bestE1rm;
+  if (e1 == null || !target || ex.metric !== 'reps') return null;
+  return weightFor(ex, e1 / (1 + (target.min + rir) / 30), profile);
+}
+
+/** The lighter of two weights: more assistance is lighter. */
+const lighterOf = (ex: Exercise, a: number, b: number) => (ex.weightConvention === 'assist' ? Math.max(a, b) : Math.min(a, b));
 
 /**
  * Last session ran other reps than today's (a heavy week before a moderate one): its heaviest set at its own

@@ -105,7 +105,7 @@ type Check = (ok: boolean, date: string, what: string) => void;
 const GROUPS = ['hints', 'safety', 'progress', 'partial', 'breaks', 'backOff', 'plans', 'shape', 'slots', 'bands', 'stalls', 'heavy', 'edits', 'events'] as const;
 const bad = Object.fromEntries(GROUPS.map((g) => [g, [] as Violation[]])) as Record<(typeof GROUPS)[number], Violation[]>;
 const checker = (g: (typeof GROUPS)[number]): Check => (ok, date, what) => { if (!ok) bad[g].push({ date, what }); };
-const fresh = () => ({ workouts: 0, sets: 0, hints: 0, suggestions: 0, backOffs: 0, topSets: 0, stalled: 0, toppedOut: 0, heavyPairs: 0, toppedChecks: 0, runChecks: 0, partialChecks: 0, returns: 0, tiers: [0, 0, 0] as number[], noTopSet: 0, dropped: 0, edits: 0, odd: 0 });
+const fresh = () => ({ workouts: 0, sets: 0, hints: 0, suggestions: 0, backOffs: 0, topSets: 0, stalled: 0, toppedOut: 0, heavyPairs: 0, toppedChecks: 0, runChecks: 0, partialChecks: 0, returns: 0, tiers: [0, 0, 0] as number[], stale: 0, noTopSet: 0, dropped: 0, edits: 0, odd: 0 });
 const stats = fresh();
 
 /** Each planned movement's sets and each session's block, recorded as the lifter logs (independent of hintContext). */
@@ -223,8 +223,8 @@ async function simulate(lifter: Lifter): Promise<Result> {
           checker('backOff')(moved(ex, done[1].weight) <= moved(ex, done[0].weight), date, `${ex.id}: back-off set pre-filled at ${done[1].weight} after a ${done[0].weight} top set`);
         }
         const working = done.filter((c, i) => c.weight != null && !isTopSet(pe, i)).map((c) => moved(ex, c.weight!));
-        // A first session back after a gap eases in, so it doesn't count.
-        if (loaded(ex) && working.length && !pe.note && !/first session back/.test(hint?.text ?? '') && (pe.role === 'P' || pe.role === 'C')) used.set(usedKey(w.blockId, w.sessionType, w.zone, ex.id), Math.max(...working));
+        // A first session back after a gap, or after a stale number, eases in, so it doesn't count.
+        if (loaded(ex) && working.length && !pe.note && !/first session back|first time in/.test(hint?.text ?? '') && (pe.role === 'P' || pe.role === 'C')) used.set(usedKey(w.blockId, w.sessionType, w.zone, ex.id), Math.max(...working));
         plannedOf.set(plan.id, plan.sets);
         if (done.length) {
           loggedPe.add(plan.id);
@@ -252,7 +252,7 @@ async function simulate(lifter: Lifter): Promise<Result> {
   checkHeavy(checker('heavy'), blocks);
   await checkStalls(checker('stalls'), d, byId, profile);
   console.log(`${lifter.name}: ${stats.workouts} workouts, ${stats.sets} sets, ${stats.hints} hints (${stats.suggestions} with a suggestion), ${planned.length} plans, ` +
-    `${stats.topSets} planned top sets (${stats.backOffs} done), ${stats.stalled} stalled and ${stats.toppedOut} topped out, ${stats.heavyPairs} heavy/moderate pairs, ${stats.toppedChecks} topped, ${stats.runChecks} topped three times, ${stats.partialChecks} cut short, returns after 10 days, 4 weeks and 8 weeks ${stats.tiers.join('/')} (${stats.noTopSet} top sets dropped), ${stats.dropped} untrained blocks dropped, ${stats.edits} past sets re-entered, ${stats.odd} odd sets; violations: ` +
+    `${stats.topSets} planned top sets (${stats.backOffs} done), ${stats.stalled} stalled and ${stats.toppedOut} topped out, ${stats.heavyPairs} heavy/moderate pairs, ${stats.toppedChecks} topped, ${stats.runChecks} topped three times, ${stats.partialChecks} cut short, returns after 10 days, 4 weeks and 8 weeks ${stats.tiers.join('/')} (${stats.noTopSet} top sets dropped), ${stats.stale} back after 3+ weeks the plan made, ${stats.dropped} untrained blocks dropped, ${stats.edits} past sets re-entered, ${stats.odd} odd sets; violations: ` +
     GROUPS.map((g) => `${g} ${bad[g].length}`).join(', '));
   if (process.env.SIM_DUMP) for (const g of GROUPS) if (g !== 'bands') for (const v of bad[g].slice(0, 15)) console.log(g, v.date, v.what);
   d.close();
@@ -309,6 +309,8 @@ describe('day-to-day use over twelve blocks', () => {
     expect(r.bad.breaks.slice(0, 20)).toEqual([]);
     // Every tier came up: the holiday, the weeks signed in without logging, and the long break.
     expect(r.stats.tiers.every((n) => n > 0)).toBe(true);
+    // And lifts came back after 3+ weeks the plan kept them away.
+    expect(r.stats.stale).toBeGreaterThan(0);
   });
   it('pre-fills back-off sets no heavier than the top set', () => {
     expect(r.bad.backOff.slice(0, 20)).toEqual([]);
@@ -531,6 +533,7 @@ function checkSafe(check: Check, date: string, ex: Exercise, pe: PlannedExercise
  *   more reps when the step is too big); and three such sessions in a row at one weight earn one whatever the reps.
  * - 10+ days off: about 10% lighter; 4+ weeks: 20% lighter and no top set for the rest of the block; 8+ weeks: no
  *   number, find the weight again. Never otherwise, however often the app was opened.
+ * - Less time off than that, but 3+ weeks since the lift's last log (the plan kept it away): about 5% lighter.
  */
 function checkProgress(c: Record<'progress' | 'breaks' | 'partial', Check>, date: string, ex: Exercise, plan: PlannedExercise, w: PlannedWorkout, hint: WeightHint | null, history: SessionSummary[], isDeload: HintContext['isDeload']) {
   if (w.isDeload || !loaded(ex) || ex.metric !== 'reps' || !hint) return;
@@ -550,13 +553,17 @@ function checkProgress(c: Record<'progress' | 'breaks' | 'partial', Check>, date
   else if (gap >= LONG_GAP.monthDays) c.breaks(/20% lighter/.test(hint.text), date, `${name}: ${gap} days off, ${said}`);
   else if (gap >= LONG_GAP.days) c.breaks(/10% lighter/.test(hint.text), date, `${name}: ${gap} days off, ${said}`);
   else c.breaks(!/first session back/.test(hint.text), date, `${name}: ${gap} days since the last log, ${said}`);
+  const stale = gap < LONG_GAP.days && daysBetween(history[0].date, date) >= LONG_GAP.staleDays;
+  if (stale) stats.stale++;
+  c.breaks(/ 5% lighter/.test(hint.text) === stale, date, `${name}: ${gap} days off, ${daysBetween(history[0].date, date)} since the last log, ${said}`);
   // Back from 4+ weeks off within this block: no top set (checked on the plan as given, before the screen drops it).
   const inBlock = loading.filter((h) => sessionBlock.get(h.sessionId) === w.blockId);
   const first = inBlock[inBlock.length - 1];
   const before = first ? loading[loading.indexOf(first) + 1] : newest;
   if (hint.noTopSet) stats.noTopSet++;
   if (isTopSet(plan, 0) && before && off(before.date, first?.date ?? date) >= LONG_GAP.monthDays) c.breaks(!!hint.noTopSet, date, `${name}: top set kept on a return from ${off(before.date, first?.date ?? date)} days off`);
-  if (gap >= LONG_GAP.days) return;
+  // A first session back, or after a stale number, earns no step.
+  if (gap >= LONG_GAP.days || stale) return;
 
   const planned = (h: SessionSummary) => plannedOf.get(h.sets[0].plannedExerciseId ?? '');
   const own = (s: LoggedSet) => plannedOf.get(s.plannedExerciseId ?? '')?.find((p) => p.setIndex === s.setIndex)?.targetReps;
