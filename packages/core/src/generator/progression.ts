@@ -153,19 +153,26 @@ export type HintContext = {
   blockOf?: (h: SessionSummary) => string | undefined;
   /**
    * When this movement's time off began, between its last log `from` and `to`: `from` if nothing at all was logged
-   * in between; else a week before the first planned day it went unlogged (lifting days repeat weekly, so that is
-   * when it was last due); else undefined, for a gap the plan made (the Friday deadlift a few weeks apart, an RDL
-   * that skips light weeks, a lift rotated out for a block). Without it, the whole gap counts.
+   * in between; else the earlier of a week before the first planned day it went unlogged (lifting days repeat
+   * weekly, so that is when it was last due) and the start of 10+ days with nothing logged at all; else undefined,
+   * for a gap the plan made (the Friday deadlift a few weeks apart, an RDL that skips light weeks, a lift rotated
+   * out for a block). Without it, the whole gap counts.
    */
   timeOffFrom?: (exerciseId: string, from: string, to: string) => string | undefined;
+  /**
+   * Whether a whole block between this movement's last log `from` and `to` was planned without it: it was rotated
+   * out. A lift the plan runs only some weeks (the Friday deadlift, the RDL that skips light weeks) stays in every
+   * block, so its gaps never count. Without it, no gap does.
+   */
+  rotatedOut?: (exerciseId: string, from: string, to: string) => boolean;
 };
 
 /**
  * Long gaps, counted per lift from its last logged loading session (§4.5 rev 3.9): days, and the load factor. A gap
- * the plan made (rotation, a lift that comes round only some weeks) is no time off, but after `staleDays` the
- * lift's number is stale, so it starts at `staleFactor`.
+ * the plan made is no time off, but a lift rotated out for a block and back after `staleDays` has a stale number,
+ * so it starts at `staleFactor`.
  */
-export const LONG_GAP = { days: 10, factor: 0.9, monthDays: 28, monthFactor: 0.8, newDays: 56, staleDays: 21, staleFactor: 0.95 } as const;
+export const LONG_GAP = { days: 10, factor: 0.9, monthDays: 28, monthFactor: 0.8, newDays: 56, staleDays: 28, staleFactor: 0.95 } as const;
 
 /**
  * The weight hint for one planned movement, as the workout screen shows it (§4.4): last time's line and a
@@ -181,7 +188,7 @@ export const LONG_GAP = { days: 10, factor: 0.9, monthDays: 28, monthFactor: 0.8
  * - After a long gap in this lift's logged work (never app opens or sign-ins), counted from when it was due and went
  *   unlogged (`timeOffFrom`): 90% of last time after 10 days, 80% and no top set for the
  *   rest of the block after 4 weeks, and a fresh start after 8 weeks (§4.5 rev 3.9).
- * - Back after 3 weeks or more the plan kept it away (rotated out for a block, say) with less time off than that:
+ * - Back from a block rotated out (`rotatedOut`), 4 weeks or more since its last log, with less time off than 10 days:
  *   about 5% lighter for one session, since its number is stale. A deload week is lighter already.
  */
 export function workoutHint(
@@ -199,6 +206,7 @@ export function workoutHint(
   };
   const gap = history[0] ? off(history[0].date, o.date) : 0;
   const since = history[0] ? daysBetween(history[0].date, o.date) : 0;
+  const stale = !o.deload && since >= LONG_GAP.staleDays && !!o.rotatedOut?.(ex.id, history[0].date, o.date);
   const returned = returnedThisBlock(loading, gap, off, o);
   const last = pe.sets[pe.sets.length - 1];
   const target = last?.targetReps ?? pe.sets[0]?.targetReps;
@@ -211,7 +219,14 @@ export function workoutHint(
   let line: WeightHint | null;
   let fromE1 = true;
   if (SWAP_SLOTS.has(pe.slot)) line = e1rmLoadHint(ex, loading, lead.target, lead.rir, o.date, o.profile, o.bandName);
-  else if (shifted && !o.deload) line = rangeShiftHint(ex, newest, was!, lead.target!, lead.rir, o) ?? lastTimeHint(ex, loading, target, o.bandName);
+  else if (shifted && !o.deload) {
+    line = rangeShiftHint(ex, newest, was!, lead.target!, lead.rir, o) ?? lastTimeHint(ex, loading, target, o.bandName);
+    // Topped out last time and today asks no more reps: the step double progression earned, where it can land.
+    const earned = target!.min <= was!.min ? sameRangeHint(ex, newest, was!, pe.sets.length, o)?.suggest : undefined;
+    if (line && earned != null && (line.suggest == null || lighterOf(ex, line.suggest, earned) !== earned)) {
+      line = bigStepCheck(ex, { ...line, suggest: earned }, loading, lead.target, lead.rir, o.profile);
+    }
+  }
   else {
     fromE1 = false;
     const same = o.targetOf && newest && target && !o.deload ? sameRangeHint(ex, newest, target, pe.sets.length, o) : null;
@@ -219,7 +234,6 @@ export function workoutHint(
   }
   if (o.deload) line = deloadCap(ex, deloadHint(ex, line, o.profile, { history: loading, target, date: o.date }), loading, target, rir, o.profile);
   if (line && topDay && !o.deload) line = { ...line, backOff: backOffLoad(ex, line.suggest ?? line.weight, o.profile) ?? undefined };
-  const stale = !o.deload && since >= LONG_GAP.staleDays;
   if (line && (gap >= LONG_GAP.days || stale)) {
     const most = e1rmCeiling(ex, line, loading, lead.target, lead.rir, o.profile);
     line = afterBreak(ex, line, fromE1 && !o.deload ? line.suggest : line.weight, most, gap, since, o);
@@ -287,9 +301,10 @@ const SHORT = ' · two sets fell short of the range, so hold this weight';
  * The first session back after a long gap in this lift's logged work (§4.5 rev 3.9): `base` (last time's weight,
  * or the e1RM suggestion when the reps changed) about 10% lighter after 10 days and 20% after 4 weeks, with no step
  * up; after 8 weeks no number at all, and the lift is found again like a new one (§4.4 item 4). With less time off
- * than 10 days, the gap is the plan's (`since` days since the last log): about 5% lighter, for a stale number. The
- * suggestion also stays under `most`, what last time's e1RM carries for today's reps: a cut too small to round
- * (40 lb on 10 lb kettlebell steps) mustn't leave a weight last time fell well short with.
+ * than 10 days, the lift was rotated out (`since` days since the last log): about 5% lighter, for a stale number.
+ * The suggestion also stays under `most`, what last time's e1RM carries for today's reps: a cut too small to round
+ * (40 lb on 10 lb kettlebell steps) mustn't leave a weight last time fell well short with. The line then says how
+ * much lighter the suggestion really is.
  */
 function afterBreak(
   ex: Exercise,
@@ -309,12 +324,18 @@ function afterBreak(
   }
   const factor = stale ? LONG_GAP.staleFactor : gap >= LONG_GAP.monthDays ? LONG_GAP.monthFactor : LONG_GAP.factor;
   let suggest = lighterLoad(ex, base, o.profile, factor) ?? undefined;
-  if (suggest != null && most != null) suggest = lighterOf(ex, suggest, most);
+  let cut = Math.round((1 - factor) * 100);
+  if (suggest != null && most != null && lighterOf(ex, suggest, most) !== suggest) {
+    suggest = most;
+    const from = effectiveLoad(ex, base, o.profile);
+    const to = effectiveLoad(ex, most, o.profile);
+    if (from && to != null) cut = Math.round((1 - to / from) * 100);
+  }
   // A deload week after a gap takes the lighter of the two.
   if (o.deload && suggest != null && line.suggest != null) suggest = lighterOf(ex, suggest, line.suggest);
   const backOff = line.backOff != null ? backOffLoad(ex, suggest ?? base, o.profile) ?? undefined : undefined;
   const when = stale ? `first time in ${ago}` : `first session back after ${ago}`;
-  return { ...line, suggest, backOff, text: `${text} · ${when}, so about ${Math.round((1 - factor) * 100)}% lighter` };
+  return { ...line, suggest, backOff, text: `${text} · ${when}, so about ${cut}% lighter` };
 }
 
 /**

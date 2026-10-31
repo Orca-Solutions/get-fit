@@ -105,7 +105,7 @@ type Check = (ok: boolean, date: string, what: string) => void;
 const GROUPS = ['hints', 'safety', 'progress', 'partial', 'breaks', 'backOff', 'plans', 'shape', 'slots', 'bands', 'stalls', 'heavy', 'edits', 'events'] as const;
 const bad = Object.fromEntries(GROUPS.map((g) => [g, [] as Violation[]])) as Record<(typeof GROUPS)[number], Violation[]>;
 const checker = (g: (typeof GROUPS)[number]): Check => (ok, date, what) => { if (!ok) bad[g].push({ date, what }); };
-const fresh = () => ({ workouts: 0, sets: 0, hints: 0, suggestions: 0, backOffs: 0, topSets: 0, stalled: 0, toppedOut: 0, heavyPairs: 0, toppedChecks: 0, runChecks: 0, partialChecks: 0, returns: 0, tiers: [0, 0, 0] as number[], stale: 0, noTopSet: 0, dropped: 0, edits: 0, odd: 0 });
+const fresh = () => ({ workouts: 0, sets: 0, hints: 0, suggestions: 0, backOffs: 0, topSets: 0, stalled: 0, toppedOut: 0, heavyPairs: 0, toppedChecks: 0, runChecks: 0, partialChecks: 0, returns: 0, tiers: [0, 0, 0] as number[], stale: 0, twiceChecks: 0, noTopSet: 0, dropped: 0, edits: 0, odd: 0 });
 const stats = fresh();
 
 /** Each planned movement's sets and each session's block, recorded as the lifter logs (independent of hintContext). */
@@ -115,12 +115,24 @@ const sessionBlock = new Map<string, string>();
 const plannedDays = new Map<string, { date: string; id: string }[]>();
 const loggedPe = new Set<string>();
 const trainedOn = new Set<string>();
-/** When a movement's time off began (as hintContext's timeOffFrom): the last log if nothing at all was logged since, else a week before its first unlogged planned day, else never. */
+/** When a movement's time off began (as hintContext's timeOffFrom): the last log if nothing at all was logged since, else the earlier of a week before its first unlogged planned day and the start of 10+ days with nothing logged, else never. */
 const timeOffFrom = (exId: string, from: string, to: string) => {
   if (![...trainedOn].some((x) => x > from && x < to)) return from;
   const first = plannedDays.get(exId)?.filter((p) => p.date > from && p.date < to && !loggedPe.has(p.id)).map((p) => p.date).sort()[0];
-  return first && [from, addDays(first, -7)].sort()[1];
+  const missed = first && [from, addDays(first, -7)].sort()[1];
+  // Or the first 10+ days with nothing logged at all.
+  let prev = from;
+  let quiet: string | undefined;
+  for (const t of [...[...trainedOn].filter((x) => x > from && x < to).sort(), to]) {
+    if (!quiet && daysBetween(prev, t) >= LONG_GAP.days) quiet = prev;
+    prev = t;
+  }
+  return [missed, quiet].filter((d): d is string => !!d).sort()[0];
 };
+/** Each block's days as they came round, and the movements planned in it. */
+const blockDays = new Map<string, { first: string; last: string; ids: Set<string> }>();
+/** Whether a whole block between `from` and `to` was planned without the movement (as hintContext's rotatedOut). */
+const rotatedOut = (exId: string, from: string, to: string) => [...blockDays.values()].some((b) => b.first > from && b.last < to && !b.ids.has(exId));
 
 /** The heaviest weight used on each movement's working sets (top sets aside), by block, day and zone. */
 const used = new Map<string, number>();
@@ -133,7 +145,7 @@ async function simulate(lifter: Lifter): Promise<Result> {
   // Each run starts clean: the recorded plans, the lifter's knack per movement and everything the checks track.
   seed = lifter.seed;
   planned.length = 0;
-  for (const m of [knack, plannedOf, sessionBlock, plannedDays, used]) m.clear();
+  for (const m of [knack, plannedOf, sessionBlock, plannedDays, blockDays, used]) m.clear();
   for (const set of [loggedPe, trainedOn]) set.clear();
   for (const g of GROUPS) bad[g] = [];
   Object.assign(stats, fresh());
@@ -179,6 +191,12 @@ async function simulate(lifter: Lifter): Promise<Result> {
     const todays = (await d.plannedWorkouts.where('date').equals(date).toArray()).filter((w) => !w.deletedAt);
     // What the plan asked for today, whether or not the app was opened.
     for (const w of todays) for (const e of w.exercises) plannedDays.set(e.exerciseId, [...(plannedDays.get(e.exerciseId) ?? []), { date, id: e.id }]);
+    for (const w of todays) {
+      const b = blockDays.get(w.blockId) ?? { first: date, last: date, ids: new Set<string>() };
+      b.last = date;
+      for (const e of w.exercises) b.ids.add(e.exerciseId);
+      blockDays.set(w.blockId, b);
+    }
     if (off && !off.opened) continue;
     if (off) {
       // Signed in and looking: each workout is opened, and nothing is logged.
@@ -252,7 +270,7 @@ async function simulate(lifter: Lifter): Promise<Result> {
   checkHeavy(checker('heavy'), blocks);
   await checkStalls(checker('stalls'), d, byId, profile);
   console.log(`${lifter.name}: ${stats.workouts} workouts, ${stats.sets} sets, ${stats.hints} hints (${stats.suggestions} with a suggestion), ${planned.length} plans, ` +
-    `${stats.topSets} planned top sets (${stats.backOffs} done), ${stats.stalled} stalled and ${stats.toppedOut} topped out, ${stats.heavyPairs} heavy/moderate pairs, ${stats.toppedChecks} topped, ${stats.runChecks} topped three times, ${stats.partialChecks} cut short, returns after 10 days, 4 weeks and 8 weeks ${stats.tiers.join('/')} (${stats.noTopSet} top sets dropped), ${stats.stale} back after 3+ weeks the plan made, ${stats.dropped} untrained blocks dropped, ${stats.edits} past sets re-entered, ${stats.odd} odd sets; violations: ` +
+    `${stats.topSets} planned top sets (${stats.backOffs} done), ${stats.stalled} stalled and ${stats.toppedOut} topped out, ${stats.heavyPairs} heavy/moderate pairs, ${stats.toppedChecks} topped, ${stats.runChecks} topped three times, ${stats.partialChecks} cut short, returns after 10 days, 4 weeks and 8 weeks ${stats.tiers.join('/')} (${stats.noTopSet} top sets dropped), ${stats.stale} back from a block rotated out, ${stats.twiceChecks} topped twice, ${stats.dropped} untrained blocks dropped, ${stats.edits} past sets re-entered, ${stats.odd} odd sets; violations: ` +
     GROUPS.map((g) => `${g} ${bad[g].length}`).join(', '));
   if (process.env.SIM_DUMP) for (const g of GROUPS) if (g !== 'bands') for (const v of bad[g].slice(0, 15)) console.log(g, v.date, v.what);
   d.close();
@@ -309,7 +327,7 @@ describe('day-to-day use over twelve blocks', () => {
     expect(r.bad.breaks.slice(0, 20)).toEqual([]);
     // Every tier came up: the holiday, the weeks signed in without logging, and the long break.
     expect(r.stats.tiers.every((n) => n > 0)).toBe(true);
-    // And lifts came back after 3+ weeks the plan kept them away.
+    // And lifts came back from a block rotated out.
     expect(r.stats.stale).toBeGreaterThan(0);
   });
   it('pre-fills back-off sets no heavier than the top set', () => {
@@ -533,7 +551,9 @@ function checkSafe(check: Check, date: string, ex: Exercise, pe: PlannedExercise
  *   more reps when the step is too big); and three such sessions in a row at one weight earn one whatever the reps.
  * - 10+ days off: about 10% lighter; 4+ weeks: 20% lighter and no top set for the rest of the block; 8+ weeks: no
  *   number, find the weight again. Never otherwise, however often the app was opened.
- * - Less time off than that, but 3+ weeks since the lift's last log (the plan kept it away): about 5% lighter.
+ * - Less time off than that, but back from a block rotated out, 4+ weeks since its last log: about 5% lighter. Never
+ *   for a lift the plan runs only some weeks, so one that topped its range twice is never suggested lower.
+ * The cut can be deeper than the tier's when last time's e1RM carries less; the line says by how much.
  */
 function checkProgress(c: Record<'progress' | 'breaks' | 'partial', Check>, date: string, ex: Exercise, plan: PlannedExercise, w: PlannedWorkout, hint: WeightHint | null, history: SessionSummary[], isDeload: HintContext['isDeload']) {
   if (w.isDeload || !loaded(ex) || ex.metric !== 'reps' || !hint) return;
@@ -549,13 +569,16 @@ function checkProgress(c: Record<'progress' | 'breaks' | 'partial', Check>, date
   const gap = off(history[0].date, date);
   const said = `"${hint.text}"${hint.suggest != null ? ` try ${hint.suggest}` : ''}`;
   if (gap >= LONG_GAP.days) stats.tiers[gap >= LONG_GAP.newDays ? 2 : gap >= LONG_GAP.monthDays ? 1 : 0]++;
+  const cut = Number(/ so about (\d+)% lighter/.exec(hint.text)?.[1] ?? 0);
+  const back = /first session back/.test(hint.text);
   if (gap >= LONG_GAP.newDays) c.breaks(hint.suggest == null && /ramp up/.test(hint.text), date, `${name}: ${gap} days off, ${said}`);
-  else if (gap >= LONG_GAP.monthDays) c.breaks(/20% lighter/.test(hint.text), date, `${name}: ${gap} days off, ${said}`);
-  else if (gap >= LONG_GAP.days) c.breaks(/10% lighter/.test(hint.text), date, `${name}: ${gap} days off, ${said}`);
-  else c.breaks(!/first session back/.test(hint.text), date, `${name}: ${gap} days since the last log, ${said}`);
-  const stale = gap < LONG_GAP.days && daysBetween(history[0].date, date) >= LONG_GAP.staleDays;
+  else if (gap >= LONG_GAP.monthDays) c.breaks(back && cut >= 20, date, `${name}: ${gap} days off, ${said}`);
+  else if (gap >= LONG_GAP.days) c.breaks(back && cut >= 10, date, `${name}: ${gap} days off, ${said}`);
+  else c.breaks(!back, date, `${name}: ${gap} days since the last log, ${said}`);
+  const since = daysBetween(history[0].date, date);
+  const stale = gap < LONG_GAP.days && since >= LONG_GAP.staleDays && rotatedOut(ex.id, history[0].date, date);
   if (stale) stats.stale++;
-  c.breaks(/ 5% lighter/.test(hint.text) === stale, date, `${name}: ${gap} days off, ${daysBetween(history[0].date, date)} since the last log, ${said}`);
+  c.breaks(/first time in/.test(hint.text) === stale && (!stale || cut >= 5), date, `${name}: ${gap} days off, ${since} since the last log, ${said}`);
   // Back from 4+ weeks off within this block: no top set (checked on the plan as given, before the screen drops it).
   const inBlock = loading.filter((h) => sessionBlock.get(h.sessionId) === w.blockId);
   const first = inBlock[inBlock.length - 1];
@@ -590,6 +613,14 @@ function checkProgress(c: Record<'progress' | 'breaks' | 'partial', Check>, date
   const run = loading.slice(0, 3).map(topped);
   if (run.length === 3 && run.every((r) => r.ok && r.weight === last.weight)) stats.runChecks++;
   if (run.length === 3 && run.every((r) => r.ok && r.weight === last.weight)) c.progress(up || asksMore, date, `${name}: topped out three times at ${last.weight}, ${said}`);
+  // A main lift that topped its range twice running is never suggested lower at today's reps or fewer, whatever its
+  // cadence (the Friday deadlift weeks apart).
+  const twice = loading.slice(0, 2);
+  const fewer = twice.length === 2 && !!target && twice.every((h) => (planned(h)?.at(-1)?.targetReps?.min ?? 0) >= target.min);
+  if ((plan.role === 'P' || plan.role === 'C') && fewer && twice.every((h) => topped(h).ok)) {
+    stats.twiceChecks++;
+    c.progress(hint.suggest == null || moved(ex, hint.suggest) >= last.weight, date, `${name}: topped out twice, last at ${last.weight}, ${said}`);
+  }
 }
 
 /**

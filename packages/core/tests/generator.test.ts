@@ -939,12 +939,17 @@ describe('workoutHint (§4.4)', () => {
     // 9 weeks: no number; the weight is found again like a new lift's.
     expect(at('2026-12-04')).toMatchObject({ text: 'Last time at 8–12: 60 lb each · first session back after 9 weeks: ramp up across sets to a weight that leaves about 3 reps in the tank', suggest: undefined });
     // A gap the plan made (nothing planned for this lift was missed, and other work was logged) is no time off.
-    expect(at('2026-10-21', { timeOffFrom: () => undefined })!.suggest).toBe(65);
-    // From 3 weeks, though, the number is stale (rotated out for a block): 95% of 60 is 57, so 55, and no step up.
-    expect(at('2026-10-30', { timeOffFrom: () => undefined })).toMatchObject({ text: 'Last time at 8–12: 60 lb each · first time in 4 weeks, so about 5% lighter', suggest: 55 });
-    expect(at('2026-12-04', { timeOffFrom: () => undefined })).toMatchObject({ text: expect.stringContaining('first time in 9 weeks, so about 5% lighter'), suggest: 55 });
+    expect(at('2026-10-30', { timeOffFrom: () => undefined })!.suggest).toBe(65);
+    // So is a cadence the plan runs (the RDL that skips light weeks, the Friday deadlift): it stayed in every block.
+    expect(at('2026-10-30', { timeOffFrom: () => undefined, rotatedOut: () => false })!.suggest).toBe(65);
+    // Rotated out for a block, though, and back 4+ weeks on, its number is stale: 95% of 60 is 57, so 55, no step up.
+    const rotated = { timeOffFrom: () => undefined, rotatedOut: () => true };
+    expect(at('2026-10-30', rotated)).toMatchObject({ text: 'Last time at 8–12: 60 lb each · first time in 4 weeks, so about 5% lighter', suggest: 55 });
+    expect(at('2026-12-04', rotated)).toMatchObject({ text: expect.stringContaining('first time in 9 weeks, so about 5% lighter'), suggest: 55 });
+    // Under 4 weeks it isn't stale yet.
+    expect(at('2026-10-23', rotated)!.suggest).toBe(65);
     // A deload week is lighter already.
-    expect(hint(rdl, last, plan(range(10, 15), 4, 2), { date: '2026-10-30', deload: true, ctx: { timeOffFrom: () => undefined } })).toMatchObject({ text: 'Last time at 10–15: 60 lb each', suggest: 50 });
+    expect(hint(rdl, last, plan(range(10, 15), 4, 2), { date: '2026-10-30', deload: true, ctx: rotated })).toMatchObject({ text: 'Last time at 10–15: 60 lb each', suggest: 50 });
     // Rotated out, then due and missed once 10 days before coming back: 10 + 7 days off, not the whole gap.
     expect(at('2026-12-04', { timeOffFrom: () => '2026-11-17' })).toMatchObject({ text: expect.stringContaining('after 2 weeks, so about 10% lighter') });
   });
@@ -964,18 +969,42 @@ describe('workoutHint (§4.4)', () => {
 
   it('never comes back after a gap at a weight last time fell well short with, however coarse the steps', () => {
     // Leg extension in 10 lb steps, 40 × 6 twice for 8–12: 10% of 40 rounds back to 40, but 40 × 6 (e1RM 48) carries 36
-    // for 8 at RIR 2, so 30. The same after a stale number.
+    // for 8 at RIR 2, so 30, and the line says how much lighter that really is. The same after a stale number.
     const ext = byId.get('leg-extension')!;
     const short = session(ext, 'x', '2026-10-02', range(8, 12), [[40, 6, 'right'], [40, 6, 'right']]);
-    expect(hint(ext, short, plan(range(8, 12), 2, 2), { date: '2026-10-14' })).toMatchObject({ text: expect.stringContaining('10% lighter'), suggest: 30 });
-    expect(hint(ext, short, plan(range(8, 12), 2, 2), { date: '2026-10-30', ctx: { timeOffFrom: () => undefined } })).toMatchObject({ text: expect.stringContaining('5% lighter'), suggest: 30 });
+    expect(hint(ext, short, plan(range(8, 12), 2, 2), { date: '2026-10-14' })).toMatchObject({ text: 'Last time at 8–12: 40 lb · first session back after 12 days, so about 25% lighter', suggest: 30 });
+    expect(hint(ext, short, plan(range(8, 12), 2, 2), { date: '2026-10-30', ctx: { timeOffFrom: () => undefined, rotatedOut: () => true } })).toMatchObject({ text: expect.stringContaining('first time in 4 weeks, so about 25% lighter'), suggest: 30 });
+  });
+
+  it('never walks down a lift the plan runs weeks apart (the Friday deadlift, the heavy-week RDL)', () => {
+    // Topped 5–8 at 200 four weeks ago, its next week: the step, not 5% off it.
+    const dl = byId.get('smith-deadlift')!;
+    const pull = session(dl, 'd', '2026-10-02', range(5, 8), [[200, 8, 'right'], [200, 8, 'right'], [200, 8, 'right']]);
+    const cadence = { timeOffFrom: () => undefined, rotatedOut: () => false };
+    const friday = { slot: 'back:deadlift', sets: plan(range(5, 8), 2).sets };
+    expect(hint(dl, pull, friday, { date: '2026-10-30', ctx: cadence })).toMatchObject({ text: 'Last time at 5–8: 200 lb plates', suggest: 205 });
+    // RDL topped at 8–12, then the heavy week at 5–8 three weeks on: 65, as a week apart.
+    const r = session(rdl, 'r', '2026-10-02', range(8, 12), [[60, 12, 'right'], [60, 12, 'right'], [60, 12, 'right']]);
+    expect(hint(rdl, r, plan(range(5, 8), 2), { date: '2026-10-23', ctx: cadence })!.suggest).toBe(65);
+    expect(hint(rdl, r, plan(range(5, 8), 2), { date: '2026-10-09', ctx: cadence })!.suggest).toBe(65);
+  });
+
+  it('steps a lift that topped out when today asks no more reps, or asks for more reps when the step is too big', () => {
+    // 30 lb hammer curls topped at 12–15; today 10–15 at RIR 1. e1RM from 15 reps says 30, but the range was topped,
+    // so the step: 35 for 10 at RIR 1 needs an e1RM of 47.8, more than 30 × 15 shows (45), so more reps first.
+    const curl = byId.get('cross-body-hammer-curl')!;
+    const h = session(curl, 'c', '2026-10-09', range(12, 15), [[30, 15, 'right'], [30, 15, 'right']]);
+    expect(hint(curl, h, plan(range(10, 15), 1, 2))).toMatchObject({ text: expect.stringContaining('the next weight up is a big jump, so aim for 16–18 reps first'), suggest: undefined });
+    // Not topped: the e1RM's number stands.
+    const short = session(curl, 'c', '2026-10-09', range(12, 15), [[30, 14, 'right'], [30, 13, 'right']]);
+    expect(hint(curl, short, plan(range(10, 15), 1, 2))!.suggest).toBe(30);
   });
 
   it('keeps the top set for a lift back from rotation, about 5% lighter with the back-offs to match', () => {
     const h = heavySession('2026-09-01', [100, 5], [[90, 8], [90, 8], [90, 8]]);
-    // 24 days the plan made: 95% of the 125 lb moved is 118.75, less the bar, so 90; back-offs 90% of 115, less the bar: 75.
-    const back = hint(squat, h, topDay(), { date: '2026-09-25', ctx: { timeOffFrom: () => undefined } })!;
-    expect(back).toMatchObject({ text: 'Top set last time: 100 lb plates × 5 · first time in 3 weeks, so about 5% lighter', suggest: 90, backOff: 75 });
+    // A block rotated out, 4 weeks: 95% of the 125 lb moved is 118.75, less the bar, so 90; back-offs 90% of 115, less the bar: 75.
+    const back = hint(squat, h, topDay(), { date: '2026-09-29', ctx: { timeOffFrom: () => undefined, rotatedOut: () => true } })!;
+    expect(back).toMatchObject({ text: 'Top set last time: 100 lb plates × 5 · first time in 4 weeks, so about 5% lighter', suggest: 90, backOff: 75 });
     expect(back.noTopSet).toBeUndefined();
   });
 

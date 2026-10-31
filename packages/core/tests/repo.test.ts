@@ -220,6 +220,15 @@ describe('repo', () => {
     expect(ctx.timeOffFrom('barbell-deadlift', wk1.date, wk3.date)).toBeUndefined();
     // Nothing logged at all in between: the whole gap, whatever the plan said.
     expect(ctx.timeOffFrom('barbell-deadlift', wk2.date, addDays(wk2.date, 30))).toBe(wk2.date);
+    // Other work logged, then 10+ days with nothing at all: time off from then, though the plan had it off.
+    expect(ctx.timeOffFrom('barbell-deadlift', wk1.date, addDays(wk2.date, 12))).toBe(wk2.date);
+    expect(ctx.timeOffFrom('barbell-deadlift', wk1.date, addDays(wk2.date, 9))).toBeUndefined();
+    // A whole block planned without a movement: rotated out. One it's in, or a span that misses part of the block: not.
+    const days = (await d.plannedWorkouts.toArray()).filter((x) => x.blockId === wk1.blockId).map((x) => x.date).sort();
+    const [before, after] = [addDays(days[0], -1), addDays(days[days.length - 1], 1)];
+    expect(ctx.rotatedOut('barbell-deadlift', before, after)).toBe(true);
+    expect(ctx.rotatedOut(squat, before, after)).toBe(false);
+    expect(ctx.rotatedOut('barbell-deadlift', days[0], after)).toBe(false);
   });
 
   it("dates every set of a session by the day its first set was logged, even from the caller's older copy", async () => {
