@@ -324,7 +324,7 @@ Built and in use: planning, logging, swap and skip, history, calendar, library, 
 Open. The training-rule items continue in the core package; the app-side items (supersets on one screen, server-side record checks, an editable schedule and units, custom movements) are known gaps rather than planned work.
 
 - **Supersets on one screen:** the core day's supersets are labelled, but each movement still has its own screen rather than alternating rows (A1, B1, A2, B2).
-- **Training rules not yet implemented:** early deload, the 10-day-gap load drop and the finer progression rules ([periodization.md §4.9](periodization.md#49-not-yet-implemented)).
+- **Training rules not yet implemented:** early deload and the finer progression rules ([periodization.md §4.9](periodization.md#49-not-yet-implemented)).
 - **Progression tuning** on real logs.
 - **Weekly targets from block 6:** Friday runs out of room, so back can dip to 8 sets in one week, triceps reach 10.5 in one week, and from block 8 rear delts sit at 1.5–2 (target 3–5). Blocks 1 to 5 stay inside every target.
 - **Server-side record checks:** the server validates only the sync fields of each record; field-level checks happen on the devices.

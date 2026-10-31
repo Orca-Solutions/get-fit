@@ -1,6 +1,6 @@
 # Training logic: "strange periodization", made explicit
 
-The rules get-fit's plan generator follows, with the research behind them. The numbers live in `STRANGE_PERIODIZATION` (version 1.5.0) in [`packages/core/src/program.ts`](../packages/core/src/program.ts); the method (rotation, balancing, fallbacks) lives in [`packages/core/src/generator/`](../packages/core/src/generator). Code comments cite this document by section number, so keep the numbering stable.
+The rules get-fit's plan generator follows, with the research behind them. The numbers live in `STRANGE_PERIODIZATION` (version 1.7.0) in [`packages/core/src/program.ts`](../packages/core/src/program.ts); the method (rotation, balancing, fallbacks) lives in [`packages/core/src/generator/`](../packages/core/src/generator). Code comments cite this document by section number, so keep the numbering stable.
 
 Each rule below is implemented unless it is marked **Not yet implemented**. Those are collected in [§4.9](#49-not-yet-implemented).
 
@@ -102,7 +102,7 @@ Sets per slot:
 - **Isolation and variety slots ignore the zone's compound rep range.** They run 10–15 reps on H and M days and 12–20 on L days.
 - **A movement's own limits win.** Every catalog entry has a sensible rep range, and a slot's reps clamp into it, keeping a window of at least 2 reps (for example a split squat on an H day runs 8–10, and an assisted pull-up on an L day 10–12).
 - **Light-day stand-ins:** Romanian deadlifts and other axial hinges are never programmed on an L day or in a deload week. The generator swaps in a hip-extension or hinge-variant movement instead, such as a back extension, a hip thrust or a cable pull-through. With the leg-day hinge on H and M weeks only, the Romanian deadlift runs twice per block (§4.8).
-- **Heavy top set:** from block 3 on, the P slot on an H day opens with one set of 3–5 reps at RIR 2, followed by its other sets as back-off sets about 10% lighter (the app pre-fills that weight, §4.4). Only a settled lift gets one: the lifter has logged it before and it held the same slot the block before. A lift new to the lifter or to the slot keeps plain working sets while its weight is found.
+- **Heavy top set:** from block 3 on, the P slot on an H day opens with one set of 3–5 reps at RIR 2, followed by its other sets as back-off sets about 10% lighter (the app pre-fills that weight, §4.4). Only a settled lift gets one: the lifter logged it in the block before, in the same slot. A lift new to the lifter or to the slot keeps plain working sets while its weight is found, and so does a lift back from 4 or more weeks off, for the rest of that block (§4.5).
 - **Volume ramp across blocks:** from block 3 on, heavy days add one set to an isolation slot per block (block 3: one slot, block 4: two, block 5 onward: three). A block that follows one where any session was marked "beat up" skips the ramp.
 - **Grip & forearm finishers:** the M and L days end with a 2-set grip or forearm finisher (about 4 minutes). The H day, already the biggest session, gets none, and neither does a deload week. The finisher always comes last, so pulling work is never done with tired hands. It rotates through the grip families from session to session:
   - support (dead hang, farmer's carry)
@@ -205,7 +205,7 @@ The highest-scoring candidate wins. Scoring:
 Rotation rules:
 - **Base slots keep the same exercise for the whole block,** so progress is measurable.
 - **V slots are where novelty lives.** They draw from the day's pool, avoid repeating a family already in the session, and can change every week. They only appear on M and L days, which is the Background's wider variety as the bar gets lighter.
-- **At each block boundary,** each lifting day rotates one isolation slot, and on even-numbered blocks one compound slot too (secondary compounds before the primary lift, so the main lift sticks around longest). Any exercise that has **stalled** also rotates out: its best e1RM in the newest block it was trained in is not at least 1% above its best in the block before. Blocks compare like for like, since each one covers a heavy, a moderate and a light day; deload weeks and sessions done off the plan don't count, and each of the two blocks needs at least 2 loading sessions with the lift, or it isn't stalled.
+- **At each block boundary,** each lifting day rotates one isolation slot, and on even-numbered blocks one compound slot too (secondary compounds before the primary lift, so the main lift sticks around longest). Any exercise that has **stalled** also rotates out: its best e1RM in the newest block it was trained in is not at least 1% above its best in the block before. Blocks compare like for like, since each one covers a heavy, a moderate and a light day; deload weeks and sessions done off the plan don't count, and each of the two blocks needs at least 2 loading sessions with the lift, or it isn't stalled. A flat block whose heaviest set reached the top of its planned reps at Right or Easy is **topped out**, not stalled: double progression shows a gain only inside the rep range, so a lift whose next weight is too big a step (a 20 to 25 lb dumbbell) logs a flat e1RM while the lifter gets stronger. A topped-out isolation lift rotates, and the block's rationale says why; a topped-out main lift (P or C) keeps its slot.
 - **A main lift with nowhere else to go moves along its own family.** When a compound slot rotates and every candidate is in the same family as the outgoing movement, the next one in catalog order wins (for the shoulder press: Smith overhead press, then seated dumbbell press, then machine press). A load-type bonus, such as a barbell kit's, still outranks that order.
 - **Main presses stay two-sided.** Press slots on P and C roles skip free-standing one-arm presses, so Friday's shoulder press moves from the Smith overhead press to the seated dumbbell press at block 4 rather than to a half-kneeling single-arm press. One-arm rows and single-arm pulldowns still count as main lifts.
 - **When nothing fits:** if every candidate for a slot is marked Avoid or Can't do, none fits the available equipment, or the ones that fit are already on that day, the slot takes a related movement for the same main muscle, or else keeps a flagged one, or else is left out of the block. The block's rationale says which, so a gap is never silent; adding equipment or removing a flag brings the slot back.
@@ -220,27 +220,37 @@ Everything runs on what was **logged**, not what was prescribed. Weights are nev
    - **Smith machine:** the user logs only the plates added; the bar's weight is set once in Settings and added back.
    - **Assisted pull-up and dip machines:** the effective load is bodyweight minus assistance, so the profile keeps the user's bodyweight.
    - **Band and bodyweight movements** have no e1RM.
-3. **Weight hint (double progression).** Above the sets, the app shows the newest session at a similar rep count ("Last time at 8–12: 40 lb each"), or failing that the last session's sets. If every set of that session reached the top of the range, it suggests one increment more ("try 45"). Increments are per exercise: +5 lb on the Smith machine, the next dumbbell pair, the next pin on a machine, and one step less assistance on assisted machines. If any set of that session was tapped Hard, the line says to hold the weight instead ("that was Hard, so hold this weight"): weight goes up only when the effort was at or under target. The Friday deadlift, which comes round only some weeks and at different rep ranges, takes its suggestion from its e1RM instead (§4.8).
+3. **Weight hint.** Above the sets, the app shows what was lifted last time ("Last time at 8–12: 40 lb each"), read from loading sessions only: deload sessions are skipped while any loading session exists, so the week after a deload builds on the loading weeks.
+   - **Same reps as last time (double progression):** each logged set is judged against its own planned target. When every working set reached the top of its range, the session was logged in full and nothing was tapped Hard, the hint suggests one increment more ("try 45"). Increments are per exercise: +5 lb on the Smith machine, the next dumbbell pair, the next pin on a machine, and one step less assistance on assisted machines. A set tapped Hard holds the weight ("that was Hard, so hold this weight"): weight goes up only when the effort was at or under target. Two or more sets under their range also hold it. A session logged short of its planned sets earns no step.
+   - **Heavy top-set days** (§4.1): the top set drives the load and two or more back-off sets under their range hold it; the hint gives the back-off weight with it ("back-offs about 90").
+   - **A step too big to land:** a step the last session's e1RM can't carry for the bottom of today's reps at today's RIR waits, and the line asks for up to 3 more reps at the same weight first. A 20 to 25 lb dumbbell is a 25% jump that topping out at 15 reps can't bridge.
+   - **Other reps than last time** (the moderate week after a heavy week): the suggestion comes from last session's e1RM at the bottom of today's reps and today's RIR, rounded down to the lift's increment: load = e1RM ÷ (1 + (target reps + target RIR) / 30). Going to fewer reps it allows one more rep in reserve, since Epley from higher reps tends to overstate strength at lower ones. Going to more reps it never goes past one increment over last time's heaviest set, nor past it at all after a set tapped Hard. The Friday deadlift, which comes round only some weeks and at different rep ranges, always takes its suggestion this way (§4.8).
+   - **After a break,** or when the plan kept a lift away for 3 weeks or more, the first session back starts lighter (§4.5).
 4. **First time ever on an exercise:** the plan adds a calibration note: ramp up across sets to a weight that leaves about 3 reps in reserve. That first log becomes the baseline.
 5. **Pre-filled fields** show the planned reps in grey; typing replaces them. ✓ logs whatever is grey, so a set done as planned is one tap.
 6. **Lighter weights the app suggests:**
-   - **Deload weeks:** about 10% under the working weight. The working weight is the heaviest set at the deload's reps from the session in the last 3 weeks whose reps sat closest to the deload's range, which is usually the moderate week (not a heavy week's lower reps or a light week's higher ones). A Hard tap never holds the weight in a deload.
+   - **Deload weeks:** about 10% under the working weight. The working weight is the heaviest set at the deload's reps from the session in the last 3 weeks whose reps sat closest to the deload's range, which is usually the moderate week (not a heavy week's lower reps or a light week's higher ones). A Hard tap never holds the weight in a deload. The suggestion also stays under what that session's e1RM carries for the bottom of the deload's reps at its RIR, so a heavy week's low-rep weight never becomes the deload's.
    - **Back-off sets** after a heavy top set (§4.1) pre-fill about 10% under the top set's weight.
    - Both round down to the lift's increment and count the Smith bar; assisted machines add assistance instead. When 10% is less than half an increment (a 10 or 15 lb dumbbell), the weight stays, since rounding would take a third or half off. Band and bodyweight movements get no suggestion; fewer sets and more reps in reserve do the work there.
 
-**Not yet implemented:** the finer progression rules: two increments after overshooting the range by 3 or more reps, a 5–10% drop after two sessions in a row with two or more sets below the range, and converting e1RM into a suggested load when an exercise moves to a new zone (load = e1RM ÷ (1 + (target reps + target RIR) / 30)). Only the Friday deadlift uses that conversion so far (§4.8).
+**Not yet implemented:** the finer progression rules: two increments after overshooting the range by 3 or more reps, and a 5–10% drop after two sessions in a row with two or more sets below the range.
 
 ### 4.5 Calendar, deloads and missed days
 
 - **Calendar:** every session gets a date from the weekly schedule. The calendar shows each day's session type and zone (for example "Legs · Heavy"), shades deload weeks, and marks each session planned, done, partial, missed or done late. States are worked out from the plan and the logs, never stored.
-- **Planning ahead:** the next block is planned when the current one starts, from the logs available then, and its unlogged sessions are rebuilt once from the latest logs on its first day. Settings › Regenerate upcoming workouts rebuilds the rest of the current block and the next one; logged or started sessions are never touched. After a long break, a new block starts on the current week's Monday.
+- **Planning ahead:** the next block is planned when the current one starts, from the logs available then, and its unlogged sessions are rebuilt once from the latest logs on its first day. Settings › Regenerate upcoming workouts rebuilds the rest of the current block and the next one; logged or started sessions are never touched. After a long break, a new block starts on the current week's Monday; blocks planned while nobody trained are dropped, so block numbers carry on from the last block with logs.
 - **Missed and moved sessions:** a session stays on its planned date. A missed session from the current week can be done on any later day of that week with **Do it today**, and a future session can be pulled forward the same way. The log records the real date and the calendar shows it as done late, not missed. Progression keys off the session, not the date, so nothing breaks. Nothing carries over to the next week, and the zone rotation continues as planned.
 - **Planned deload (week 4):** same base exercises, 2 sets each, about 10% lighter (the weight hint suggests the load, §4.4), RIR 4 or more. The leg-day Romanian deadlift takes its light-day stand-in, and Friday keeps its second row. The core day keeps all 8 dynamics at 1 set each.
 - **"Beat up":** the finish summary has a "beat up" checkbox. Today it only cancels the next block's volume ramp (§4.1).
+- **After a break:** counted per lift from its last logged session, and only as real time off. Time off starts at that session when nothing at all has been logged since; otherwise it starts a week before the first planned day the lift went unlogged, since lifting days repeat weekly. Opening the app or signing in never counts as training, and a gap the plan made (the Friday deadlift a few weeks apart, a Romanian deadlift that skips light weeks, a lift rotated out for a block) is not time off.
+  - **10+ days off:** about 10% under last time, with no step up, for one session.
+  - **4+ weeks off:** about 20% under, and no heavy top set for the rest of that block (§4.1).
+  - **8+ weeks off:** no number at all; the lift is found again like a new one (§4.4 item 4), and it also skips the top set for the rest of the block.
+  - **Back after 3+ weeks the plan kept it away,** with under 10 days of real time off: about 5% under last time, with no step up, for one session ("first time in 4 weeks, so about 5% lighter"). Its number is weeks old, so it gets a margin. The Friday deadlift is the usual case. A deload week is lighter already, so it's left alone.
+  - Every one of these also stays under what last time's e1RM carries for today's reps, so a cut too small to round (40 lb on 10 lb steps) never leaves a weight last time fell well short with. A deload week after a break takes the lighter of the two suggestions.
 
 **Not yet implemented:**
 - **Early deload:** if 3 or more exercises regress in one week, or a session is marked "beat up," the next lifting session becomes a deload.
-- **Long gap:** after 10 or more days off, loads drop 10% for one session.
 
 ### 4.6 Running
 
@@ -287,7 +297,7 @@ These rules decide where the hinges go, how the squat-pattern work on leg day va
 - **Which deadlift:** dumbbells first, then the Smith machine once the dumbbell deadlift is outgrown (see below). A barbell deadlift or sumo deadlift is planned only when the lifter marks one Favourite, and then ahead of the others. The choice is made once per block. For growth the tool matters little; dumbbells come first because the hinge is easier to learn with the weights at the sides and they are always available at the reference gym (judgment).
 - **Opting out:** there is no deadlift setting. Marking one deadlift Avoid or Can't do moves the slot to the next one. Marking every deadlift that way, or a kit no deadlift fits, keeps the second row every week, so Friday is exactly what it was before.
 - **Order:** on the days it runs, the deadlift opens the workout, so the heavy hinge goes while the lifter is fresh.
-- **Load:** the deadlift comes round only once or twice a block, at different rep ranges, so its suggested weight comes from its latest e1RM at today's bottom rep and planned RIR, rounded down to the lift's increment. It never goes more than one increment above last time's top weight, never above it at all when a set last time was tapped Hard (as in §4.4 item 3), and when the last deadlift was more than 3 weeks ago it starts at about 95% (a safety margin, not a cited rule).
+- **Load:** the deadlift comes round only once or twice a block, at different rep ranges, so its suggested weight comes from its latest e1RM at today's bottom rep and planned RIR, rounded down to the lift's increment. It never goes more than one increment above last time's top weight, never above it at all when a set last time was tapped Hard (as in §4.4 item 3), and after 3 or more weeks away it starts about 5% lighter, like any lift the plan kept away (§4.5).
 
 **Step-up ladders.** The leg-day hinge, the Friday deadlift and the sumo squat each start on the lowest rung of their equipment ladder and move up only past a movement the lifter has **outgrown**: in each of the last two sessions the heaviest set reached the top of its planned reps at Right or Easy, at the same weight both times. A topped-out session already suggests the next weight up, so a second one at the same weight reads as the next weight not being there, such as the heaviest dumbbells on the rack (inference: the app can't see the rack).
 
@@ -307,9 +317,8 @@ These rules decide where the hinges go, how the squat-pattern work on leg day va
 
 | Rule | Section |
 |---|---|
-| Two increments after a large overshoot; 5–10% drop after repeated misses; e1RM-based load for a new zone (beyond the Friday deadlift) | §4.4 |
+| Two increments after a large overshoot; 5–10% drop after repeated misses | §4.4 |
 | Early deload from regressions or a "beat up" session | §4.5 |
-| 10% load drop after 10 or more days off | §4.5 |
 | Cut a leg set when leg sets keep missing | §4.6 |
 
 ## 5. Data the rules depend on
@@ -431,8 +440,8 @@ The places where the rules could reasonably have gone another way, and what was 
 - The 8-dynamic core template, the core wave and the decision to keep it
 - The grip finisher placement on M and L days
 - The rotation cap of one or two base slots per block (an operationalization of ref 8)
-- The progression thresholds, including the 1% block-on-block stall test and the 10% deload and back-off cuts
-- The 10-day gap rule
+- The progression thresholds, including the 1% block-on-block stall test, the topped-out exception, the big-step check and the 10% deload and back-off cuts
+- The return-after-break tiers (10 days, 4 weeks, 8 weeks), how time off is counted, and the 5% margin after 3+ weeks away (§4.5)
 - The running-related selection rules beyond ref 12
-- The hinge schedule, the Friday deadlift's placement, the half credit for knee-dominant lifts and the deadlift's back work, the lower-back target, the outgrown rule and the 95% restart after 3 weeks off (§4.8)
+- The hinge schedule, the Friday deadlift's placement, the half credit for knee-dominant lifts and the deadlift's back work, the lower-back target, and the outgrown rule (§4.8)
 - The calorie-surplus note

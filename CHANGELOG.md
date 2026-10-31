@@ -2,6 +2,18 @@
 
 Notable changes to get-fit. Releases of the core package are tagged `core-v<version>`.
 
+## Unreleased (on `main`, after core-v0.6.2)
+
+- **Core 0.6.10:** a lift the plan kept away for 3 weeks or more (rotated out for a block, or the Friday deadlift) starts about 5% lighter for one session. After any break, the suggestion also stays under what last time's e1RM carries for today's reps.
+- **Core 0.6.5, program 1.7.0:**
+  - **Breaks:** a lift's first session back after 10+ days off is about 10% lighter, after 4+ weeks about 20% lighter with no top set for the rest of the block, and after 8+ weeks it starts over like a new lift. Time off counts from when the lift was due and went unlogged, never from app opens, and gaps the plan made don't count. This replaces the deadlift's own 95% after 3 weeks.
+  - **Heavy days step up from the top set,** with two or more short back-off sets holding the weight, and the hint gives the back-off weight. Each set is judged against its own planned target, and a session logged short of its planned sets earns no step.
+  - Blocks nobody trained are dropped, so block numbers carry on from the last block with logs.
+- **Program 1.6.0:** a flat block that topped out at Right or Easy is waiting on a weight step, not stalled. Topped-out isolation lifts rotate; main lifts keep their slot.
+- **Weight hints:** when today's reps differ from last time's, the suggestion comes from e1RM; a step up the e1RM can't carry asks for more reps first; deload suggestions stay under what e1RM carries for the deload's reps; deload sessions are skipped when reading last time (core 0.6.3).
+- **Sync and data (core 0.6.6–0.6.9):** last write wins settles ties and clock skew the same way everywhere; logged sets must hold real numbers; kettlebell entry reads more formats; plan rebuilds and restored backups keep their order against older copies; the sets CSV opens formula-like names as text; every set of a session is dated the day its first set was logged.
+- A twelve-block simulation of day-to-day use by three lifters runs with the unit tests.
+
 ## 2026-10-16
 
 - **User guide:** [docs/USER_GUIDE.md](docs/USER_GUIDE.md) walks through setup, the plan, logging, the calendar, history, the library, settings and backups.
